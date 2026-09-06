@@ -1,0 +1,311 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Modifier{% else %}Nouvel{% endif %} Utilisateur{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-header {
+    background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
+    border-radius: 14px;
+    padding: 26px 32px;
+    color: #fff;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+}
+.page-header::after {
+    pointer-events: none;
+    content: '\F4DA';
+    font-family: 'Bootstrap-Icons';
+    font-size: 9rem;
+    opacity: 0.06;
+    position: absolute;
+    right: 24px;
+    top: -10px;
+    line-height: 1;
+}
+.page-header h4 { font-weight: 700; margin: 0; }
+.page-header p  { margin: 6px 0 0; opacity: 0.8; font-size: 13px; }
+
+.form-card {
+    border: none;
+    border-radius: 13px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    overflow: hidden;
+    background: #fff;
+}
+
+.section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--color-accent);
+    margin-bottom: 14px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid rgba(74,111,165,0.12);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.form-label-sm {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+/* Indicateur mot de passe optionnel */
+.optional-badge {
+    font-size: 10px;
+    font-weight: 600;
+    color: #9ca3af;
+    background: #f3f4f6;
+    border-radius: 6px;
+    padding: 2px 6px;
+    margin-left: 6px;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+/* Toggle actif */
+.toggle-zone {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #f8f9fc;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px 16px;
+}
+.toggle-zone .form-check-input {
+    width: 2.5em;
+    height: 1.35em;
+    cursor: pointer;
+}
+.toggle-zone .toggle-label {
+    font-weight: 600;
+    font-size: 13px;
+    color: #374151;
+}
+.toggle-zone .toggle-hint {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 2px;
+}
+
+.form-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #f0f0f0;
+    background: #fafbfc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    background: #fff;
+    color: var(--color-danger);
+    border: 1.5px solid var(--color-danger);
+    text-decoration: none;
+    transition: all 0.15s;
+}
+.btn-back:hover { background: var(--color-danger); color: #fff; }
+
+.btn-submit {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 22px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    background: var(--color-accent);
+    color: #fff;
+    border: none;
+    transition: all 0.15s;
+    cursor: pointer;
+}
+.btn-submit:hover {
+    background: var(--color-accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(74,111,165,0.3);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-9">
+
+            <!-- ── Header ── -->
+            <div class="page-header">
+                <h4>
+                    <i class="bi bi-person-circle me-2"></i>
+                    {% if object %}Modifier l'utilisateur{% else %}Nouvel utilisateur{% endif %}
+                </h4>
+                <p>
+                    {% if object %}
+                        Modification du compte de <strong>{{ object.nom_complet|default:object.username }}</strong>
+                    {% else %}
+                        Renseignez les informations pour créer un nouveau compte utilisateur
+                    {% endif %}
+                </p>
+            </div>
+
+            <!-- ── Form card ── -->
+            <div class="form-card">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger mx-3 mt-3">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <div class="p-4">
+
+                        <!-- Section : Identité -->
+                        <div class="section-label">
+                            <i class="bi bi-person"></i> Identité
+                        </div>
+                        <div class="row mb-4">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label-sm">
+                                    {{ form.username.label }} <span class="text-danger">*</span>
+                                </label>
+                                {{ form.username }}
+                                {% if form.username.help_text %}
+                                    <div class="mt-1" style="font-size:11px;color:#9ca3af;">
+                                        <i class="bi bi-info-circle me-1"></i>{{ form.username.help_text }}
+                                    </div>
+                                {% endif %}
+                                {% if form.username.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.username.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label-sm">
+                                    {{ form.nom_complet.label }} <span class="text-danger">*</span>
+                                </label>
+                                {{ form.nom_complet }}
+                                {% if form.nom_complet.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.nom_complet.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label-sm">{{ form.telephone.label }}</label>
+                                {{ form.telephone }}
+                                {% if form.telephone.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.telephone.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Section : Sécurité -->
+                        <div class="section-label">
+                            <i class="bi bi-shield-lock"></i> Sécurité
+                            {% if object %}
+                                <span class="optional-badge">Laisser vide pour conserver le mot de passe actuel</span>
+                            {% endif %}
+                        </div>
+                        <div class="row mb-4">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label-sm">
+                                    {{ form.password1.label }}
+                                    {% if not object %}<span class="text-danger">*</span>{% endif %}
+                                </label>
+                                {{ form.password1 }}
+                                {% if form.password1.help_text %}
+                                    <div class="mt-1" style="font-size:11px;color:#9ca3af;">
+                                        <i class="bi bi-info-circle me-1"></i>{{ form.password1.help_text }}
+                                    </div>
+                                {% endif %}
+                                {% if form.password1.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.password1.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label-sm">
+                                    {{ form.password2.label }}
+                                    {% if not object %}<span class="text-danger">*</span>{% endif %}
+                                </label>
+                                {{ form.password2 }}
+                                {% if form.password2.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.password2.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Section : Accès & Rôle -->
+                        <div class="section-label">
+                            <i class="bi bi-key"></i> Accès & Rôle
+                        </div>
+                        <div class="row mb-4">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label-sm">
+                                    {{ form.role.label }} <span class="text-danger">*</span>
+                                </label>
+                                {{ form.role }}
+                                {% if form.role.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.role.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label-sm">{{ form.gare.label }}</label>
+                                {{ form.gare }}
+                                {% if form.gare.help_text %}
+                                    <div class="mt-1" style="font-size:11px;color:#9ca3af;">
+                                        <i class="bi bi-info-circle me-1"></i>{{ form.gare.help_text }}
+                                    </div>
+                                {% endif %}
+                                {% if form.gare.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.gare.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Section : Statut -->
+                        <div class="section-label">
+                            <i class="bi bi-toggle-on"></i> Statut
+                        </div>
+                        <div class="toggle-zone">
+                            {{ form.actif }}
+                            <div>
+                                <div class="toggle-label">Utilisateur actif</div>
+                                <div class="toggle-hint">Un utilisateur inactif ne peut plus se connecter</div>
+                            </div>
+                        </div>
+                        {% if form.actif.errors %}
+                            <div class="invalid-feedback d-block mt-1">{{ form.actif.errors.0 }}</div>
+                        {% endif %}
+
+                    </div>
+
+                    <!-- ── Footer ── -->
+                    <div class="form-footer">
+                        <a href="{% url 'personnel:utilisateur_list' %}" class="btn-back">
+                            <i class="bi bi-arrow-left"></i> Retour
+                        </a>
+                        <button type="submit" class="btn-submit">
+                            <i class="bi bi-check-circle"></i>
+                            {% if object %}Enregistrer{% else %}Créer l'utilisateur{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

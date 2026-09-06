@@ -1,0 +1,1254 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+{% load static %}
+
+{% block title %}Vente - {{ voyage.ligne }} - Gestion Billetterie{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- En-tête du voyage -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h4 class="mb-2">
+                        <i class="bi bi-bus-front me-2 text-accent"></i>
+                        {{ voyage.ligne }}
+                    </h4>
+                    <div class="d-flex flex-wrap gap-3 text-muted">
+                        <span>
+                            <i class="bi bi-calendar3 me-1"></i>
+                            {{ voyage.date_depart|date:"l d F Y" }}
+                        </span>
+                        <span>
+                            <i class="bi bi-clock me-1"></i>
+                            {{ voyage.heure_depart|time:"H:i" }}
+                        </span>
+                        <span>
+                            <i class="bi bi-sun{% if voyage.periode == 'soir' %}-fill{% endif %} me-1"></i>
+                            {{ voyage.get_periode_display }}
+                        </span>
+                        {% if voyage.vehicule %}
+                        <span>
+                            <i class="bi bi-truck me-1"></i>
+                            {{ voyage.vehicule.display_immat }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                    <div class="h4 text-accent mb-0">
+                        <i class="bi bi-geo-alt me-1"></i>{{ voyage.ligne.ville_arrivee }}
+                    </div>
+                    <small class="text-muted">Destination finale</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Plan des sièges -->
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-grid-3x3 me-2"></i>Plan des sièges</span>
+                    <div>
+                        <span class="badge badge-disponible me-2">{{ nb_disponibles }} disponibles</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshSeats">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Légende -->
+                    <div class="siege-legende mb-4 d-flex justify-content-between align-items-center flex-wrap">
+                        <div class="d-flex flex-wrap gap-3">
+                            <div class="siege-legende-item">
+                                <div class="siege-legende-color" style="background-color: var(--color-siege-disponible); border: 2px solid var(--color-success);"></div>
+                                <span>Disponible</span>
+                            </div>
+                            <div class="siege-legende-item">
+                                <div class="siege-legende-color" style="background-color: var(--color-siege-reserve); border: 2px solid var(--color-warning);"></div>
+                                <span>Réservé</span>
+                            </div>
+                            <div class="siege-legende-item">
+                                <div class="siege-legende-color" style="background-color: var(--color-siege-paye);"></div>
+                                <span>Payé</span>
+                            </div>
+                            <div class="siege-legende-item">
+                                <div class="siege-legende-color" style="background-color: var(--color-accent);"></div>
+                                <span>Sélectionné</span>
+                            </div>
+                            <div class="siege-legende-item">
+                                <div class="siege-legende-color" style="background-color: var(--color-siege-non-vendable);"></div>
+                                <span>Conducteur</span>
+                            </div>
+                            <div class="siege-legende-item">
+                                <div class="siege-legende-color" style="background-color:var(--color-siege-gratuit-attente);border:2px solid #0891b2;"></div>
+                                <span>Gratuit (attente)</span>
+                            </div>
+                            <div class="siege-legende-item">
+                                <div class="siege-legende-color" style="background-color:var(--color-siege-gratuit);"></div>
+                                <span>Gratuit</span>
+                            </div>
+                        </div>
+                        <a href="{% url 'voyages:voyage_detail' voyage.public_id %}" class="btn btn-sm btn-outline-primary" title="Voir les détails du voyage">
+                            <i class="bi bi-eye me-1"></i>Voir détails
+                        </a>
+                    </div>
+
+                    <!-- Grille des sièges -->
+                    {% if disposition_sieges %}
+                    <div class="siege-grid" id="siegeGrid">
+                        {% for rangee in disposition_sieges.rangees %}
+                        <div class="siege-row">
+                            {% for siege in rangee.sieges %}
+                                {% if siege.type == 'couloir' %}
+                                    <div class="siege couloir"></div>
+                                {% elif siege.type == 'non_vendable' %}
+                                    <div class="siege non-vendable" title="Non vendable">
+                                        {{ siege.numero }}
+                                    </div>
+                                {% else %}
+                                    <div class="siege {{ siege.statut|default:'disponible' }}"
+                                         data-numero="{{ siege.numero }}"
+                                         title="Siège {{ siege.numero }}{% if siege.statut == 'reserve' %} (Réservé){% elif siege.statut == 'paye' %} (Payé){% endif %}">
+                                        {{ siege.numero }}
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-exclamation-triangle display-4"></i>
+                        <p class="mt-3">Véhicule non assigné à ce voyage</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Réservations en attente -->
+            {% if reservations %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <i class="bi bi-bookmark me-2"></i>
+                    Réservations en attente ({{ reservations|length }})
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Client</th>
+                                    <th>Téléphone</th>
+                                    <th>Siège</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reservation in reservations %}
+                                <tr>
+                                    <td>{{ reservation.client_nom }}</td>
+                                    <td>{{ reservation.client_telephone }}</td>
+                                    <td>
+                                        <span class="badge badge-reserve">{{ reservation.numero_siege }}</span>
+                                    </td>
+                                    <td>
+                                        <button type="button"
+                                                class="btn btn-sm btn-success btn-payer"
+                                                data-id="{{ reservation.public_id }}">
+                                            <i class="bi bi-cash"></i> Payer
+                                        </button>
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-warning btn-vendre-autre"
+                                                data-id="{{ reservation.public_id }}"
+                                                data-siege="{{ reservation.numero_siege }}"
+                                                title="Vendre à un autre client">
+                                            <i class="bi bi-person-fill-gear"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Formulaire de vente -->
+        <div class="col-lg-5">
+            <div class="card sticky-top" style="top: 80px;">
+                <div class="card-header">
+                    <i class="bi bi-cart-plus me-2"></i>Nouvelle vente
+                </div>
+                <div class="card-body">
+                    <form id="venteForm">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label class="form-label">Téléphone *</label>
+                            <div class="position-relative">
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                                    <input type="tel" class="form-control" name="client_telephone"
+                                           id="clientTelephone" placeholder="Numéro de téléphone" required
+                                           autocomplete="off">
+                                    <span class="input-group-text" id="clientSearchStatus" style="display:none;">
+                                        <span id="clientFoundIcon" class="text-success" style="display:none;">
+                                            <i class="bi bi-person-check-fill"></i>
+                                        </span>
+                                        <span id="clientNewIcon" class="text-warning" style="display:none;">
+                                            <i class="bi bi-person-plus-fill"></i>
+                                        </span>
+                                    </span>
+                                </div>
+                                <!-- Dropdown suggestions typeahead -->
+                                <div id="clientSuggestions"
+                                     class="list-group position-absolute w-100 shadow"
+                                     style="display:none; z-index:1050; top:100%; left:0;">
+                                </div>
+                            </div>
+                            <small id="clientFeedback" class="text-muted"></small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Nom du client *</label>
+                            <input type="text" class="form-control" name="client_nom"
+                                   id="clientNom" placeholder="Nom complet du client" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Destination *</label>
+                            <select class="form-select" name="destination_id" id="destinationSelect" required>
+                                <option value="">Sélectionner une destination</option>
+                                {% for dest in destinations %}
+                                <option value="{{ dest.pk }}" data-montant="{{ dest.montant }}">
+                                    {{ dest.ville_arrivee }} - {{ dest.montant|format_montant }} FCFA
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="mt-2">
+                                <strong>Montant : <span id="montantAffiche" class="text-success">-</span></strong>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Mode de vente</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="mode_vente"
+                                       id="modeUnitaire" value="unitaire" checked>
+                                <label class="btn btn-outline-primary" for="modeUnitaire">
+                                    <i class="bi bi-1-square me-1"></i> Unitaire
+                                </label>
+
+                                <input type="radio" class="btn-check" name="mode_vente"
+                                       id="modePlage" value="plage">
+                                <label class="btn btn-outline-primary" for="modePlage">
+                                    <i class="bi bi-collection me-1"></i> Plage
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Vente unitaire -->
+                        <div id="venteUnitaire" class="mb-3">
+                            <label class="form-label">Siège sélectionné</label>
+                            <input type="number" class="form-control" name="numero_siege"
+                                   id="siegeSelectionne" placeholder="Cliquez sur un siège" readonly>
+                            <small class="text-muted">Cliquez sur un siège disponible dans le plan</small>
+                        </div>
+
+                        <!-- Vente par plage -->
+                        <div id="ventePlage" class="mb-3" style="display: none;">
+                            <label class="form-label">Plage de sièges</label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <input type="number" class="form-control" name="siege_debut"
+                                           placeholder="De" min="1">
+                                </div>
+                                <div class="col-6">
+                                    <input type="number" class="form-control" name="siege_fin"
+                                           placeholder="À" min="1">
+                                </div>
+                            </div>
+                            <small class="text-muted">Les sièges déjà pris seront ignorés</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Moyen de paiement</label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="moyen_paiement" id="paiementCash" value="cash" checked>
+                                    <label class="form-check-label badge" for="paiementCash" style="background-color: #6c757d; cursor: pointer;">Cash</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="moyen_paiement" id="paiementWave" value="wave">
+                                    <label class="form-check-label badge" for="paiementWave" style="background-color: #00CED1; cursor: pointer;">Wave</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="moyen_paiement" id="paiementOrange" value="orange_money">
+                                    <label class="form-check-label badge" for="paiementOrange" style="background-color: #FF6600; cursor: pointer;">Orange</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="moyen_paiement" id="paiementMTN" value="mtn_money">
+                                    <label class="form-check-label badge" for="paiementMTN" style="background-color: #FFCC00; color: #000; cursor: pointer;">MTN</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="moyen_paiement" id="paiementMoov" value="moov_money">
+                                    <label class="form-check-label badge" for="paiementMoov" style="background-color: #003366; cursor: pointer;">Moov</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div style="display:flex;gap:8px;">
+                            <!-- Bouton 1 : Vendre et imprimer -->
+                            <button type="submit" name="payer" value="true"
+                                    style="flex:1;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:10px;padding:12px 8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:transform .1s,box-shadow .15s;box-shadow:0 3px 10px rgba(22,163,74,.3);"
+                                    onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 5px 16px rgba(22,163,74,.4)'"
+                                    onmouseout="this.style.transform='';this.style.boxShadow='0 3px 10px rgba(22,163,74,.3)'">
+                                <i class="bi bi-printer-fill" style="font-size:14px;flex-shrink:0;"></i>
+                                <span>Vendre<br>et imprimer</span>
+                            </button>
+
+                            <!-- Bouton 2 : Réserver sans impression -->
+                            <button type="submit" name="payer" value="false"
+                                    style="flex:1;background:linear-gradient(135deg,#d97706,#b45309);color:#fff;border:none;border-radius:10px;padding:12px 8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:transform .1s,box-shadow .15s;box-shadow:0 3px 10px rgba(217,119,6,.3);"
+                                    onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 5px 16px rgba(217,119,6,.4)'"
+                                    onmouseout="this.style.transform='';this.style.boxShadow='0 3px 10px rgba(217,119,6,.3)'">
+                                <i class="bi bi-bookmark-fill" style="font-size:14px;flex-shrink:0;"></i>
+                                <span>Réserver<br>sans impression</span>
+                            </button>
+
+                            <!-- Bouton 3 : Ticket Gratuit -->
+                            <button type="button" id="btnOuvrirGratuit"
+                                    style="flex:1;background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff;border:none;border-radius:10px;padding:12px 8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:transform .1s,box-shadow .15s;box-shadow:0 3px 10px rgba(8,145,178,.3);"
+                                    onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 5px 16px rgba(8,145,178,.4)'"
+                                    onmouseout="this.style.transform='';this.style.boxShadow='0 3px 10px rgba(8,145,178,.3)'">
+                                <i class="bi bi-ticket-perforated-fill" style="font-size:14px;flex-shrink:0;"></i>
+                                <span>Ticket<br>Gratuit</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Container pour les tickets (toujours présent, caché si pas utilisé) -->
+<div id="ticketsContainer" style="position: absolute; left: -9999px;">
+    <!-- Les tickets seront insérés ici -->
+</div>
+
+<!-- ── Modal Ticket Gratuit ─────────────────────────────── -->
+<div class="modal fade" id="modalTicketGratuit" tabindex="-1" aria-labelledby="modalGratuitLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:14px;border:none;overflow:hidden;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff;border:none;padding:18px 24px;">
+                <h5 class="modal-title fw-bold" id="modalGratuitLabel">
+                    <i class="bi bi-ticket-perforated-fill me-2"></i>Demande de Ticket Gratuit
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Récap du ticket -->
+                <div id="gratuitRecap" style="background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:10px;padding:14px 16px;margin-bottom:20px;font-size:13px;">
+                    <div class="fw-bold mb-1" style="color:#0e7490;">
+                        <i class="bi bi-info-circle me-1"></i>Récapitulatif
+                    </div>
+                    <div id="gratuitRecapContent" style="color:#374151;line-height:1.8;"></div>
+                </div>
+
+                <!-- Motif (optionnel) -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" style="font-size:13px;">
+                        <i class="bi bi-chat-left-text me-1"></i>Motif <span class="text-muted fw-normal">(optionnel)</span>
+                    </label>
+                    <textarea id="gratuitMotif" class="form-control" rows="3"
+                              placeholder="Ex : Employé de la compagnie, autorité, invité VIP…"
+                              style="border-radius:8px;font-size:13px;resize:none;"></textarea>
+                </div>
+
+                <div id="gratuitMessage" class="alert d-none mt-2" style="font-size:13px;border-radius:8px;"></div>
+            </div>
+            <div class="modal-footer" style="border:none;padding:16px 24px 20px;">
+                <button type="button" class="btn btn-light fw-semibold" data-bs-dismiss="modal" style="border-radius:8px;">
+                    <i class="bi bi-x-circle me-1"></i>Annuler
+                </button>
+                <button type="button" id="confirmGratuitBtn"
+                        style="background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer;">
+                    <i class="bi bi-send-fill me-1"></i>Envoyer la demande
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal vendre à un autre client -->
+<div class="modal fade" id="vendreAutreModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-person-fill-gear me-2"></i>Vendre à un autre client
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="vendreAutreForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="vendreAutreBilletId">
+
+                    <div class="mb-3">
+                        <label class="form-label">Siège</label>
+                        <input type="text" class="form-control" id="vendreAutreSiege" readonly>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Téléphone *</label>
+                        <div class="position-relative">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                                <input type="tel" class="form-control" id="vendreAutreTelephone"
+                                       placeholder="Numéro de téléphone" autocomplete="off" required>
+                                <span class="input-group-text" id="vendreAutreClientStatus" style="display:none;">
+                                    <span id="vendreAutreFoundIcon" class="text-success" style="display:none;"><i class="bi bi-person-check-fill"></i></span>
+                                    <span id="vendreAutreNewIcon" class="text-warning" style="display:none;"><i class="bi bi-person-plus-fill"></i></span>
+                                </span>
+                            </div>
+                            <div id="vendreAutreSuggestions"
+                                 class="list-group position-absolute w-100 shadow"
+                                 style="display:none; z-index:1060; top:100%; left:0;"></div>
+                        </div>
+                        <small id="vendreAutreClientFeedback" class="text-muted"></small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Nom du client *</label>
+                        <input type="text" class="form-control" id="vendreAutreNom"
+                               placeholder="Nom complet" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Destination *</label>
+                        <select class="form-select" id="vendreAutreDestination" required>
+                            <option value="">Sélectionner une destination</option>
+                            {% for dest in destinations %}
+                            <option value="{{ dest.pk }}" data-montant="{{ dest.montant }}">
+                                {{ dest.ville_arrivee }} - {{ dest.montant|format_montant }} FCFA
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="mt-2">
+                            <strong>Montant : <span id="vendreAutreMontant" class="text-success">-</span></strong>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Moyen de paiement</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="vendreAutrePaiement" id="vaCash" value="cash" checked>
+                                <label class="form-check-label badge" for="vaCash" style="background-color:#6c757d;cursor:pointer;">Cash</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="vendreAutrePaiement" id="vaWave" value="wave">
+                                <label class="form-check-label badge" for="vaWave" style="background-color:#00CED1;cursor:pointer;">Wave</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="vendreAutrePaiement" id="vaOrange" value="orange_money">
+                                <label class="form-check-label badge" for="vaOrange" style="background-color:#FF6600;cursor:pointer;">Orange</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="vendreAutrePaiement" id="vaMTN" value="mtn_money">
+                                <label class="form-check-label badge" for="vaMTN" style="background-color:#FFCC00;color:#000;cursor:pointer;">MTN</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="vendreAutrePaiement" id="vaMoov" value="moov_money">
+                                <label class="form-check-label badge" for="vaMoov" style="background-color:#003366;cursor:pointer;">Moov</label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-warning" id="vendreAutreValider">
+                    <i class="bi bi-cash me-1"></i>Valider et imprimer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmation (pour les réservations uniquement) -->
+<!-- Volontairement sans bouton "Imprimer" : un ticket imprime pour une
+     reservation non payee serait visuellement identique a un vrai billet
+     paye (pas de filigrane distinctif), ce qui ouvre un risque de fraude
+     a l'embarquement. L'impression n'est possible qu'au moment du paiement
+     reel de la reservation (bouton "Payer" dans reservations.html). -->
+<div class="modal fade" id="printModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-bookmark-check me-2"></i>Réservation créée
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="ticketsContainerModal">
+                <!-- Récap de la réservation (non imprimable) -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/print-ticket.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const voyageId = "{{ voyage.public_id }}";
+    const form = document.getElementById('venteForm');
+    const siegeGrid = document.getElementById('siegeGrid');
+    const siegeInput = document.getElementById('siegeSelectionne');
+    const modeUnitaire = document.getElementById('modeUnitaire');
+    const modePlage = document.getElementById('modePlage');
+    const venteUnitaireDiv = document.getElementById('venteUnitaire');
+    const ventePlageDiv = document.getElementById('ventePlage');
+    const printModal = new bootstrap.Modal(document.getElementById('printModal'));
+    const destinationSelect = document.getElementById('destinationSelect');
+    const montantAffiche = document.getElementById('montantAffiche');
+    const clientTelephone = document.getElementById('clientTelephone');
+    const clientNom = document.getElementById('clientNom');
+    const clientSearchStatus = document.getElementById('clientSearchStatus');
+    const clientFoundIcon = document.getElementById('clientFoundIcon');
+    const clientNewIcon = document.getElementById('clientNewIcon');
+    const clientFeedback = document.getElementById('clientFeedback');
+
+    // --- Typeahead client ---
+    const clientSuggestions = document.getElementById('clientSuggestions');
+    let searchTimeout = null;
+    let clientSelectionne = false;
+
+    function hideSuggestions() {
+        clientSuggestions.style.display = 'none';
+        clientSuggestions.innerHTML = '';
+    }
+
+    function resetClientField() {
+        clientNom.readOnly = false;
+        clientNom.value = '';
+        clientSearchStatus.style.display = 'none';
+        clientFoundIcon.style.display = 'none';
+        clientNewIcon.style.display = 'none';
+        clientFeedback.textContent = '';
+        clientSelectionne = false;
+    }
+
+    function selectionnerClient(telephone, nom) {
+        clientTelephone.value = telephone;
+        clientNom.value = nom;
+        clientNom.readOnly = true;
+        clientSearchStatus.style.display = 'flex';
+        clientFoundIcon.style.display = 'inline';
+        clientNewIcon.style.display = 'none';
+        clientFeedback.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Client existant</span>';
+        clientSelectionne = true;
+        hideSuggestions();
+    }
+
+    function afficherSuggestions(clients) {
+        if (!clients.length) {
+            hideSuggestions();
+            return;
+        }
+        clientSuggestions.innerHTML = clients.map(c =>
+            `<button type="button" class="list-group-item list-group-item-action py-2 px-3"
+                     data-tel="${c.telephone}" data-nom="${c.nom_complet}">
+                <i class="bi bi-person me-2 text-muted"></i>
+                <strong>${c.telephone}</strong>
+                <span class="text-muted ms-2">— ${c.nom_complet}</span>
+            </button>`
+        ).join('');
+        clientSuggestions.style.display = 'block';
+
+        clientSuggestions.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('mousedown', function(e) {
+                e.preventDefault(); // empêche le blur de se déclencher avant le clic
+                selectionnerClient(this.dataset.tel, this.dataset.nom);
+            });
+        });
+    }
+
+    clientTelephone.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const q = this.value.trim();
+        clientSelectionne = false;
+
+        if (q.length < 3) {
+            hideSuggestions();
+            resetClientField();
+            return;
+        }
+
+        searchTimeout = setTimeout(() => {
+            fetch(`/clients/api/suggerer/?q=${encodeURIComponent(q)}`)
+                .then(r => r.json())
+                .then(data => {
+                    afficherSuggestions(data.clients);
+
+                    // Si aucune suggestion : nouveau client
+                    if (!data.clients.length) {
+                        clientNom.readOnly = false;
+                        clientSearchStatus.style.display = 'flex';
+                        clientFoundIcon.style.display = 'none';
+                        clientNewIcon.style.display = 'inline';
+                        clientFeedback.innerHTML = '<span class="text-warning"><i class="bi bi-info-circle me-1"></i>Nouveau client — saisissez le nom</span>';
+                    } else {
+                        clientFeedback.textContent = '';
+                        clientSearchStatus.style.display = 'none';
+                    }
+                })
+                .catch(() => {});
+        }, 300);
+    });
+
+    // Fermer le dropdown si clic ailleurs
+    document.addEventListener('click', function(e) {
+        if (!clientTelephone.contains(e.target) && !clientSuggestions.contains(e.target)) {
+            hideSuggestions();
+        }
+    });
+
+    // Fermer avec Escape
+    clientTelephone.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') hideSuggestions();
+    });
+
+    // Si on efface tout le téléphone, on remet à zéro
+    clientTelephone.addEventListener('blur', function() {
+        if (!this.value.trim()) resetClientField();
+    });
+
+    // Affichage automatique du montant quand on sélectionne une destination
+    destinationSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const montant = selectedOption.dataset.montant;
+
+        if (montant) {
+            montantAffiche.textContent = parseFloat(montant).toLocaleString('fr-FR') + ' FCFA';
+            montantAffiche.classList.add('text-success');
+        } else {
+            montantAffiche.textContent = '-';
+            montantAffiche.classList.remove('text-success');
+        }
+    });
+
+    // Gestion du mode de vente
+    modeUnitaire.addEventListener('change', function() {
+        venteUnitaireDiv.style.display = 'block';
+        ventePlageDiv.style.display = 'none';
+    });
+
+    modePlage.addEventListener('change', function() {
+        venteUnitaireDiv.style.display = 'none';
+        ventePlageDiv.style.display = 'block';
+    });
+
+    // Sélection des sièges
+    if (siegeGrid) {
+        siegeGrid.addEventListener('click', function(e) {
+            const siege = e.target.closest('.siege');
+            if (!siege) return;
+
+            const numero = siege.dataset.numero;
+            if (!numero) return;
+
+            // Ne pas permettre la sélection des sièges non disponibles en mode unitaire
+            if (modeUnitaire.checked) {
+                if (siege.classList.contains('paye') || siege.classList.contains('non-vendable') ||
+                    siege.classList.contains('gratuit_en_attente') || siege.classList.contains('gratuit')) {
+                    return;
+                }
+
+                // Désélectionner tous les autres
+                document.querySelectorAll('.siege.selected').forEach(s => {
+                    s.classList.remove('selected');
+                });
+
+                // Sélectionner ce siège
+                siege.classList.add('selected');
+                siegeInput.value = numero;
+            }
+        });
+    }
+
+    // Soumission du formulaire
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(form);
+        const submitBtn = e.submitter;
+        formData.set('payer', submitBtn.value);
+
+        // Validation
+        if (!destinationSelect.value) {
+            alert('Veuillez sélectionner une destination');
+            return;
+        }
+
+        if (modeUnitaire.checked && !siegeInput.value) {
+            alert('Veuillez sélectionner un siège');
+            return;
+        }
+
+        // Envoi
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Traitement...';
+
+        fetch(`/api/creer-billet/${voyageId}/`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Si c'est une vente (paiement), afficher dans le container caché et imprimer
+                if (submitBtn.value === 'true') {
+                    // Afficher les tickets dans le container caché (aperçu écran)
+                    displayTickets(data.billets);
+
+                    // Impression physique ESC/POS (indépendante de l'aperçu DOM)
+                    imprimerBillets(data.billets.map(b => b.public_id), '{{ csrf_token }}');
+                } else {
+                    // Si c'est une réservation, afficher dans le modal
+                    displayTicketsInModal(data.billets);
+                    printModal.show();
+                }
+
+                // Rafraîchir la grille des sièges
+                refreshSeats();
+
+                // Réinitialiser le formulaire
+                form.reset();
+                document.querySelectorAll('.siege.selected').forEach(s => {
+                    s.classList.remove('selected');
+                });
+                siegeInput.value = '';
+                montantAffiche.textContent = '-';
+                montantAffiche.classList.remove('text-success');
+            } else {
+                alert(data.error || 'Une erreur est survenue');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur de connexion');
+        })
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = submitBtn.value === 'true'
+                ? '<i class="bi bi-cash me-2"></i>Vendre et imprimer'
+                : '<i class="bi bi-bookmark me-2"></i>Réserver seulement';
+        });
+    });
+
+    // Affichage des tickets dans le container caché (pour impression)
+    function displayTickets(billets) {
+        const container = document.getElementById('ticketsContainer');
+        container.innerHTML = billets.map(billet => {
+            let html = `
+            <div class="ticket-preview mb-3">
+                <div class="ticket-header-row">
+                    <div class="ticket-logo">
+                        ${billet.compagnie_logo
+                            ? `<img src="${billet.compagnie_logo}" alt="Logo" class="ticket-logo-img">`
+                            : `<div class="ticket-logo-placeholder"><i class="bi bi-bus-front"></i></div>`
+                        }
+                    </div>
+                    <div class="ticket-gare-info">
+                        <strong class="ticket-compagnie-nom">${billet.compagnie_nom || 'COMPAGNIE DE TRANSPORT'}</strong>
+                        ${billet.gare_telephone ? `<div class="ticket-gare-tel">Tel: ${billet.gare_telephone}</div>` : ''}
+                        ${billet.gare_adresse ? `<div class="ticket-gare-adresse">${billet.gare_adresse}</div>` : ''}
+                    </div>
+                </div>
+                <div class="ticket-body">
+                    <div class="ticket-row"><span>N° Ticket:</span><strong>${billet.numero}</strong></div>
+                    <div class="ticket-row"><span>N° Depart:</span><strong>${billet.numero_depart || 'N/A'}</strong></div>
+                    <div class="ticket-row"><span>Client:</span><span>${billet.client_nom}</span></div>
+                    <div class="ticket-row"><span>Siege:</span><strong class="ticket-siege">${billet.numero_siege}</strong></div>
+                    <hr>
+                    <div class="ticket-row"><span>Ligne:</span><span>${billet.ligne}</span></div>
+                    <div class="ticket-row"><span>Destination:</span><strong>${billet.destination || 'N/A'}</strong></div>
+                    <div class="ticket-row"><span>Date:</span><span>${billet.date_depart}</span></div>
+                    <div class="ticket-row"><span>Heure:</span><span>${billet.heure_depart}</span></div>
+                    <hr>
+                    <div class="ticket-row ticket-montant">
+                        <span>Montant:</span>
+                        ${(billet.statut === 'gratuit' || billet.statut === 'gratuit_en_attente')
+                            ? `<strong style="background:#16a34a;color:#fff;padding:2px 10px;border-radius:6px;font-size:13px;letter-spacing:1px;">GRATUIT</strong>`
+                            : `<strong>${Number(billet.montant).toLocaleString('fr-FR')} FCFA</strong>`
+                        }
+                    </div>
+                    <div class="ticket-row"><span>Paiement:</span><strong>${billet.moyen_paiement_display || 'Cash'}</strong></div>
+                </div>
+            `;
+
+            // Message bas de ticket
+            const msgHtml = billet.message_bas_ticket
+                ? `<div class="ticket-message-bas">${billet.message_bas_ticket}</div>`
+                : '';
+
+            // Ajouter la souche si activé ET billet payé
+            if (billet.utiliser_souche && billet.statut === 'paye') {
+                // Message AVANT la ligne de découpe (reste sur la partie client)
+                if (msgHtml) html += msgHtml;
+                html += `
+                <!-- LIGNE DE DÉCOUPE -->
+                <div class="ticket-separator-cut">✂ - - - - - - - - - - - - - - - - - - - - - - ✂</div>
+
+                <!-- SOUCHE COMPAGNIE -->
+                <div class="ticket-souche">
+                    <div class="souche-watermark">SOUCHE</div>
+                    <div class="souche-header">SOUCHE</div>
+                    <div class="ticket-row">
+                        <span>N° Depart:</span>
+                        <strong>${billet.numero_depart || 'N/A'}</strong>
+                    </div>
+                    <div class="ticket-row">
+                        <span>Siege:</span>
+                        <strong class="ticket-siege">${billet.numero_siege}</strong>
+                    </div>
+                    <div class="ticket-row">
+                        <span>Ligne:</span>
+                        <span>${billet.ligne}</span>
+                    </div>
+                    <div class="ticket-row">
+                        <span>Date:</span>
+                        <span>${billet.date_depart}</span>
+                    </div>
+                    <div class="ticket-row">
+                        <span>Heure:</span>
+                        <span>${billet.heure_depart}</span>
+                    </div>
+                </div>
+                `;
+            } else {
+                // Sans souche : message tout en bas
+                if (msgHtml) html += msgHtml;
+            }
+
+            html += `</div>`;
+            return html;
+        }).join('');
+    }
+
+    // Affichage des tickets dans le modal (pour réservations)
+    function displayTicketsInModal(billets) {
+        const container = document.getElementById('ticketsContainerModal');
+        container.innerHTML = billets.map(billet => {
+            let html = `
+            <div class="ticket-preview mb-3">
+                <div class="ticket-header-row">
+                    <div class="ticket-logo">
+                        ${billet.compagnie_logo
+                            ? `<img src="${billet.compagnie_logo}" alt="Logo" class="ticket-logo-img">`
+                            : `<div class="ticket-logo-placeholder"><i class="bi bi-bus-front"></i></div>`
+                        }
+                    </div>
+                    <div class="ticket-gare-info">
+                        <strong class="ticket-compagnie-nom">${billet.compagnie_nom || 'COMPAGNIE DE TRANSPORT'}</strong>
+                        ${billet.gare_telephone ? `<div class="ticket-gare-tel">Tel: ${billet.gare_telephone}</div>` : ''}
+                        ${billet.gare_adresse ? `<div class="ticket-gare-adresse">${billet.gare_adresse}</div>` : ''}
+                    </div>
+                </div>
+                <div class="ticket-body">
+                    <div class="ticket-row"><span>N° Ticket:</span><strong>${billet.numero}</strong></div>
+                    <div class="ticket-row"><span>N° Depart:</span><strong>${billet.numero_depart || 'N/A'}</strong></div>
+                    <div class="ticket-row"><span>Client:</span><span>${billet.client_nom}</span></div>
+                    <div class="ticket-row"><span>Siege:</span><strong class="ticket-siege">${billet.numero_siege}</strong></div>
+                    <hr>
+                    <div class="ticket-row"><span>Ligne:</span><span>${billet.ligne}</span></div>
+                    <div class="ticket-row"><span>Destination:</span><strong>${billet.destination || 'N/A'}</strong></div>
+                    <div class="ticket-row"><span>Date:</span><span>${billet.date_depart}</span></div>
+                    <div class="ticket-row"><span>Heure:</span><span>${billet.heure_depart}</span></div>
+                    <hr>
+                    <div class="ticket-row ticket-montant">
+                        <span>Montant:</span>
+                        ${(billet.statut === 'gratuit' || billet.statut === 'gratuit_en_attente')
+                            ? `<strong style="background:#16a34a;color:#fff;padding:2px 10px;border-radius:6px;font-size:13px;letter-spacing:1px;">GRATUIT</strong>`
+                            : `<strong>${Number(billet.montant).toLocaleString('fr-FR')} FCFA</strong>`
+                        }
+                    </div>
+                </div>
+            `;
+
+            // Message bas de ticket
+            const msgHtmlModal = billet.message_bas_ticket
+                ? `<div class="ticket-message-bas">${billet.message_bas_ticket}</div>`
+                : '';
+
+            // Ajouter la souche si activé ET billet payé
+            if (billet.utiliser_souche && billet.statut === 'paye') {
+                // Message AVANT la ligne de découpe (reste sur la partie client)
+                if (msgHtmlModal) html += msgHtmlModal;
+                html += `
+                <!-- LIGNE DE DÉCOUPE -->
+                <div class="ticket-separator-cut">✂ - - - - - - - - - - - - - - - - - - - - - - ✂</div>
+
+                <!-- SOUCHE COMPAGNIE -->
+                <div class="ticket-souche">
+                    <div class="souche-watermark">SOUCHE</div>
+                    <div class="souche-header">SOUCHE</div>
+                    <div class="ticket-row">
+                        <span>N° Depart:</span>
+                        <strong>${billet.numero_depart || 'N/A'}</strong>
+                    </div>
+                    <div class="ticket-row">
+                        <span>Siege:</span>
+                        <strong class="ticket-siege">${billet.numero_siege}</strong>
+                    </div>
+                    <div class="ticket-row">
+                        <span>Ligne:</span>
+                        <span>${billet.ligne}</span>
+                    </div>
+                    <div class="ticket-row">
+                        <span>Date:</span>
+                        <span>${billet.date_depart}</span>
+                    </div>
+                    <div class="ticket-row">
+                        <span>Heure:</span>
+                        <span>${billet.heure_depart}</span>
+                    </div>
+                </div>
+                `;
+            } else {
+                // Sans souche : message tout en bas
+                if (msgHtmlModal) html += msgHtmlModal;
+            }
+
+            html += `</div>`;
+            return html;
+        }).join('');
+    }
+
+    // Rafraîchir les sièges
+    function refreshSeats() {
+        fetch(`/api/sieges/${voyageId}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Mettre à jour les classes des sièges
+                    data.disposition.rangees.forEach(rangee => {
+                        rangee.sieges.forEach(siege => {
+                            if (siege.numero) {
+                                const el = document.querySelector(`.siege[data-numero="${siege.numero}"]`);
+                                if (el) {
+                                    el.className = `siege ${siege.statut || 'disponible'}`;
+                                }
+                            }
+                        });
+                    });
+                }
+            });
+    }
+
+    // Bouton rafraîchir
+    document.getElementById('refreshSeats').addEventListener('click', refreshSeats);
+
+    // --- Modal : Vendre à un autre client ---
+    const vendreAutreModal = new bootstrap.Modal(document.getElementById('vendreAutreModal'));
+    const vendreAutreTelephone = document.getElementById('vendreAutreTelephone');
+    const vendreAutreNom = document.getElementById('vendreAutreNom');
+    const vendreAutreSuggestions = document.getElementById('vendreAutreSuggestions');
+    const vendreAutreClientStatus = document.getElementById('vendreAutreClientStatus');
+    const vendreAutreFoundIcon = document.getElementById('vendreAutreFoundIcon');
+    const vendreAutreNewIcon = document.getElementById('vendreAutreNewIcon');
+    const vendreAutreClientFeedback = document.getElementById('vendreAutreClientFeedback');
+    const vendreAutreDestination = document.getElementById('vendreAutreDestination');
+    const vendreAutreMontant = document.getElementById('vendreAutreMontant');
+    let vaSearchTimeout = null;
+
+    function vaHideSuggestions() {
+        vendreAutreSuggestions.style.display = 'none';
+        vendreAutreSuggestions.innerHTML = '';
+    }
+
+    function vaResetClient() {
+        vendreAutreNom.readOnly = false;
+        vendreAutreNom.value = '';
+        vendreAutreClientStatus.style.display = 'none';
+        vendreAutreFoundIcon.style.display = 'none';
+        vendreAutreNewIcon.style.display = 'none';
+        vendreAutreClientFeedback.textContent = '';
+    }
+
+    function vaSelectionnerClient(telephone, nom) {
+        vendreAutreTelephone.value = telephone;
+        vendreAutreNom.value = nom;
+        vendreAutreNom.readOnly = true;
+        vendreAutreClientStatus.style.display = 'flex';
+        vendreAutreFoundIcon.style.display = 'inline';
+        vendreAutreNewIcon.style.display = 'none';
+        vendreAutreClientFeedback.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Client existant</span>';
+        vaHideSuggestions();
+    }
+
+    vendreAutreTelephone.addEventListener('input', function() {
+        clearTimeout(vaSearchTimeout);
+        const q = this.value.trim();
+        if (q.length < 3) { vaHideSuggestions(); vaResetClient(); return; }
+
+        vaSearchTimeout = setTimeout(() => {
+            fetch(`/clients/api/suggerer/?q=${encodeURIComponent(q)}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.clients.length) {
+                        vendreAutreSuggestions.innerHTML = data.clients.map(c =>
+                            `<button type="button" class="list-group-item list-group-item-action py-2 px-3"
+                                     data-tel="${c.telephone}" data-nom="${c.nom_complet}">
+                                <i class="bi bi-person me-2 text-muted"></i>
+                                <strong>${c.telephone}</strong>
+                                <span class="text-muted ms-2">— ${c.nom_complet}</span>
+                            </button>`
+                        ).join('');
+                        vendreAutreSuggestions.style.display = 'block';
+                        vendreAutreSuggestions.querySelectorAll('button').forEach(btn => {
+                            btn.addEventListener('mousedown', function(e) {
+                                e.preventDefault();
+                                vaSelectionnerClient(this.dataset.tel, this.dataset.nom);
+                            });
+                        });
+                        vendreAutreClientFeedback.textContent = '';
+                        vendreAutreClientStatus.style.display = 'none';
+                    } else {
+                        vaHideSuggestions();
+                        vendreAutreNom.readOnly = false;
+                        vendreAutreClientStatus.style.display = 'flex';
+                        vendreAutreFoundIcon.style.display = 'none';
+                        vendreAutreNewIcon.style.display = 'inline';
+                        vendreAutreClientFeedback.innerHTML = '<span class="text-warning"><i class="bi bi-info-circle me-1"></i>Nouveau client — saisissez le nom</span>';
+                    }
+                }).catch(() => {});
+        }, 300);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!vendreAutreTelephone.contains(e.target) && !vendreAutreSuggestions.contains(e.target)) {
+            vaHideSuggestions();
+        }
+    });
+
+    vendreAutreTelephone.addEventListener('blur', function() {
+        if (!this.value.trim()) vaResetClient();
+    });
+
+    vendreAutreDestination.addEventListener('change', function() {
+        const montant = this.options[this.selectedIndex].dataset.montant;
+        vendreAutreMontant.textContent = montant ? parseFloat(montant).toLocaleString('fr-FR') + ' FCFA' : '-';
+    });
+
+    // Ouvrir le modal au clic sur "Vendre à un autre client"
+    document.querySelectorAll('.btn-vendre-autre').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const billetId = this.dataset.id;
+            const siege = this.dataset.siege;
+            document.getElementById('vendreAutreBilletId').value = billetId;
+            document.getElementById('vendreAutreSiege').value = siege;
+            // Réinitialiser le formulaire
+            vendreAutreTelephone.value = '';
+            vendreAutreNom.value = '';
+            vendreAutreNom.readOnly = false;
+            vendreAutreDestination.value = '';
+            vendreAutreMontant.textContent = '-';
+            document.getElementById('vaCash').checked = true;
+            vaHideSuggestions();
+            vaResetClient();
+            vendreAutreModal.show();
+        });
+    });
+
+    // Valider et imprimer
+    document.getElementById('vendreAutreValider').addEventListener('click', function() {
+        const billetId = document.getElementById('vendreAutreBilletId').value;
+        const telephone = vendreAutreTelephone.value.trim();
+        const nom = vendreAutreNom.value.trim();
+        const destinationId = vendreAutreDestination.value;
+        const moyenPaiement = document.querySelector('input[name="vendreAutrePaiement"]:checked').value;
+
+        if (!telephone || !nom) { alert('Le nom et le téléphone sont obligatoires'); return; }
+        if (!destinationId) { alert('Veuillez sélectionner une destination'); return; }
+
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Traitement...';
+
+        const formData = new FormData();
+        formData.append('client_telephone', telephone);
+        formData.append('client_nom', nom);
+        formData.append('destination_id', destinationId);
+        formData.append('moyen_paiement', moyenPaiement);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        fetch(`/api/vendre-autre/${billetId}/`, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                vendreAutreModal.hide();
+                displayTickets([data.billet]);
+                imprimerBillets([data.billet.public_id], '{{ csrf_token }}');
+                refreshSeats();
+                // Supprimer la ligne de réservation du tableau
+                const row = document.querySelector(`button.btn-vendre-autre[data-id="${billetId}"]`);
+                if (row) row.closest('tr').remove();
+            } else {
+                alert(data.error || 'Une erreur est survenue');
+            }
+        })
+        .catch(() => alert('Erreur de connexion'))
+        .finally(() => {
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-cash me-1"></i>Valider et imprimer';
+        });
+    });
+
+    // Payer une réservation
+    document.querySelectorAll('.btn-payer').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const billetId = this.dataset.id;
+
+            if (!confirm('Confirmer le paiement de cette réservation ?')) return;
+
+            fetch(`/api/payer/${billetId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayTickets([data.billet]);
+                    // Impression physique ESC/POS du paiement de réservation
+                    imprimerBillets([data.billet.public_id], '{{ csrf_token }}');
+                    refreshSeats();
+                    // Supprimer la ligne de réservation
+                    this.closest('tr').remove();
+                } else {
+                    alert(data.error);
+                }
+            });
+        });
+    });
+});
+
+// ── Ticket Gratuit ───────────────────────────────────────
+(function () {
+    const btnOuvrir = document.getElementById('btnOuvrirGratuit');
+    if (!btnOuvrir) return;
+
+    const modal = new bootstrap.Modal(document.getElementById('modalTicketGratuit'));
+    const confirmBtn = document.getElementById('confirmGratuitBtn');
+    const motifInput = document.getElementById('gratuitMotif');
+    const recapDiv = document.getElementById('gratuitRecapContent');
+    const msgDiv = document.getElementById('gratuitMessage');
+
+    const voyageId = "{{ voyage.public_id }}";
+
+    function showMsg(txt, type) {
+        msgDiv.className = `alert alert-${type} mt-2`;
+        msgDiv.textContent = txt;
+        msgDiv.classList.remove('d-none');
+    }
+
+    function hideMsg() { msgDiv.classList.add('d-none'); }
+
+    btnOuvrir.addEventListener('click', function () {
+        const clientNom = document.getElementById('clientNom')?.value?.trim() || '';
+        const clientTel = document.getElementById('clientTelephone')?.value?.trim() || '';
+        const destSelect = document.getElementById('destinationSelect') || document.querySelector('[name="destination_id"]');
+        const destTexte = destSelect ? destSelect.options[destSelect.selectedIndex]?.text : '';
+        const siegeSelected = document.querySelector('.siege.selected');
+        const numeroSiege = siegeSelected ? siegeSelected.dataset.numero : '';
+
+        if (!clientNom || !clientTel) {
+            alert('Veuillez renseigner le nom et le téléphone du client avant de demander un ticket gratuit.');
+            return;
+        }
+        if (!numeroSiege) {
+            alert('Veuillez sélectionner un siège avant de demander un ticket gratuit.');
+            return;
+        }
+        if (!destSelect || !destSelect.value) {
+            alert('Veuillez sélectionner une destination.');
+            return;
+        }
+
+        recapDiv.innerHTML = `
+            <span class="fw-semibold">Passager :</span> ${clientNom} (${clientTel})<br>
+            <span class="fw-semibold">Siège :</span> N° ${numeroSiege}<br>
+            <span class="fw-semibold">Destination :</span> ${destTexte}
+        `;
+        motifInput.value = '';
+        hideMsg();
+        modal.show();
+    });
+
+    confirmBtn.addEventListener('click', function () {
+        hideMsg();
+        const clientNom = document.getElementById('clientNom')?.value?.trim() || '';
+        const clientTel = document.getElementById('clientTelephone')?.value?.trim() || '';
+        const destSelect = document.getElementById('destinationSelect') || document.querySelector('[name="destination_id"]');
+        const destId = destSelect ? destSelect.value : '';
+        const siegeSelected = document.querySelector('.siege.selected');
+        const numeroSiege = siegeSelected ? siegeSelected.dataset.numero : '';
+
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Envoi…';
+
+        fetch(`/voyages/${voyageId}/ticket-gratuit/creer/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: JSON.stringify({
+                client_nom: clientNom,
+                client_telephone: clientTel,
+                destination_id: destId,
+                numero_siege: parseInt(numeroSiege),
+                motif: motifInput.value.trim(),
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showMsg('✓ ' + data.message, 'success');
+                setTimeout(() => { modal.hide(); location.reload(); }, 1800);
+            } else {
+                showMsg(data.error || 'Erreur lors de la demande', 'danger');
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '<i class="bi bi-send-fill me-1"></i>Envoyer la demande';
+            }
+        })
+        .catch(() => {
+            showMsg('Erreur réseau', 'danger');
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="bi bi-send-fill me-1"></i>Envoyer la demande';
+        });
+    });
+})();
+</script>
+{% endblock %}

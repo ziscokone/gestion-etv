@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if form.instance.pk %}Modifier{% else %}Nouveau{% endif %} Programme{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        {% if form.instance.pk %}
+                            Modifier le programme de départ
+                        {% else %}
+                            Nouveau programme de départ
+                        {% endif %}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.gare.id_for_label }}" class="form-label">
+                                    {{ form.gare.label }} <span class="text-danger">*</span>
+                                </label>
+                                {{ form.gare }}
+                                {% if form.gare.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.gare.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.ligne.id_for_label }}" class="form-label">
+                                    {{ form.ligne.label }} <span class="text-danger">*</span>
+                                </label>
+                                {{ form.ligne }}
+                                {% if form.ligne.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.ligne.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.destination.id_for_label }}" class="form-label">
+                                {{ form.destination.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.destination }}
+                            {% if form.destination.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.destination.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label for="{{ form.periode.id_for_label }}" class="form-label">
+                                    {{ form.periode.label }} <span class="text-danger">*</span>
+                                </label>
+                                {{ form.periode }}
+                                {% if form.periode.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.periode.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-3 mb-3">
+                                <label for="{{ form.heure_depart.id_for_label }}" class="form-label">
+                                    {{ form.heure_depart.label }} <span class="text-danger">*</span>
+                                </label>
+                                {{ form.heure_depart }}
+                                {% if form.heure_depart.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.heure_depart.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-3 mb-3">
+                                <label for="{{ form.numero_depart.id_for_label }}" class="form-label">
+                                    {{ form.numero_depart.label }} <span class="text-danger">*</span>
+                                </label>
+                                {{ form.numero_depart }}
+                                {% if form.numero_depart.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.numero_depart.errors }}
+                                    </div>
+                                {% endif %}
+                                {% if form.numero_depart.help_text %}
+                                    <div class="form-text">{{ form.numero_depart.help_text }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-3 mb-3">
+                                <label for="{{ form.vehicule_defaut.id_for_label }}" class="form-label">
+                                    {{ form.vehicule_defaut.label }}
+                                </label>
+                                {{ form.vehicule_defaut }}
+                                {% if form.vehicule_defaut.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.vehicule_defaut.errors }}
+                                    </div>
+                                {% endif %}
+                                {% if form.vehicule_defaut.help_text %}
+                                    <div class="form-text">{{ form.vehicule_defaut.help_text }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">
+                                Jours actifs <span class="text-danger">*</span>
+                            </label>
+                            <div class="row">
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        {{ form.jours_lundi }}
+                                        <label class="form-check-label" for="{{ form.jours_lundi.id_for_label }}">
+                                            {{ form.jours_lundi.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        {{ form.jours_mardi }}
+                                        <label class="form-check-label" for="{{ form.jours_mardi.id_for_label }}">
+                                            {{ form.jours_mardi.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        {{ form.jours_mercredi }}
+                                        <label class="form-check-label" for="{{ form.jours_mercredi.id_for_label }}">
+                                            {{ form.jours_mercredi.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        {{ form.jours_jeudi }}
+                                        <label class="form-check-label" for="{{ form.jours_jeudi.id_for_label }}">
+                                            {{ form.jours_jeudi.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        {{ form.jours_vendredi }}
+                                        <label class="form-check-label" for="{{ form.jours_vendredi.id_for_label }}">
+                                            {{ form.jours_vendredi.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        {{ form.jours_samedi }}
+                                        <label class="form-check-label" for="{{ form.jours_samedi.id_for_label }}">
+                                            {{ form.jours_samedi.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        {{ form.jours_dimanche }}
+                                        <label class="form-check-label" for="{{ form.jours_dimanche.id_for_label }}">
+                                            {{ form.jours_dimanche.label }}
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <small class="form-text text-muted">
+                                Sélectionnez les jours où ce programme sera actif
+                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                {{ form.actif }}
+                                <label class="form-check-label" for="{{ form.actif.id_for_label }}">
+                                    {{ form.actif.label }}
+                                </label>
+                                {% if form.actif.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.actif.errors }}
+                                    </div>
+                                {% endif %}
+                                {% if form.actif.help_text %}
+                                    <div class="form-text">{{ form.actif.help_text }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Génération automatique:</strong> Ce programme créera automatiquement des voyages pour les 7 prochains jours selon les jours sélectionnés.
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'programmes:programme_list' %}" class="btn btn-danger text-white fw-bold">
+                                <i class="bi bi-arrow-left"></i> Retour
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i>
+                                {% if form.instance.pk %}Modifier{% else %}Créer{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/searchable-select.js' %}"></script>
+{% endblock %}

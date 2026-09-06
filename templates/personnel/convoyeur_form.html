@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% block title %}{% if object %}Modifier{% else %}Nouveau{% endif %} Convoyeur{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-person-lines-fill me-2"></i>
+                        {% if object %}Modifier le convoyeur{% else %}Nouveau convoyeur{% endif %}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+
+                        <!-- Section : Informations générales -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="bi bi-person-circle text-primary me-2"></i>Informations générales</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.nom_complet.id_for_label }}" class="form-label">
+                                            <i class="bi bi-person me-1"></i>Nom complet <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.nom_complet }}
+                                        {% if form.nom_complet.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.nom_complet.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.telephone.id_for_label }}" class="form-label">
+                                            <i class="bi bi-telephone me-1"></i>Téléphone <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.telephone }}
+                                        {% if form.telephone.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.telephone.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section : Identité -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="bi bi-card-heading text-info me-2"></i>Identité</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label for="{{ form.numero_cni.id_for_label }}" class="form-label">
+                                            <i class="bi bi-credit-card-2-front me-1"></i>Numéro CNI
+                                        </label>
+                                        {{ form.numero_cni }}
+                                        {% if form.numero_cni.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.numero_cni.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="{{ form.situation_matrimoniale.id_for_label }}" class="form-label">
+                                            <i class="bi bi-heart me-1"></i>Situation matrimoniale
+                                        </label>
+                                        {{ form.situation_matrimoniale }}
+                                        {% if form.situation_matrimoniale.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.situation_matrimoniale.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="{{ form.nombre_enfants.id_for_label }}" class="form-label">
+                                            <i class="bi bi-people me-1"></i>Nombre d'enfants en charge
+                                        </label>
+                                        {{ form.nombre_enfants }}
+                                        {% if form.nombre_enfants.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.nombre_enfants.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section : Coordonnées -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="bi bi-geo-alt text-success me-2"></i>Coordonnées</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.telephone_2.id_for_label }}" class="form-label">
+                                            <i class="bi bi-telephone-plus me-1"></i>Deuxième téléphone
+                                        </label>
+                                        {{ form.telephone_2 }}
+                                        {% if form.telephone_2.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.telephone_2.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.lieu_habitation.id_for_label }}" class="form-label">
+                                            <i class="bi bi-house-door me-1"></i>Lieu d'habitation
+                                        </label>
+                                        {{ form.lieu_habitation }}
+                                        {% if form.lieu_habitation.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.lieu_habitation.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section : Contact d'urgence -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="bi bi-exclamation-triangle text-warning me-2"></i>Contact d'urgence</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.personne_urgence.id_for_label }}" class="form-label">
+                                            <i class="bi bi-person-exclamation me-1"></i>Personne à contacter
+                                        </label>
+                                        {{ form.personne_urgence }}
+                                        {% if form.personne_urgence.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.personne_urgence.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.telephone_urgence.id_for_label }}" class="form-label">
+                                            <i class="bi bi-telephone-forward me-1"></i>Téléphone d'urgence
+                                        </label>
+                                        {{ form.telephone_urgence }}
+                                        {% if form.telephone_urgence.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.telephone_urgence.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Statut -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="bi bi-toggle-on text-success me-2"></i>Statut</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-check">
+                                    {{ form.actif }}
+                                    <label class="form-check-label" for="{{ form.actif.id_for_label }}">
+                                        <i class="bi bi-check-circle me-1"></i>Convoyeur actif
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Boutons d'action -->
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'personnel:convoyeur_list' %}" class="btn btn-danger text-white fw-bold">
+                                <i class="bi bi-arrow-left"></i> Retour
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i>
+                                {% if object %}Modifier{% else %}Créer{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

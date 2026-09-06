@@ -1,0 +1,535 @@
+{% extends 'base.html' %}
+{% load custom_filters humanize %}
+
+{% block title %}Rapport par période{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── En-tête ─────────────────────────────────────────── */
+  .page-header {
+    background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
+    border-radius: 14px;
+    padding: 26px 32px;
+    color: #fff;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .page-header::after {
+    pointer-events: none;
+    content: '\F1E2';
+    font-family: 'Bootstrap-Icons';
+    font-size: 9rem;
+    opacity: 0.06;
+    position: absolute;
+    right: 24px;
+    top: -10px;
+    line-height: 1;
+  }
+  .page-header h4 { font-weight: 700; margin: 0 0 16px; }
+  .filter-inline .form-control {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    font-weight: 600;
+    font-size: 13px;
+    border-radius: 8px;
+  }
+  .filter-inline .form-control:focus {
+    background: rgba(255,255,255,0.25);
+    border-color: rgba(255,255,255,0.5);
+    box-shadow: none;
+    color: #fff;
+  }
+  .filter-inline .form-control::-webkit-calendar-picker-indicator { filter: invert(1); }
+  .filter-inline .form-label { font-size: 11px; opacity: 0.8; font-weight: 500; margin-bottom: 4px; }
+  .btn-generer {
+    background: #fff;
+    color: var(--color-accent);
+    border: none;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 9px 22px;
+    border-radius: 8px;
+    transition: box-shadow 0.15s, transform 0.15s;
+    white-space: nowrap;
+  }
+  .btn-generer:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    transform: translateY(-1px);
+    color: var(--color-accent);
+  }
+  .periode-badge {
+    background: rgba(255,255,255,0.18);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 12px;
+    display: inline-block;
+    margin-top: 8px;
+  }
+
+  /* ── KPI cards ───────────────────────────────────────── */
+  .kpi-card {
+    background: #fff;
+    border: none;
+    border-radius: 13px;
+    border-top: 4px solid #e5e7eb;
+    padding: 20px 22px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    transition: transform 0.2s, box-shadow 0.2s;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+  .kpi-card .kpi-ico {
+    width: 52px; height: 52px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; flex-shrink: 0;
+  }
+  .kpi-card .kpi-val { font-size: 1.7rem; font-weight: 700; line-height: 1.1; color: #111827; }
+  .kpi-card .kpi-lbl { font-size: 12px; color: #6b7280; margin-top: 4px; font-weight: 500; }
+
+  .kpi-blue   { border-top-color: #1e3260; }
+  .kpi-blue   .kpi-ico { background: #eef1f8; color: #1e3260; }
+  .kpi-blue   .kpi-val { color: #1e3260; }
+
+  .kpi-green  { border-top-color: #27ae60; }
+  .kpi-green  .kpi-ico { background: #f0fdf4; color: #27ae60; }
+  .kpi-green  .kpi-val { color: #27ae60; }
+
+  .kpi-orange { border-top-color: #E67E22; }
+  .kpi-orange .kpi-ico { background: #fff7ed; color: #E67E22; }
+  .kpi-orange .kpi-val { color: #E67E22; }
+
+  .kpi-red    { border-top-color: #e74c3c; }
+  .kpi-red    .kpi-ico { background: #fef2f2; color: #e74c3c; }
+  .kpi-red    .kpi-val { color: #e74c3c; }
+
+  /* ── Bénéfice net ────────────────────────────────────── */
+  .benefice-card {
+    border: none; border-radius: 13px; padding: 24px 32px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  .benefice-positif { background: linear-gradient(135deg, #052e16, #059669); color: #fff; }
+  .benefice-negatif { background: linear-gradient(135deg, #450a0a, #dc2626); color: #fff; }
+  .benefice-zero    { background: linear-gradient(135deg, #1e293b, #475569); color: #fff; }
+  .benefice-label { font-size: 13px; opacity: 0.85; font-weight: 500; }
+  .benefice-value { font-size: 2.2rem; font-weight: 700; line-height: 1; }
+  .benefice-icon  { font-size: 3rem; opacity: 0.25; }
+
+  /* ── Section card ────────────────────────────────────── */
+  .section-card {
+    border: none; border-radius: 13px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    margin-bottom: 24px; overflow: hidden;
+  }
+  .section-header {
+    padding: 14px 20px; border-bottom: 1px solid #f0f0f0;
+    font-weight: 700; font-size: 14px; color: #1e3260;
+    display: flex; align-items: center; justify-content: space-between;
+    background: #fff;
+  }
+  .section-header i { margin-right: 8px; color: var(--color-accent); }
+
+  /* ── Table voyages ───────────────────────────────────── */
+  .vj-table th {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.4px; color: #6b7280;
+    padding: 10px 14px; background: #fafbfc;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .vj-table td { font-size: 13px; padding: 11px 14px; vertical-align: middle; }
+  .vj-table tbody tr:hover { background: #f8f9fc; }
+  .vj-table tfoot td {
+    font-weight: 700; font-size: 13px;
+    padding: 12px 14px; background: #f0f4fb;
+    border-top: 2px solid #dce5f5;
+  }
+
+  .benefice-pos  { color: #059669; font-weight: 700; }
+  .benefice-neg  { color: #dc2626; font-weight: 700; }
+  .benefice-zero-txt { color: #6b7280; }
+
+  .ticket-badge {
+    background: var(--color-accent); color: #fff;
+    border-radius: 12px; padding: 2px 10px;
+    font-size: 11px; font-weight: 700;
+  }
+  .ticket-badge.zero { background: #e5e7eb; color: #6b7280; }
+
+  .num-badge {
+    background: #eef2ff; color: #4338ca;
+    border-radius: 10px; padding: 2px 8px;
+    font-size: 11px; font-weight: 700;
+  }
+
+  /* ── Tables secondaires ──────────────────────────────── */
+  .mini-table th {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.4px; color: #6b7280;
+    padding: 9px 14px; background: #fafbfc;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .mini-table td { font-size: 13px; padding: 10px 14px; vertical-align: middle; }
+  .mini-table tbody tr:hover { background: #f8f9fc; }
+
+  .g-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg,#1e3260,var(--color-accent));
+    color: #fff; font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+
+  /* ── Pagination ─────────────────────────────────────── */
+  .pagination-zone {
+    padding: 14px 20px;
+    border-top: 1px solid #f0f0f0;
+    background: #fafbfc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .pagination-info { font-size: 12px; color: #6b7280; }
+  .c-pagination { display: flex; gap: 4px; align-items: center; margin: 0; padding: 0; list-style: none; }
+  .c-pagination .page-btn {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600;
+    border: 1px solid #e5e7eb;
+    background: #fff; color: #374151;
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+  .c-pagination .page-btn:hover    { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+  .c-pagination .page-btn.active   { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
+  .c-pagination .page-btn.dots     { border: none; background: transparent; cursor: default; color: #9ca3af; }
+  .c-pagination .page-btn.disabled { opacity: 0.4; pointer-events: none; }
+
+  /* ── Vide ────────────────────────────────────────────── */
+  .empty-state { text-align: center; padding: 52px 20px; color: #9ca3af; }
+  .empty-state i { font-size: 2.8rem; display: block; margin-bottom: 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-4">
+
+  <!-- ── En-tête + filtres ────────────────────────────────────── -->
+  <div class="page-header">
+    <h4><i class="bi bi-calendar-range me-2"></i>Rapport par période</h4>
+    <form method="get" class="filter-inline">
+      <div class="d-flex flex-wrap gap-3 align-items-end">
+        <div>
+          <div class="form-label">Date début</div>
+          <input type="date" name="date_debut" class="form-control form-control-sm"
+                 value="{{ date_debut|date:'Y-m-d' }}" style="min-width:160px">
+        </div>
+        <div>
+          <div class="form-label">Date fin</div>
+          <input type="date" name="date_fin" class="form-control form-control-sm"
+                 value="{{ date_fin|date:'Y-m-d' }}" style="min-width:160px">
+        </div>
+        <button type="submit" class="btn-generer">
+          <i class="bi bi-search me-1"></i>Générer
+        </button>
+      </div>
+    </form>
+    {% if date_debut and date_fin %}
+    <div class="periode-badge">
+      <i class="bi bi-calendar3 me-1"></i>
+      {{ date_debut|date:"d/m/Y" }} &rarr; {{ date_fin|date:"d/m/Y" }}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ── KPI cards ────────────────────────────────────────────── -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-blue">
+        <div class="kpi-ico"><i class="bi bi-ticket-perforated"></i></div>
+        <div>
+          <div class="kpi-val">{{ total_billets }}</div>
+          <div class="kpi-lbl">Billets vendus</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-green">
+        <div class="kpi-ico"><i class="bi bi-cash"></i></div>
+        <div>
+          <div class="kpi-val" style="font-size:1.3rem">{{ total_montant|format_montant }}<small style="font-size:12px;font-weight:500;color:#9ca3af"> F</small></div>
+          <div class="kpi-lbl">Recette tickets</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-orange">
+        <div class="kpi-ico"><i class="bi bi-luggage"></i></div>
+        <div>
+          <div class="kpi-val" style="font-size:1.3rem">{{ total_recette_bagages|format_montant }}<small style="font-size:12px;font-weight:500;color:#9ca3af"> F</small></div>
+          <div class="kpi-lbl">Recette bagages</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-red">
+        <div class="kpi-ico"><i class="bi bi-arrow-down-circle"></i></div>
+        <div>
+          <div class="kpi-val" style="font-size:1.3rem">{{ total_depenses|format_montant }}<small style="font-size:12px;font-weight:500;color:#9ca3af"> F</small></div>
+          <div class="kpi-lbl">Total dépenses</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Bénéfice net ──────────────────────────────────────────── -->
+  <div class="mb-4">
+    <div class="benefice-card
+      {% if total_benefice_net > 0 %}benefice-positif
+      {% elif total_benefice_net < 0 %}benefice-negatif
+      {% else %}benefice-zero{% endif %}">
+      <div>
+        <div class="benefice-label">
+          <i class="bi bi-graph-up-arrow me-1"></i>Recette net de la période
+        </div>
+        <div class="benefice-value mt-1">{{ total_benefice_net|format_montant }} FCFA</div>
+      </div>
+      <i class="bi
+        {% if total_benefice_net > 0 %}bi-trending-up
+        {% elif total_benefice_net < 0 %}bi-trending-down
+        {% else %}bi-dash-lg{% endif %}
+        benefice-icon"></i>
+    </div>
+  </div>
+
+  <!-- ── Voyages de la période ─────────────────────────────────── -->
+  <div class="section-card">
+    <div class="section-header">
+      <span><i class="bi bi-bus-front"></i>Voyages de la période</span>
+      {% if voyages_periode_count %}
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge rounded-pill" style="background:#eef2ff;color:#4338ca;font-size:12px;font-weight:600">
+          {{ voyages_periode_count }} voyage{{ voyages_periode_count|pluralize }}
+        </span>
+        {% if page_obj.paginator.num_pages > 1 %}
+        <span style="font-size:12px;color:#9ca3af;">
+          page {{ page_obj.number }}/{{ page_obj.paginator.num_pages }}
+        </span>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    {% if page_obj %}
+    <div class="table-responsive">
+      <table class="table vj-table mb-0">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Gare</th>
+            <th class="text-center">N°</th>
+            <th>Ligne</th>
+            <th class="text-center">Heure</th>
+            <th>Véhicule</th>
+            <th class="text-center">Tickets</th>
+            <th class="text-end">Rec. Tickets</th>
+            <th class="text-end">Rec. Bagages</th>
+            <th class="text-end">Dépenses</th>
+            <th class="text-end">Rec. Net</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for v in page_obj %}
+          <tr>
+            <td class="fw-semibold">{{ v.voyage.date_depart|date:"d/m/Y" }}</td>
+            <td>{{ v.voyage.gare.nom }}</td>
+            <td class="text-center"><span class="num-badge">{{ v.voyage.numero_depart }}</span></td>
+            <td>{{ v.voyage.ligne.nom }}</td>
+            <td class="text-center fw-semibold">{{ v.voyage.heure_depart|time:"H:i" }}</td>
+            <td>
+              {% if v.voyage.vehicule %}
+                <span class="fw-semibold">{{ v.voyage.vehicule.display_immat }}</span>
+              {% else %}
+                <span class="text-muted fst-italic" style="font-size:12px">Non assigné</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              <span class="ticket-badge {% if v.nb_billets == 0 %}zero{% endif %}">{{ v.nb_billets }}</span>
+            </td>
+            <td class="text-end">{{ v.recette_tickets|format_montant }}</td>
+            <td class="text-end">{{ v.recette_bagages|format_montant }}</td>
+            <td class="text-end text-danger">{{ v.total_depenses|format_montant }}</td>
+            <td class="text-end
+              {% if v.benefice_net > 0 %}benefice-pos
+              {% elif v.benefice_net < 0 %}benefice-neg
+              {% else %}benefice-zero-txt{% endif %}">
+              {{ v.benefice_net|format_montant }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="6" class="fw-bold">TOTAUX</td>
+            <td class="text-center"><span class="ticket-badge">{{ total_billets }}</span></td>
+            <td class="text-end">{{ total_montant|format_montant }}</td>
+            <td class="text-end">{{ total_recette_bagages|format_montant }}</td>
+            <td class="text-end text-danger">{{ total_depenses|format_montant }}</td>
+            <td class="text-end
+              {% if total_benefice_net > 0 %}benefice-pos
+              {% elif total_benefice_net < 0 %}benefice-neg
+              {% else %}benefice-zero-txt{% endif %}">
+              {{ total_benefice_net|format_montant }}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <!-- ── Pagination ── -->
+    {% if page_obj.has_other_pages %}
+    <div class="pagination-zone">
+      <div class="pagination-info">
+        Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}
+        &nbsp;·&nbsp;
+        {{ voyages_periode_count }} voyage{{ voyages_periode_count|pluralize }} au total
+      </div>
+      <ul class="c-pagination">
+        {% if page_obj.has_previous %}
+        <li>
+          <a class="page-btn" href="?page={{ page_obj.previous_page_number }}{% if request.GET.date_debut %}&date_debut={{ request.GET.date_debut }}{% endif %}{% if request.GET.date_fin %}&date_fin={{ request.GET.date_fin }}{% endif %}">
+            <i class="bi bi-chevron-left"></i>
+          </a>
+        </li>
+        {% else %}
+        <li><span class="page-btn disabled"><i class="bi bi-chevron-left"></i></span></li>
+        {% endif %}
+
+        {% if page_obj.number > 3 %}
+        <li><a class="page-btn" href="?page=1{% if request.GET.date_debut %}&date_debut={{ request.GET.date_debut }}{% endif %}{% if request.GET.date_fin %}&date_fin={{ request.GET.date_fin }}{% endif %}">1</a></li>
+        {% if page_obj.number > 4 %}<li><span class="page-btn dots">…</span></li>{% endif %}
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+          {% if num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+            {% if page_obj.number == num %}
+            <li><span class="page-btn active">{{ num }}</span></li>
+            {% else %}
+            <li><a class="page-btn" href="?page={{ num }}{% if request.GET.date_debut %}&date_debut={{ request.GET.date_debut }}{% endif %}{% if request.GET.date_fin %}&date_fin={{ request.GET.date_fin }}{% endif %}">{{ num }}</a></li>
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+
+        {% if page_obj.number < page_obj.paginator.num_pages|add:"-2" %}
+        {% if page_obj.number < page_obj.paginator.num_pages|add:"-3" %}<li><span class="page-btn dots">…</span></li>{% endif %}
+        <li><a class="page-btn" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.date_debut %}&date_debut={{ request.GET.date_debut }}{% endif %}{% if request.GET.date_fin %}&date_fin={{ request.GET.date_fin }}{% endif %}">{{ page_obj.paginator.num_pages }}</a></li>
+        {% endif %}
+
+        {% if page_obj.has_next %}
+        <li>
+          <a class="page-btn" href="?page={{ page_obj.next_page_number }}{% if request.GET.date_debut %}&date_debut={{ request.GET.date_debut }}{% endif %}{% if request.GET.date_fin %}&date_fin={{ request.GET.date_fin }}{% endif %}">
+            <i class="bi bi-chevron-right"></i>
+          </a>
+        </li>
+        {% else %}
+        <li><span class="page-btn disabled"><i class="bi bi-chevron-right"></i></span></li>
+        {% endif %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+      <i class="bi bi-calendar-x text-muted"></i>
+      <p class="fw-semibold">Aucun voyage sur cette période</p>
+      <p class="text-muted small">Modifiez les dates et régénérez le rapport.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ── Stats secondaires ─────────────────────────────────────── -->
+  {% if guichetiers_stats or gares_stats %}
+  <div class="row g-4">
+
+    {% if guichetiers_stats %}
+    <div class="col-lg-6">
+      <div class="section-card">
+        <div class="section-header">
+          <span><i class="bi bi-people"></i>Ventes par guichetier</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table mini-table mb-0">
+            <thead>
+              <tr>
+                <th>Guichetier</th>
+                <th class="text-center">Billets</th>
+                <th class="text-end pe-4">Montant</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for stat in guichetiers_stats %}
+              <tr>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="g-avatar">
+                      {{ stat.guichetier__nom_complet|default:"?"|slice:":1"|upper }}
+                    </div>
+                    <span class="fw-semibold">{{ stat.guichetier__nom_complet|default:"Non assigné" }}</span>
+                  </div>
+                </td>
+                <td class="text-center">
+                  <span class="ticket-badge {% if stat.nb_billets == 0 %}zero{% endif %}">{{ stat.nb_billets }}</span>
+                </td>
+                <td class="text-end pe-4 fw-semibold">{{ stat.montant|format_montant }} F</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if gares_stats %}
+    <div class="col-lg-6">
+      <div class="section-card">
+        <div class="section-header">
+          <span><i class="bi bi-building"></i>Ventes par gare</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table mini-table mb-0">
+            <thead>
+              <tr>
+                <th>Gare</th>
+                <th class="text-center">Billets</th>
+                <th class="text-end pe-4">Montant</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for stat in gares_stats %}
+              <tr>
+                <td class="fw-semibold">{{ stat.voyage__gare__nom }}</td>
+                <td class="text-center">
+                  <span class="ticket-badge {% if stat.nb_billets == 0 %}zero{% endif %}">{{ stat.nb_billets }}</span>
+                </td>
+                <td class="text-end pe-4 fw-semibold">{{ stat.montant|format_montant }} F</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

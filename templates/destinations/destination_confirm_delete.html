@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}Désactiver Destination{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Confirmer la désactivation
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">
+                        Êtes-vous sûr de vouloir désactiver la destination
+                        <strong>{{ object.ligne.nom }} → {{ object.ville_arrivee }}</strong> ?
+                    </p>
+
+                    <div class="alert alert-info">
+                        <ul class="mb-0">
+                            <li><strong>Ligne:</strong> {{ object.ligne.nom }}</li>
+                            <li><strong>Gare de départ:</strong> {{ object.gare.nom }}</li>
+                            <li><strong>Ville d'arrivée:</strong> {{ object.ville_arrivee }}</li>
+                            <li><strong>Prix:</strong> {{ object.montant|format_montant }} FCFA</li>
+                        </ul>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Attention:</strong> La destination ne sera plus proposée à la vente,
+                        mais elle et l'historique des voyages associés resteront conservés en base.
+                        Vous pourrez la réactiver plus tard.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'destinations:destination_list' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Annuler
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-slash-circle"></i> Désactiver
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

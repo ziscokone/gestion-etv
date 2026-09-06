@@ -1,0 +1,93 @@
+    <div class="table-header">
+      <span><i class="bi bi-people me-2" style="color:var(--color-accent)"></i>Liste des utilisateurs</span>
+      <span class="badge rounded-pill" style="background:#eef2ff;color:#4338ca;font-size:12px;font-weight:600">
+        {{ utilisateurs|length }} résultat{{ utilisateurs|length|pluralize }}
+      </span>
+    </div>
+
+    {% if utilisateurs %}
+    <div class="table-responsive">
+      <table class="table u-table mb-0">
+        <thead>
+          <tr>
+            <th>Utilisateur</th>
+            <th>Rôle</th>
+            <th>Gare</th>
+            <th>Statut</th>
+            <th class="text-end pe-4">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in utilisateurs %}
+          <tr>
+            <td>
+              <div class="d-flex align-items-center gap-3">
+                <div class="u-avatar av-{{ user.role }}">
+                  {{ user.nom_complet|slice:":1"|upper }}
+                </div>
+                <div>
+                  <div class="u-name">{{ user.nom_complet }}</div>
+                  <div class="u-sub"><i class="bi bi-at me-1"></i>{{ user.username }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="role-badge role-{{ user.role }}">{{ user.get_role_display }}</span>
+            </td>
+            <td>
+              {% if user.gare %}
+                <i class="bi bi-geo-alt me-1 text-muted"></i>{{ user.gare.nom }}
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if user.actif %}
+                <span class="badge-actif"><i class="bi bi-check-circle me-1"></i>Actif</span>
+              {% else %}
+                <span class="badge-inactif"><i class="bi bi-pause-circle me-1"></i>Inactif</span>
+              {% endif %}
+            </td>
+            <td class="text-end pe-4">
+              <div class="d-flex gap-2 justify-content-end">
+                <a href="{% url 'personnel:utilisateur_update' user.pk %}"
+                   class="btn-action edit" title="Modifier">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                {% if request.user.role == 'super_admin' or request.user.is_superuser %}
+                <a href="{% url 'personnel:utilisateur_modules' user.pk %}"
+                   class="btn-action" title="Gérer les modules"
+                   style="color:#1e3260;border-color:#c3d4ed;">
+                  <i class="bi bi-grid-fill"></i>
+                </a>
+                {% endif %}
+                {% if request.user.is_superuser or request.user.role == 'super_admin' %}
+                <a href="{% url 'personnel:utilisateur_delete' user.pk %}"
+                   class="btn-action del" title="Supprimer">
+                  <i class="bi bi-trash"></i>
+                </a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% else %}
+    <div class="empty-state">
+      <i class="bi bi-people text-muted"></i>
+      {% if search_query or role_filtre != 'tous' %}
+        <p class="fw-semibold">Aucun résultat pour ce filtre</p>
+        <a href="{% url 'personnel:utilisateur_list' %}" class="btn btn-sm btn-outline-secondary mt-2">
+          <i class="bi bi-x me-1"></i>Réinitialiser les filtres
+        </a>
+      {% else %}
+        <p class="fw-semibold">Aucun utilisateur enregistré</p>
+        <a href="{% url 'personnel:utilisateur_create' %}" class="btn btn-primary btn-sm mt-2">
+          <i class="bi bi-plus-circle me-1"></i>Créer le premier utilisateur
+        </a>
+      {% endif %}
+    </div>
+    {% endif %}

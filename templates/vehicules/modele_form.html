@@ -1,0 +1,697 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if form.instance.pk %}Modifier{% else %}Nouveau{% endif %} Modèle de Véhicule{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ===== ÉDITEUR VISUEL DE SIÈGES ===== */
+.editor-grid-container {
+    overflow-x: auto;
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    min-height: 80px;
+    border: 1px solid #dee2e6;
+}
+
+.editor-grid {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.editor-row {
+    display: flex;
+    gap: 6px;
+}
+
+.editor-cell {
+    width: 45px;
+    height: 45px;
+    border: 2px solid #dee2e6;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 13px;
+    transition: transform 0.1s, opacity 0.1s;
+    user-select: none;
+    flex-shrink: 0;
+}
+
+.editor-cell:hover { transform: scale(1.1); }
+
+.editor-cell.error-cell {
+    box-shadow: 0 0 0 3px #dc3545;
+    animation: shake 0.3s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25%       { transform: translateX(-4px); }
+    75%       { transform: translateX(4px); }
+}
+
+/* Paint mode buttons */
+.paint-btn { min-width: 110px; border-width: 2px !important; }
+.paint-btn.active-paint { box-shadow: 0 0 0 3px rgba(0,0,0,0.25) !important; }
+
+/* Legend */
+.editor-legend-cell {
+    width: 28px; height: 28px;
+    border-radius: 4px; border: 2px solid transparent;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: bold; flex-shrink: 0;
+}
+
+/* Numero popup */
+.numero-popup {
+    position: fixed;
+    background: white;
+    border: 2px solid #0d6efd;
+    border-radius: 8px;
+    padding: 8px 10px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    z-index: 9999;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.numero-popup input {
+    width: 65px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 3px 6px;
+    font-size: 15px;
+    font-weight: 700;
+    text-align: center;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-bus-front me-2"></i>
+                        {% if form.instance.pk %}Modifier le modèle de véhicule{% else %}Nouveau modèle de véhicule{% endif %}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" novalidate id="modeleForm">
+                        {% csrf_token %}
+
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                        {% endif %}
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.marque.id_for_label }}" class="form-label fw-bold">
+                                    {{ form.marque.label }} <span class="text-danger">*</span>
+                                </label>
+                                {{ form.marque }}
+                                {% if form.marque.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.marque.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.nom.id_for_label }}" class="form-label fw-bold">
+                                    {{ form.nom.label }} <span class="text-danger">*</span>
+                                </label>
+                                {{ form.nom }}
+                                {% if form.nom.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.nom.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="{{ form.capacite.id_for_label }}" class="form-label fw-bold">
+                                {{ form.capacite.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.capacite }}
+                            {% if form.capacite.errors %}
+                                <div class="invalid-feedback d-block">{{ form.capacite.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- ===== ÉDITEUR VISUEL ===== -->
+                        <div class="card mb-4 border-primary">
+                            <div class="card-header bg-primary bg-opacity-10 d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0 text-primary">
+                                    <i class="bi bi-grid-3x3 me-2"></i>Éditeur visuel de disposition des sièges
+                                </h5>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnToggleEditor" title="Afficher/masquer">
+                                    <i class="bi bi-chevron-up" id="editorChevron"></i>
+                                </button>
+                            </div>
+
+                            <div class="card-body" id="editorBody">
+
+                                <!-- Taille de la grille -->
+                                <div class="row g-2 mb-3 align-items-end">
+                                    <div class="col-auto">
+                                        <label class="form-label mb-1 small fw-bold">Colonnes</label>
+                                        <input type="number" id="editorCols" class="form-control form-control-sm" value="6" min="1" max="20" style="width:72px">
+                                    </div>
+                                    <div class="col-auto">
+                                        <label class="form-label mb-1 small fw-bold">Rangées</label>
+                                        <input type="number" id="editorRows" class="form-control form-control-sm" value="10" min="1" max="40" style="width:72px">
+                                    </div>
+                                    <div class="col-auto">
+                                        <button type="button" id="btnGenererGrille" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-grid me-1"></i>Générer la grille
+                                        </button>
+                                    </div>
+                                    <div class="col-auto">
+                                        <button type="button" id="btnChargerJSON" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-upload me-1"></i>Charger depuis JSON
+                                        </button>
+                                    </div>
+                                    <div class="col-auto">
+                                        <button type="button" id="btnViderGrille" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash me-1"></i>Vider
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Légende -->
+                                <div class="d-flex flex-wrap gap-3 mb-3 p-2 bg-light rounded border">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="editor-legend-cell" style="background:#fff;border-color:#dee2e6;"></div>
+                                        <small>Vide</small>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="editor-legend-cell" style="background:#fff3cd;border-color:#ffc107;color:#856404;">?</div>
+                                        <small>Vendable (sans numéro)</small>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="editor-legend-cell" style="background:#D4EDDA;border-color:#28a745;color:#155724;">1</div>
+                                        <small>Vendable (numéroté)</small>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="editor-legend-cell" style="background:#343a40;border-color:#212529;"></div>
+                                        <small>Couloir</small>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="editor-legend-cell" style="background:#6C757D;border-color:#495057;color:white;font-size:9px;">C</div>
+                                        <small>Conducteur (non vendable)</small>
+                                    </div>
+                                </div>
+
+                                <!-- Sélecteur de pinceau -->
+                                <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+                                    <span class="small fw-bold me-1">Pinceau&nbsp;:</span>
+                                    <button type="button" class="btn btn-sm paint-btn" data-paint="vide"
+                                        style="background:#fff;border-color:#dee2e6;color:#6c757d;">
+                                        Vide
+                                    </button>
+                                    <button type="button" class="btn btn-sm paint-btn active-paint" data-paint="vendable"
+                                        style="background:#D4EDDA;border-color:#28a745;color:#155724;">
+                                        Vendable
+                                    </button>
+                                    <button type="button" class="btn btn-sm paint-btn" data-paint="couloir"
+                                        style="background:#343a40;border-color:#212529;color:white;">
+                                        Couloir
+                                    </button>
+                                    <button type="button" class="btn btn-sm paint-btn" data-paint="conducteur"
+                                        style="background:#6C757D;border-color:#495057;color:white;">
+                                        Conducteur
+                                    </button>
+                                    <button type="button" class="btn btn-sm paint-btn" data-paint="numero"
+                                        style="background:#0d6efd;border-color:#0a58ca;color:white;">
+                                        <i class="bi bi-pencil me-1"></i>Numéroter
+                                    </button>
+                                </div>
+
+                                <!-- Info mode numéroter -->
+                                <div id="infoNumeroter" class="alert alert-info py-2 small mb-3 d-none">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Cliquez sur un siège <strong>vendable</strong> ou <strong>conducteur</strong> pour lui assigner un numéro.
+                                    Cliquez à nouveau pour le modifier.
+                                </div>
+
+                                <!-- Grille -->
+                                <div class="editor-grid-container">
+                                    <div class="editor-grid" id="editorGrid">
+                                        <div class="text-muted fst-italic py-3 px-2">
+                                            Définissez le nombre de colonnes et rangées, puis cliquez <strong>Générer la grille</strong>.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Erreurs / succès -->
+                                <div id="editorErrors" class="mt-2"></div>
+
+                                <!-- Bouton générer JSON -->
+                                <div class="mt-3 d-flex align-items-center gap-2">
+                                    <button type="button" id="btnGenererJSON" class="btn btn-primary btn-sm">
+                                        <i class="bi bi-code-slash me-1"></i>Générer le JSON
+                                    </button>
+                                    <small class="text-muted">Synchronise la grille vers le champ JSON ci-dessous</small>
+                                </div>
+
+                            </div><!-- /card-body éditeur -->
+                        </div>
+                        <!-- ===== FIN ÉDITEUR VISUEL ===== -->
+
+                        <!-- Champ JSON -->
+                        <div class="mb-3">
+                            <label for="{{ form.disposition_sieges.id_for_label }}" class="form-label fw-bold">
+                                {{ form.disposition_sieges.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.disposition_sieges }}
+                            {% if form.disposition_sieges.errors %}
+                                <div class="invalid-feedback d-block">{{ form.disposition_sieges.errors }}</div>
+                            {% endif %}
+                            {% if form.disposition_sieges.help_text %}
+                                <div class="form-text">{{ form.disposition_sieges.help_text }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> <strong>Structure JSON :</strong>
+                            <ul class="mb-0 mt-2">
+                                <li><strong>colonnes</strong> : nombre de colonnes dans la grille</li>
+                                <li><strong>rangees</strong> : tableau de rangées, chaque rangée contient les numéros de sièges</li>
+                                <li><strong>sieges_non_vendables</strong> : tableau des numéros de sièges non vendables (ex : siège conducteur)</li>
+                                <li>Utiliser <code>null</code> pour les espaces vides (couloirs)</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'vehicules:modele_list' %}" class="btn btn-danger text-white fw-bold">
+                                <i class="bi bi-arrow-left"></i> Retour
+                            </a>
+                            <button type="submit" class="btn btn-primary fw-bold">
+                                <i class="bi bi-check-circle me-1"></i>
+                                {% if form.instance.pk %}Modifier{% else %}Créer{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Popup saisie numéro -->
+<div class="numero-popup d-none" id="numeroPopup">
+    <label class="small fw-bold mb-0 me-1">N°</label>
+    <input type="number" id="numeroInput" min="1" max="999" placeholder="Ex: 5">
+    <button type="button" class="btn btn-sm btn-success py-0 px-2" id="btnNumeroOk" title="Valider">
+        <i class="bi bi-check-lg"></i>
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" id="btnNumeroCancel" title="Annuler">
+        <i class="bi bi-x-lg"></i>
+    </button>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    'use strict';
+
+    // ── STATE ──────────────────────────────────────────────────────────────
+    let gridData  = [];   // gridData[r][c] = { type: 'vide'|'vendable'|'couloir'|'conducteur', numero: int|null }
+    let numRows   = 0;
+    let numCols   = 0;
+    let currentPaint = 'vendable';
+    let isPainting   = false;
+    let activeCell   = null;  // { r, c } pendant le popup
+
+    // ── DOM ────────────────────────────────────────────────────────────────
+    const editorGrid    = document.getElementById('editorGrid');
+    const jsonTextarea  = document.getElementById('{{ form.disposition_sieges.id_for_label }}');
+    const numeroPopup   = document.getElementById('numeroPopup');
+    const numeroInput   = document.getElementById('numeroInput');
+    const editorErrors  = document.getElementById('editorErrors');
+    const infoNumeroter = document.getElementById('infoNumeroter');
+
+    // ── GRILLE ─────────────────────────────────────────────────────────────
+
+    function makeCell() { return { type: 'vide', numero: null }; }
+
+    function initGrid(r, c) {
+        numRows  = r;
+        numCols  = c;
+        gridData = Array.from({ length: r }, () =>
+                       Array.from({ length: c }, makeCell));
+        renderGrid();
+    }
+
+    function renderGrid() {
+        editorGrid.innerHTML = '';
+        if (!numRows || !numCols) {
+            editorGrid.innerHTML =
+                '<div class="text-muted fst-italic py-3 px-2">' +
+                'Définissez le nombre de colonnes et rangées, puis cliquez <strong>Générer la grille</strong>.' +
+                '</div>';
+            return;
+        }
+        for (let r = 0; r < numRows; r++) {
+            const row = document.createElement('div');
+            row.className = 'editor-row';
+            for (let c = 0; c < numCols; c++) {
+                row.appendChild(buildCellEl(r, c));
+            }
+            editorGrid.appendChild(row);
+        }
+    }
+
+    function buildCellEl(r, c) {
+        const el = document.createElement('div');
+        el.className = 'editor-cell';
+        el.dataset.r = r;
+        el.dataset.c = c;
+        styleCell(el, gridData[r][c]);
+
+        el.addEventListener('mousedown', e => {
+            e.preventDefault();
+            if (currentPaint === 'numero') {
+                const d = gridData[r][c];
+                if (d.type === 'vendable' || d.type === 'conducteur') {
+                    openPopup(r, c, el);
+                }
+            } else {
+                isPainting = true;
+                applyPaint(r, c);
+            }
+        });
+
+        el.addEventListener('mouseenter', () => {
+            if (isPainting && currentPaint !== 'numero') applyPaint(r, c);
+        });
+
+        return el;
+    }
+
+    function styleCell(el, d) {
+        // Reset
+        el.className = 'editor-cell';
+        el.textContent = '';
+        el.title = '';
+        el.style.cssText = '';
+
+        switch (d.type) {
+            case 'vide':
+                el.style.cssText = 'background:#fff;border-color:#dee2e6;color:#adb5bd;';
+                break;
+
+            case 'vendable':
+                if (d.numero !== null) {
+                    el.style.cssText = 'background:#D4EDDA;border-color:#28a745;color:#155724;';
+                    el.textContent   = d.numero;
+                    el.title         = 'Siège ' + d.numero;
+                } else {
+                    el.style.cssText = 'background:#fff3cd;border-color:#ffc107;color:#856404;';
+                    el.textContent   = '?';
+                    el.title         = 'Mode Numéroter : cliquez pour assigner un numéro';
+                }
+                break;
+
+            case 'couloir':
+                el.style.cssText = 'background:#343a40;border-color:#212529;cursor:default;';
+                el.title         = 'Couloir';
+                break;
+
+            case 'conducteur':
+                if (d.numero !== null) {
+                    el.style.cssText = 'background:#6C757D;border-color:#495057;color:white;font-size:11px;';
+                    el.textContent   = d.numero;
+                    el.title         = 'Conducteur – Siège ' + d.numero;
+                } else {
+                    el.style.cssText = 'background:#adb5bd;border-color:#6C757D;color:white;font-size:11px;';
+                    el.textContent   = 'C?';
+                    el.title         = 'Mode Numéroter : cliquez pour assigner un numéro';
+                }
+                break;
+        }
+    }
+
+    function getCellEl(r, c) {
+        return editorGrid.querySelector('[data-r="' + r + '"][data-c="' + c + '"]');
+    }
+
+    function refreshCellEl(r, c) {
+        const el = getCellEl(r, c);
+        if (el) styleCell(el, gridData[r][c]);
+    }
+
+    // ── PEINTURE ───────────────────────────────────────────────────────────
+
+    function applyPaint(r, c) {
+        const prev = gridData[r][c];
+        if (currentPaint === 'vendable') {
+            // Conserver le numéro si déjà vendable
+            gridData[r][c] = { type: 'vendable', numero: prev.type === 'vendable' ? prev.numero : null };
+        } else if (currentPaint === 'conducteur') {
+            gridData[r][c] = { type: 'conducteur', numero: prev.type === 'conducteur' ? prev.numero : null };
+        } else {
+            gridData[r][c] = { type: currentPaint, numero: null };
+        }
+        refreshCellEl(r, c);
+    }
+
+    document.addEventListener('mouseup', () => { isPainting = false; });
+
+    // ── BOUTONS PINCEAU ────────────────────────────────────────────────────
+
+    document.querySelectorAll('.paint-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentPaint = btn.dataset.paint;
+            document.querySelectorAll('.paint-btn').forEach(b => b.classList.remove('active-paint'));
+            btn.classList.add('active-paint');
+            infoNumeroter.classList.toggle('d-none', currentPaint !== 'numero');
+            if (currentPaint !== 'numero') closePopup();
+        });
+    });
+
+    // ── POPUP NUMÉROTATION ─────────────────────────────────────────────────
+
+    function openPopup(r, c, el) {
+        activeCell = { r, c };
+        const rect = el.getBoundingClientRect();
+        numeroPopup.classList.remove('d-none');
+        numeroPopup.style.top  = (window.scrollY + rect.bottom + 8) + 'px';
+        numeroPopup.style.left = (window.scrollX + rect.left)       + 'px';
+        numeroInput.value = gridData[r][c].numero || '';
+        setTimeout(() => { numeroInput.focus(); numeroInput.select(); }, 40);
+    }
+
+    function closePopup() {
+        numeroPopup.classList.add('d-none');
+        activeCell = null;
+    }
+
+    function confirmPopup() {
+        if (!activeCell) return;
+        const val = parseInt(numeroInput.value, 10);
+        if (!isNaN(val) && val > 0) {
+            gridData[activeCell.r][activeCell.c].numero = val;
+            refreshCellEl(activeCell.r, activeCell.c);
+        }
+        closePopup();
+    }
+
+    document.getElementById('btnNumeroOk').addEventListener('click', confirmPopup);
+    document.getElementById('btnNumeroCancel').addEventListener('click', closePopup);
+    numeroInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter')  confirmPopup();
+        if (e.key === 'Escape') closePopup();
+    });
+    document.addEventListener('mousedown', e => {
+        if (!numeroPopup.classList.contains('d-none') &&
+            !numeroPopup.contains(e.target) &&
+            !e.target.closest('.editor-cell')) {
+            closePopup();
+        }
+    });
+
+    // ── BOUTONS GRILLE ─────────────────────────────────────────────────────
+
+    document.getElementById('btnGenererGrille').addEventListener('click', () => {
+        const r = parseInt(document.getElementById('editorRows').value, 10);
+        const c = parseInt(document.getElementById('editorCols').value, 10);
+        if (!r || !c || r < 1 || c < 1) return;
+        if (numRows > 0 && !confirm('Regénérer la grille ? Les données actuelles seront perdues.')) return;
+        initGrid(r, c);
+        editorErrors.innerHTML = '';
+    });
+
+    document.getElementById('btnViderGrille').addEventListener('click', () => {
+        if (!numRows) return;
+        if (confirm('Vider toute la grille ?')) {
+            initGrid(numRows, numCols);
+            editorErrors.innerHTML = '';
+        }
+    });
+
+    // ── TOGGLE ÉDITEUR ─────────────────────────────────────────────────────
+
+    document.getElementById('btnToggleEditor').addEventListener('click', () => {
+        const body    = document.getElementById('editorBody');
+        const chevron = document.getElementById('editorChevron');
+        body.classList.toggle('d-none');
+        chevron.className = body.classList.contains('d-none') ? 'bi bi-chevron-down' : 'bi bi-chevron-up';
+    });
+
+    // ── VALIDATION ─────────────────────────────────────────────────────────
+
+    function validateGrid() {
+        const errors = [];
+        const nums   = {};
+
+        // Effacer les erreurs visuelles précédentes
+        editorGrid.querySelectorAll('.editor-cell').forEach(el => el.classList.remove('error-cell'));
+
+        for (let r = 0; r < numRows; r++) {
+            for (let c = 0; c < numCols; c++) {
+                const d  = gridData[r][c];
+                const el = getCellEl(r, c);
+
+                // Siège sans numéro
+                if ((d.type === 'vendable' || d.type === 'conducteur') && d.numero === null) {
+                    const label = d.type === 'conducteur' ? 'Siège conducteur' : 'Siège vendable';
+                    errors.push(label + ' sans numéro (rangée ' + (r + 1) + ', colonne ' + (c + 1) + ')');
+                    if (el) el.classList.add('error-cell');
+                    continue;
+                }
+
+                // Doublon de numéro
+                if (d.numero !== null) {
+                    if (nums[d.numero] !== undefined) {
+                        errors.push('Numéro ' + d.numero + ' utilisé plusieurs fois');
+                        if (el) el.classList.add('error-cell');
+                        const prev = nums[d.numero];
+                        const prevEl = getCellEl(prev.r, prev.c);
+                        if (prevEl) prevEl.classList.add('error-cell');
+                    } else {
+                        nums[d.numero] = { r, c };
+                    }
+                }
+            }
+        }
+        return errors;
+    }
+
+    function showErrors(errors) {
+        if (!errors.length) { editorErrors.innerHTML = ''; return; }
+        editorErrors.innerHTML =
+            '<div class="alert alert-danger py-2 small mt-2">' +
+            '<i class="bi bi-exclamation-triangle me-1"></i><strong>Erreurs :</strong>' +
+            '<ul class="mb-0 mt-1">' +
+            errors.map(e => '<li>' + e + '</li>').join('') +
+            '</ul></div>';
+    }
+
+    // ── GÉNÉRER JSON ───────────────────────────────────────────────────────
+
+    document.getElementById('btnGenererJSON').addEventListener('click', () => {
+        if (!numRows) {
+            showErrors(['La grille est vide. Générez d\'abord une grille.']);
+            return;
+        }
+        const errors = validateGrid();
+        if (errors.length) { showErrors(errors); return; }
+
+        const nonVendables = [];
+        const rangees      = [];
+
+        for (let r = 0; r < numRows; r++) {
+            const sieges = [];
+            for (let c = 0; c < numCols; c++) {
+                const d = gridData[r][c];
+                if (d.type === 'vide' || d.type === 'couloir') {
+                    sieges.push(null);
+                } else {
+                    sieges.push(d.numero);
+                    if (d.type === 'conducteur') nonVendables.push(d.numero);
+                }
+            }
+            rangees.push({ rang: r + 1, sieges: sieges });
+        }
+
+        const json = { colonnes: numCols, rangees: rangees, sieges_non_vendables: nonVendables };
+        jsonTextarea.value = JSON.stringify(json, null, 2);
+
+        editorErrors.innerHTML =
+            '<div class="alert alert-success py-2 small mt-2">' +
+            '<i class="bi bi-check-circle me-1"></i>JSON généré avec succès !' +
+            '</div>';
+        setTimeout(() => { editorErrors.innerHTML = ''; }, 3000);
+    });
+
+    // ── CHARGER DEPUIS JSON ────────────────────────────────────────────────
+
+    document.getElementById('btnChargerJSON').addEventListener('click', () => {
+        const raw = jsonTextarea.value.trim();
+        if (!raw || raw === '{}') { alert('Le champ JSON est vide.'); return; }
+        try {
+            loadFromJSON(JSON.parse(raw));
+        } catch (e) {
+            alert('JSON invalide : ' + e.message);
+        }
+    });
+
+    function loadFromJSON(json) {
+        const rangees      = json.rangees || [];
+        const nonVendables = json.sieges_non_vendables || [];
+
+        if (!rangees.length) return;
+
+        // Supporte les deux formats : [{rang, sieges:[]}] et [[]]
+        const first          = rangees[0];
+        const isObjectFormat = typeof first === 'object' && !Array.isArray(first);
+        const r = rangees.length;
+        const c = json.colonnes || (isObjectFormat ? (first.sieges || []).length : first.length);
+
+        numRows  = r;
+        numCols  = c;
+        gridData = [];
+
+        for (let ri = 0; ri < r; ri++) {
+            const row    = [];
+            const sieges = isObjectFormat ? (rangees[ri].sieges || []) : rangees[ri];
+
+            for (let ci = 0; ci < c; ci++) {
+                const s = sieges[ci];
+                if (s === null || s === undefined) {
+                    row.push({ type: 'couloir', numero: null });
+                } else if (nonVendables.includes(s)) {
+                    row.push({ type: 'conducteur', numero: s });
+                } else {
+                    row.push({ type: 'vendable', numero: s });
+                }
+            }
+            // Compléter si la rangée est plus courte que numCols
+            while (row.length < c) row.push({ type: 'vide', numero: null });
+            gridData.push(row);
+        }
+
+        document.getElementById('editorRows').value = r;
+        document.getElementById('editorCols').value = c;
+        renderGrid();
+        editorErrors.innerHTML = '';
+    }
+
+    // ── AUTO-CHARGEMENT si JSON existant ───────────────────────────────────
+    (function () {
+        const raw = jsonTextarea.value.trim();
+        if (raw && raw !== '{}') {
+            try { loadFromJSON(JSON.parse(raw)); } catch (e) { /* ignore */ }
+        }
+    })();
+
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,405 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+{% load static %}
+
+{% block title %}Réservations - Gestion Billetterie{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            <i class="bi bi-bookmark me-2 text-accent"></i>
+            Réservations en attente
+        </h2>
+    </div>
+
+    <!-- Recherche -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" data-live-filter="{% url 'guichet:reservations_ajax' %}" data-target="reservationsTableContainer" class="row g-3">
+                <div class="col-md-10">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" name="search" class="form-control"
+                               placeholder="Rechercher par nom, téléphone ou numéro de ticket..."
+                               value="{{ request.GET.search }}">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        Rechercher
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Liste des réservations -->
+    <div class="card">
+        <div class="card-body p-0" id="reservationsTableContainer">
+            {% include 'guichet/partials/reservations_table.html' %}
+        </div>
+    </div>
+</div>
+
+<!-- Container pour le ticket (toujours présent, caché si pas utilisé) -->
+<div id="ticketContainer" style="position: absolute; left: -9999px;">
+    <!-- Le ticket sera inséré ici -->
+</div>
+
+<!-- Modal vendre à un autre client -->
+<div class="modal fade" id="vendreAutreModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-person-fill-gear me-2"></i>Vendre à un autre client
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="vendreAutreForm">
+                    <input type="hidden" id="vendreAutreBilletId">
+
+                    <div class="mb-3">
+                        <label class="form-label">Siège</label>
+                        <input type="text" class="form-control" id="vendreAutreSiege" readonly>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Téléphone *</label>
+                        <div class="position-relative">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                                <input type="tel" class="form-control" id="vendreAutreTelephone"
+                                       placeholder="Numéro de téléphone" autocomplete="off" required>
+                                <span class="input-group-text" id="vendreAutreClientStatus" style="display:none;">
+                                    <span id="vendreAutreFoundIcon" class="text-success" style="display:none;"><i class="bi bi-person-check-fill"></i></span>
+                                    <span id="vendreAutreNewIcon" class="text-warning" style="display:none;"><i class="bi bi-person-plus-fill"></i></span>
+                                </span>
+                            </div>
+                            <div id="vendreAutreSuggestions"
+                                 class="list-group position-absolute w-100 shadow"
+                                 style="display:none; z-index:1060; top:100%; left:0;"></div>
+                        </div>
+                        <small id="vendreAutreClientFeedback" class="text-muted"></small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Nom du client *</label>
+                        <input type="text" class="form-control" id="vendreAutreNom"
+                               placeholder="Nom complet" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Destination *</label>
+                        <select class="form-select" id="vendreAutreDestination" required>
+                            <option value="">Chargement...</option>
+                        </select>
+                        <div class="mt-2">
+                            <strong>Montant : <span id="vendreAutreMontant" class="text-success">-</span></strong>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Moyen de paiement</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="vendreAutrePaiement" id="vaCash" value="cash" checked>
+                                <label class="form-check-label badge" for="vaCash" style="background-color:#6c757d;cursor:pointer;">Cash</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="vendreAutrePaiement" id="vaWave" value="wave">
+                                <label class="form-check-label badge" for="vaWave" style="background-color:#00CED1;cursor:pointer;">Wave</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="vendreAutrePaiement" id="vaOrange" value="orange_money">
+                                <label class="form-check-label badge" for="vaOrange" style="background-color:#FF6600;cursor:pointer;">Orange</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="vendreAutrePaiement" id="vaMTN" value="mtn_money">
+                                <label class="form-check-label badge" for="vaMTN" style="background-color:#FFCC00;color:#000;cursor:pointer;">MTN</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="vendreAutrePaiement" id="vaMoov" value="moov_money">
+                                <label class="form-check-label badge" for="vaMoov" style="background-color:#003366;cursor:pointer;">Moov</label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-warning" id="vendreAutreValider">
+                    <i class="bi bi-cash me-1"></i>Valider et imprimer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/print-ticket.js' %}"></script>
+<script src="{% static 'js/live-filter.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+    // --- Fonctions ticket (impression) ---
+    function displayTicket(billet) {
+        document.getElementById('ticketContainer').innerHTML = `
+            <div class="ticket-preview">
+                <div class="ticket-header-row">
+                    <div class="ticket-logo">
+                        ${billet.compagnie_logo
+                            ? `<img src="${billet.compagnie_logo}" alt="Logo" class="ticket-logo-img">`
+                            : `<div class="ticket-logo-placeholder"><i class="bi bi-bus-front"></i></div>`}
+                    </div>
+                    <div class="ticket-gare-info">
+                        <strong class="ticket-compagnie-nom">${billet.compagnie_nom || 'COMPAGNIE DE TRANSPORT'}</strong>
+                        ${billet.gare_telephone ? `<div class="ticket-gare-tel">Tel: ${billet.gare_telephone}</div>` : ''}
+                        ${billet.gare_adresse ? `<div class="ticket-gare-adresse">${billet.gare_adresse}</div>` : ''}
+                    </div>
+                </div>
+                <div class="ticket-body">
+                    <div class="ticket-row"><span>N° Ticket:</span><strong>${billet.numero}</strong></div>
+                    <div class="ticket-row"><span>N° Depart:</span><strong>${billet.numero_depart || 'N/A'}</strong></div>
+                    <div class="ticket-row"><span>Client:</span><span>${billet.client_nom}</span></div>
+                    <div class="ticket-row"><span>Siege:</span><strong class="ticket-siege">${billet.numero_siege}</strong></div>
+                    <hr>
+                    <div class="ticket-row"><span>Ligne:</span><span>${billet.ligne}</span></div>
+                    <div class="ticket-row"><span>Destination:</span><strong>${billet.destination || 'N/A'}</strong></div>
+                    <div class="ticket-row"><span>Date:</span><span>${billet.date_depart}</span></div>
+                    <div class="ticket-row"><span>Heure:</span><span>${billet.heure_depart}</span></div>
+                    <hr>
+                    <div class="ticket-row ticket-montant">
+                        <span>Montant:</span>
+                        ${(billet.statut === 'gratuit' || billet.statut === 'gratuit_en_attente')
+                            ? `<strong style="background:#16a34a;color:#fff;padding:2px 10px;border-radius:6px;font-size:13px;letter-spacing:1px;">GRATUIT</strong>`
+                            : `<strong>${Number(billet.montant).toLocaleString('fr-FR')} FCFA</strong>`
+                        }
+                    </div>
+                    <div class="ticket-row"><span>Paiement:</span><strong>${billet.moyen_paiement_display || 'Cash'}</strong></div>
+                </div>
+            </div>`;
+    }
+
+    // --- Modal : Vendre à un autre client ---
+    const vendreAutreModal = new bootstrap.Modal(document.getElementById('vendreAutreModal'));
+    const vendreAutreTelephone = document.getElementById('vendreAutreTelephone');
+    const vendreAutreNom = document.getElementById('vendreAutreNom');
+    const vendreAutreSuggestions = document.getElementById('vendreAutreSuggestions');
+    const vendreAutreClientStatus = document.getElementById('vendreAutreClientStatus');
+    const vendreAutreFoundIcon = document.getElementById('vendreAutreFoundIcon');
+    const vendreAutreNewIcon = document.getElementById('vendreAutreNewIcon');
+    const vendreAutreClientFeedback = document.getElementById('vendreAutreClientFeedback');
+    const vendreAutreDestination = document.getElementById('vendreAutreDestination');
+    const vendreAutreMontant = document.getElementById('vendreAutreMontant');
+    let vaSearchTimeout = null;
+
+    function vaHideSuggestions() {
+        vendreAutreSuggestions.style.display = 'none';
+        vendreAutreSuggestions.innerHTML = '';
+    }
+
+    function vaResetClient() {
+        vendreAutreNom.readOnly = false;
+        vendreAutreNom.value = '';
+        vendreAutreClientStatus.style.display = 'none';
+        vendreAutreFoundIcon.style.display = 'none';
+        vendreAutreNewIcon.style.display = 'none';
+        vendreAutreClientFeedback.textContent = '';
+    }
+
+    function vaSelectionnerClient(telephone, nom) {
+        vendreAutreTelephone.value = telephone;
+        vendreAutreNom.value = nom;
+        vendreAutreNom.readOnly = true;
+        vendreAutreClientStatus.style.display = 'flex';
+        vendreAutreFoundIcon.style.display = 'inline';
+        vendreAutreNewIcon.style.display = 'none';
+        vendreAutreClientFeedback.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Client existant</span>';
+        vaHideSuggestions();
+    }
+
+    vendreAutreTelephone.addEventListener('input', function() {
+        clearTimeout(vaSearchTimeout);
+        const q = this.value.trim();
+        if (q.length < 3) { vaHideSuggestions(); vaResetClient(); return; }
+        vaSearchTimeout = setTimeout(() => {
+            fetch(`/clients/api/suggerer/?q=${encodeURIComponent(q)}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.clients.length) {
+                        vendreAutreSuggestions.innerHTML = data.clients.map(c =>
+                            `<button type="button" class="list-group-item list-group-item-action py-2 px-3"
+                                     data-tel="${c.telephone}" data-nom="${c.nom_complet}">
+                                <i class="bi bi-person me-2 text-muted"></i>
+                                <strong>${c.telephone}</strong>
+                                <span class="text-muted ms-2">— ${c.nom_complet}</span>
+                            </button>`
+                        ).join('');
+                        vendreAutreSuggestions.style.display = 'block';
+                        vendreAutreSuggestions.querySelectorAll('button').forEach(btn => {
+                            btn.addEventListener('mousedown', function(e) {
+                                e.preventDefault();
+                                vaSelectionnerClient(this.dataset.tel, this.dataset.nom);
+                            });
+                        });
+                        vendreAutreClientFeedback.textContent = '';
+                        vendreAutreClientStatus.style.display = 'none';
+                    } else {
+                        vaHideSuggestions();
+                        vendreAutreNom.readOnly = false;
+                        vendreAutreClientStatus.style.display = 'flex';
+                        vendreAutreFoundIcon.style.display = 'none';
+                        vendreAutreNewIcon.style.display = 'inline';
+                        vendreAutreClientFeedback.innerHTML = '<span class="text-warning"><i class="bi bi-info-circle me-1"></i>Nouveau client — saisissez le nom</span>';
+                    }
+                }).catch(() => {});
+        }, 300);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!vendreAutreTelephone.contains(e.target) && !vendreAutreSuggestions.contains(e.target)) {
+            vaHideSuggestions();
+        }
+    });
+
+    vendreAutreTelephone.addEventListener('blur', function() {
+        if (!this.value.trim()) vaResetClient();
+    });
+
+    vendreAutreDestination.addEventListener('change', function() {
+        const opt = this.options[this.selectedIndex];
+        vendreAutreMontant.textContent = opt.dataset.montant
+            ? parseFloat(opt.dataset.montant).toLocaleString('fr-FR') + ' FCFA' : '-';
+    });
+
+    // Délégation d'événement sur le conteneur (pas de binding par ligne) : le
+    // filtrage en direct remplace le contenu du tableau via innerHTML, des
+    // listeners posés individuellement sur chaque bouton seraient perdus.
+    document.getElementById('reservationsTableContainer').addEventListener('click', function(e) {
+        const btn = e.target.closest('.btn-vendre-autre');
+        if (!btn) return;
+
+        const billetId = btn.dataset.id;
+        const siege = btn.dataset.siege;
+        document.getElementById('vendreAutreBilletId').value = billetId;
+        document.getElementById('vendreAutreSiege').value = siege;
+        vendreAutreTelephone.value = '';
+        vendreAutreNom.value = '';
+        vendreAutreNom.readOnly = false;
+        vendreAutreDestination.innerHTML = '<option value="">Chargement...</option>';
+        vendreAutreMontant.textContent = '-';
+        document.getElementById('vaCash').checked = true;
+        vaHideSuggestions();
+        vaResetClient();
+
+        // Charger les destinations du voyage
+        fetch(`/api/destinations-billet/${billetId}/`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    vendreAutreDestination.innerHTML = '<option value="">Sélectionner une destination</option>' +
+                        data.destinations.map(d =>
+                            `<option value="${d.id}" data-montant="${d.montant}">
+                                ${d.ville} - ${parseFloat(d.montant).toLocaleString('fr-FR')} FCFA
+                            </option>`
+                        ).join('');
+                } else {
+                    vendreAutreDestination.innerHTML = '<option value="">Erreur de chargement</option>';
+                }
+            }).catch(() => {
+                vendreAutreDestination.innerHTML = '<option value="">Erreur de chargement</option>';
+            });
+
+        vendreAutreModal.show();
+    });
+
+    document.getElementById('vendreAutreValider').addEventListener('click', function() {
+        const billetId = document.getElementById('vendreAutreBilletId').value;
+        const telephone = vendreAutreTelephone.value.trim();
+        const nom = vendreAutreNom.value.trim();
+        const destinationId = vendreAutreDestination.value;
+        const moyenPaiement = document.querySelector('input[name="vendreAutrePaiement"]:checked').value;
+
+        if (!telephone || !nom) { alert('Le nom et le téléphone sont obligatoires'); return; }
+        if (!destinationId) { alert('Veuillez sélectionner une destination'); return; }
+
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Traitement...';
+
+        const formData = new FormData();
+        formData.append('client_telephone', telephone);
+        formData.append('client_nom', nom);
+        formData.append('destination_id', destinationId);
+        formData.append('moyen_paiement', moyenPaiement);
+
+        fetch(`/api/vendre-autre/${billetId}/`, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                vendreAutreModal.hide();
+                displayTicket(data.billet);
+                imprimerBillets([data.billet.public_id], '{{ csrf_token }}');
+                const row = document.querySelector(`button.btn-vendre-autre[data-id="${billetId}"]`);
+                if (row) row.closest('tr').remove();
+            } else {
+                alert(data.error || 'Une erreur est survenue');
+            }
+        })
+        .catch(() => alert('Erreur de connexion'))
+        .finally(() => {
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-cash me-1"></i>Valider et imprimer';
+        });
+    });
+
+    // Payer une réservation (délégation d'événement — voir commentaire ci-dessus)
+    document.getElementById('reservationsTableContainer').addEventListener('click', function(e) {
+        const btn = e.target.closest('.btn-payer');
+        if (!btn) return;
+
+        const billetId = btn.dataset.id;
+        const row = document.getElementById(`reservation-${billetId}`);
+
+        if (!confirm('Confirmer le paiement de cette réservation ?')) return;
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+        fetch(`/api/payer/${billetId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayTicket(data.billet);
+                imprimerBillets([data.billet.public_id], '{{ csrf_token }}');
+                if (row) row.remove();
+            } else {
+                alert(data.error);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-cash me-1"></i> Payer';
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur de connexion');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-cash me-1"></i> Payer';
+        });
+    });
+});
+</script>
+{% endblock %}

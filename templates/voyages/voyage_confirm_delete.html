@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}Supprimer Voyage{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Confirmer la suppression
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">Êtes-vous sûr de vouloir supprimer ce voyage ?</p>
+
+                    <div class="alert alert-info">
+                        <ul class="mb-0">
+                            <li><strong>Date:</strong> {{ object.date_depart|date:"d/m/Y" }} à {{ object.heure_depart|time:"H:i" }}</li>
+                            <li><strong>Ligne:</strong> {{ object.ligne.nom }}</li>
+                            <li><strong>Destination:</strong> {{ object.destination.ville }}</li>
+                            <li><strong>Gare:</strong> {{ object.gare.nom }}</li>
+                            {% if object.vehicule %}<li><strong>Véhicule:</strong> {{ object.vehicule.display_immat }}</li>{% endif %}
+                        </ul>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Attention:</strong> Cette action est irréversible. Tous les billets associés à ce voyage seront également supprimés.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'voyages:voyage_list' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Annuler
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash"></i> Supprimer définitivement
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,405 @@
+{% extends 'base.html' %}
+{% load custom_filters humanize %}
+
+{% block title %}Point journalier{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── En-tête ─────────────────────────────────────────── */
+  .page-header {
+    background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
+    border-radius: 14px;
+    padding: 26px 32px;
+    color: #fff;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .page-header::after {
+    pointer-events: none;
+    content: '\F282';
+    font-family: 'Bootstrap-Icons';
+    font-size: 9rem;
+    opacity: 0.06;
+    position: absolute;
+    right: 24px;
+    top: -10px;
+    line-height: 1;
+  }
+  .page-header h4 { font-weight: 700; margin: 0 0 16px; }
+  .date-input-group .form-control {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    border-radius: 8px 0 0 8px;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .date-input-group .form-control:focus {
+    background: rgba(255,255,255,0.25);
+    border-color: rgba(255,255,255,0.5);
+    box-shadow: none;
+    color: #fff;
+  }
+  .date-input-group .form-control::-webkit-calendar-picker-indicator { filter: invert(1); }
+  .btn-voir {
+    background: #fff;
+    color: var(--color-accent);
+    border: none;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 8px 20px;
+    border-radius: 0 8px 8px 0;
+    transition: box-shadow 0.15s;
+  }
+  .btn-voir:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.2); color: var(--color-accent); }
+  .date-label { font-size: 12px; opacity: 0.8; margin-bottom: 6px; font-weight: 500; }
+
+  /* ── KPI cards ───────────────────────────────────────── */
+  .kpi-card {
+    background: #fff; border: none; border-radius: 13px;
+    border-top: 4px solid #e5e7eb; padding: 20px 22px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    transition: transform 0.2s, box-shadow 0.2s;
+    height: 100%; display: flex; align-items: center; gap: 16px;
+  }
+  .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.11); }
+  .kpi-card .kpi-ico {
+    width: 52px; height: 52px; border-radius: 12px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 1.4rem;
+  }
+  .kpi-card .kpi-val { font-size: 1.6rem; font-weight: 700; line-height: 1.1; }
+  .kpi-card .kpi-lbl { font-size: 12px; color: #6b7280; margin-top: 4px; font-weight: 500; }
+  .kpi-blue   { border-top-color: #1e3260; }
+  .kpi-blue   .kpi-ico { background: #eef1f8; color: #1e3260; }
+  .kpi-blue   .kpi-val { color: #1e3260; }
+  .kpi-green  { border-top-color: #27ae60; }
+  .kpi-green  .kpi-ico { background: #f0fdf4; color: #27ae60; }
+  .kpi-green  .kpi-val { color: #27ae60; }
+  .kpi-orange { border-top-color: #E67E22; }
+  .kpi-orange .kpi-ico { background: #fff7ed; color: #E67E22; }
+  .kpi-orange .kpi-val { color: #E67E22; }
+  .kpi-red    { border-top-color: #e74c3c; }
+  .kpi-red    .kpi-ico { background: #fef2f2; color: #e74c3c; }
+  .kpi-red    .kpi-val { color: #e74c3c; }
+
+  /* ── Bénéfice net ────────────────────────────────────── */
+  .benefice-card {
+    border: none; border-radius: 13px; padding: 24px 32px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  .benefice-positif { background: linear-gradient(135deg, #052e16, #059669); color: #fff; }
+  .benefice-negatif { background: linear-gradient(135deg, #450a0a, #dc2626); color: #fff; }
+  .benefice-zero    { background: linear-gradient(135deg, #1e293b, #475569); color: #fff; }
+  .benefice-label { font-size: 13px; opacity: 0.85; font-weight: 500; }
+  .benefice-value { font-size: 2.2rem; font-weight: 700; line-height: 1; }
+  .benefice-icon  { font-size: 3rem; opacity: 0.25; }
+
+  /* ── Section cards ───────────────────────────────────── */
+  .section-card {
+    border: none; border-radius: 13px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    margin-bottom: 24px; overflow: hidden;
+  }
+  .section-header {
+    padding: 14px 20px; border-bottom: 1px solid #f0f0f0;
+    font-weight: 700; font-size: 14px; color: #1e3260;
+    display: flex; align-items: center; justify-content: space-between;
+    background: #fff;
+  }
+  .section-header i { margin-right: 8px; color: var(--color-accent); }
+
+  /* ── Table voyages ───────────────────────────────────── */
+  .vj-table th {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.4px; color: #6b7280;
+    padding: 10px 14px; background: #fafbfc;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .vj-table td { font-size: 13px; padding: 12px 14px; vertical-align: middle; }
+  .vj-table tbody tr:hover { background: #f8f9fc; }
+  .vj-table tfoot td {
+    font-weight: 700; font-size: 13px;
+    padding: 12px 14px; background: #f0f4fb;
+    border-top: 2px solid #dce5f5;
+  }
+
+  .benefice-pos { color: #059669; font-weight: 700; }
+  .benefice-neg { color: #dc2626; font-weight: 700; }
+  .benefice-zero-txt { color: #6b7280; }
+
+  .ticket-badge {
+    background: var(--color-accent); color: #fff;
+    border-radius: 12px; padding: 2px 10px;
+    font-size: 11px; font-weight: 700;
+  }
+  .ticket-badge.zero { background: #e5e7eb; color: #6b7280; }
+
+  /* ── Table guichetiers / gares ───────────────────────── */
+  .mini-table th {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.4px; color: #6b7280;
+    padding: 9px 14px; background: #fafbfc;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .mini-table td { font-size: 13px; padding: 10px 14px; vertical-align: middle; }
+  .mini-table tbody tr:hover { background: #f8f9fc; }
+
+  /* ── Vide ────────────────────────────────────────────── */
+  .empty-state { text-align: center; padding: 52px 20px; color: #9ca3af; }
+  .empty-state i { font-size: 2.8rem; display: block; margin-bottom: 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-4">
+
+  <!-- ── En-tête + filtre date ────────────────────────────────── -->
+  <div class="page-header">
+    <h4><i class="bi bi-cash-stack me-2"></i>Point journalier</h4>
+    <form method="get">
+      <div class="date-label">Sélectionner une date</div>
+      <div class="input-group date-input-group" style="max-width:320px">
+        <input type="date" name="date" class="form-control"
+               value="{{ date_selectionnee|date:'Y-m-d' }}">
+        <button type="submit" class="btn-voir">
+          <i class="bi bi-search me-1"></i>Voir
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ── KPI cards ────────────────────────────────────────────── -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-blue">
+        <div class="kpi-ico"><i class="bi bi-ticket-perforated"></i></div>
+        <div>
+          <div class="kpi-val">{{ total_billets }}</div>
+          <div class="kpi-lbl">Billets vendus</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-green">
+        <div class="kpi-ico"><i class="bi bi-cash"></i></div>
+        <div>
+          <div class="kpi-val" style="font-size:1.3rem">{{ total_montant|format_montant }}<small style="font-size:12px"> F</small></div>
+          <div class="kpi-lbl">Recette tickets</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-orange">
+        <div class="kpi-ico"><i class="bi bi-luggage"></i></div>
+        <div>
+          <div class="kpi-val" style="font-size:1.3rem">{{ total_recette_bagages|format_montant }}<small style="font-size:12px"> F</small></div>
+          <div class="kpi-lbl">Recette bagages</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-red">
+        <div class="kpi-ico"><i class="bi bi-arrow-down-circle"></i></div>
+        <div>
+          <div class="kpi-val" style="font-size:1.3rem">{{ total_depenses|format_montant }}<small style="font-size:12px"> F</small></div>
+          <div class="kpi-lbl">Total dépenses</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Bénéfice net ──────────────────────────────────────────── -->
+  <div class="mb-4">
+    <div class="benefice-card
+      {% if total_benefice_net > 0 %}benefice-positif
+      {% elif total_benefice_net < 0 %}benefice-negatif
+      {% else %}benefice-zero{% endif %}">
+      <div>
+        <div class="benefice-label">
+          <i class="bi bi-graph-up-arrow me-1"></i>Recette net du jour
+        </div>
+        <div class="benefice-value mt-1">
+          {{ total_benefice_net|format_montant }} FCFA
+        </div>
+      </div>
+      <i class="bi
+        {% if total_benefice_net > 0 %}bi-trending-up
+        {% elif total_benefice_net < 0 %}bi-trending-down
+        {% else %}bi-dash-lg{% endif %}
+        benefice-icon"></i>
+    </div>
+  </div>
+
+  <!-- ── Voyages du jour ───────────────────────────────────────── -->
+  <div class="section-card">
+    <div class="section-header">
+      <span><i class="bi bi-bus-front"></i>Voyages du jour</span>
+      {% if voyages_du_jour %}
+      <span class="badge rounded-pill" style="background:#eef2ff;color:#4338ca;font-size:12px;font-weight:600">
+        {{ voyages_du_jour|length }} voyage{{ voyages_du_jour|length|pluralize }}
+      </span>
+      {% endif %}
+    </div>
+
+    {% if voyages_du_jour %}
+    <div class="table-responsive">
+      <table class="table vj-table mb-0">
+        <thead>
+          <tr>
+            <th>Gare</th>
+            <th class="text-center">N°</th>
+            <th>Ligne</th>
+            <th class="text-center">Heure</th>
+            <th>Véhicule</th>
+            <th class="text-center">Tickets</th>
+            <th class="text-end">Rec. Tickets</th>
+            <th class="text-end">Rec. Bagages</th>
+            <th class="text-end">Dépenses</th>
+            <th class="text-end">Rec. Net</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for v in voyages_du_jour %}
+          <tr>
+            <td class="fw-semibold">{{ v.voyage.gare.nom }}</td>
+            <td class="text-center">
+              <span style="background:#eef2ff;color:#4338ca;border-radius:10px;padding:2px 8px;font-size:11px;font-weight:700">
+                {{ v.voyage.numero_depart }}
+              </span>
+            </td>
+            <td>{{ v.voyage.ligne.nom }}</td>
+            <td class="text-center fw-semibold">{{ v.voyage.heure_depart|time:"H:i" }}</td>
+            <td>
+              {% if v.voyage.vehicule %}
+                <span class="fw-semibold">{{ v.voyage.vehicule.display_immat }}</span>
+              {% else %}
+                <span class="text-muted fst-italic" style="font-size:12px">Non assigné</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              <span class="ticket-badge {% if v.nb_billets == 0 %}zero{% endif %}">
+                {{ v.nb_billets }}
+              </span>
+            </td>
+            <td class="text-end">{{ v.recette_tickets|format_montant }}</td>
+            <td class="text-end">{{ v.recette_bagages|format_montant }}</td>
+            <td class="text-end text-danger">{{ v.total_depenses|format_montant }}</td>
+            <td class="text-end
+              {% if v.benefice_net > 0 %}benefice-pos
+              {% elif v.benefice_net < 0 %}benefice-neg
+              {% else %}benefice-zero-txt{% endif %}">
+              {{ v.benefice_net|format_montant }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="5" class="fw-bold">TOTAUX</td>
+            <td class="text-center">
+              <span class="ticket-badge">{{ total_billets }}</span>
+            </td>
+            <td class="text-end">{{ total_montant|format_montant }}</td>
+            <td class="text-end">{{ total_recette_bagages|format_montant }}</td>
+            <td class="text-end text-danger">{{ total_depenses|format_montant }}</td>
+            <td class="text-end
+              {% if total_benefice_net > 0 %}benefice-pos
+              {% elif total_benefice_net < 0 %}benefice-neg
+              {% else %}benefice-zero-txt{% endif %}">
+              {{ total_benefice_net|format_montant }}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <i class="bi bi-calendar-x text-muted"></i>
+      <p class="fw-semibold">Aucun voyage pour cette date</p>
+      <p class="text-muted small">Sélectionnez une autre date pour voir les données.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ── Stats secondaires ─────────────────────────────────────── -->
+  {% if guichetiers_stats or gares_stats %}
+  <div class="row g-4">
+
+    {% if guichetiers_stats %}
+    <div class="col-lg-6">
+      <div class="section-card">
+        <div class="section-header">
+          <span><i class="bi bi-people"></i>Ventes par guichetier</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table mini-table mb-0">
+            <thead>
+              <tr>
+                <th>Guichetier</th>
+                <th class="text-center">Billets</th>
+                <th class="text-end pe-4">Montant</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for stat in guichetiers_stats %}
+              <tr>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#1e3260,var(--color-accent));color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                      {{ stat.guichetier__nom_complet|default:"?"|slice:":1"|upper }}
+                    </div>
+                    <span class="fw-semibold">{{ stat.guichetier__nom_complet|default:"Non assigné" }}</span>
+                  </div>
+                </td>
+                <td class="text-center">
+                  <span class="ticket-badge {% if stat.nb_billets == 0 %}zero{% endif %}">{{ stat.nb_billets }}</span>
+                </td>
+                <td class="text-end pe-4 fw-semibold">{{ stat.montant|format_montant }} F</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if gares_stats %}
+    <div class="col-lg-6">
+      <div class="section-card">
+        <div class="section-header">
+          <span><i class="bi bi-building"></i>Ventes par gare</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table mini-table mb-0">
+            <thead>
+              <tr>
+                <th>Gare</th>
+                <th class="text-center">Billets</th>
+                <th class="text-end pe-4">Montant</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for stat in gares_stats %}
+              <tr>
+                <td class="fw-semibold">{{ stat.voyage__gare__nom }}</td>
+                <td class="text-center">
+                  <span class="ticket-badge {% if stat.nb_billets == 0 %}zero{% endif %}">{{ stat.nb_billets }}</span>
+                </td>
+                <td class="text-end pe-4 fw-semibold">{{ stat.montant|format_montant }} F</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

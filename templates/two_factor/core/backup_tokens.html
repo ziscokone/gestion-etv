@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}Codes de secours 2FA{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6 col-md-8">
+
+            <div class="card shadow-sm border-0">
+                <div class="card-header" style="background: linear-gradient(135deg, var(--color-accent), var(--color-accent-hover)); color: white;">
+                    <div class="d-flex align-items-center gap-3">
+                        <i class="bi bi-key-fill fs-4"></i>
+                        <h5 class="mb-0">Codes de secours</h5>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Important :</strong> Conservez ces codes en lieu sûr (impression ou note).
+                        Chaque code ne peut être utilisé qu'<strong>une seule fois</strong>.
+                        Utilisez-les si vous perdez accès à votre téléphone.
+                    </div>
+
+                    <div class="row g-2 mb-4">
+                        {% for token in device.token_set.all %}
+                        <div class="col-6">
+                            <div class="bg-light border rounded p-2 text-center font-monospace fw-bold {% if token.token %}text-dark{% else %}text-decoration-line-through text-muted{% endif %}">
+                                {{ token.token }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <form method="post">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-danger w-100">
+                                <i class="bi bi-arrow-repeat me-2"></i>Générer de nouveaux codes
+                            </button>
+                        </form>
+                        <a href="{% url 'two_factor:profile' %}" class="btn btn-primary">
+                            <i class="bi bi-arrow-left me-2"></i>Retour au profil sécurité
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

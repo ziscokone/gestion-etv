@@ -1,0 +1,628 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load static %}
+
+{% block title %}Rapport Réparations Véhicules{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── En-tête ─────────────────────────────────────────── */
+  .rapport-header {
+    background: linear-gradient(135deg, #2d4a7a 0%, var(--color-accent) 100%);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 28px;
+    color: #fff;
+  }
+  .rapport-header h4 { font-weight: 700; margin-bottom: 4px; }
+  .rapport-header .periode-badge {
+    background: rgba(255,255,255,0.18);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 13px;
+    display: inline-block;
+    margin-top: 6px;
+  }
+
+  /* ── Cards stats ─────────────────────────────────────── */
+  .kpi-card {
+    background: #fff; border: none; border-radius: 13px;
+    border-top: 4px solid #e5e7eb; padding: 20px 22px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    transition: transform 0.2s, box-shadow 0.2s;
+    height: 100%; display: flex; align-items: center; gap: 16px;
+  }
+  .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.11); }
+  .kpi-card .kpi-ico {
+    width: 52px; height: 52px; border-radius: 12px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 1.4rem;
+  }
+  .kpi-card .kpi-value { font-size: 1.6rem; font-weight: 700; line-height: 1.2; }
+  .kpi-card .kpi-label { font-size: 12px; color: #6b7280; margin-top: 4px; }
+  .kpi-blue   { border-top-color: #1e3260; }
+  .kpi-blue   .kpi-ico { background: #eef1f8; color: #1e3260; }
+  .kpi-blue   .kpi-value { color: #1e3260; }
+  .kpi-orange { border-top-color: #E67E22; }
+  .kpi-orange .kpi-ico { background: #fff7ed; color: #E67E22; }
+  .kpi-orange .kpi-value { color: #E67E22; }
+  .kpi-green  { border-top-color: #27ae60; }
+  .kpi-green  .kpi-ico { background: #f0fdf4; color: #27ae60; }
+  .kpi-green  .kpi-value { color: #27ae60; }
+  .kpi-purple { border-top-color: #4338ca; }
+  .kpi-purple .kpi-ico { background: #eef2ff; color: #4338ca; }
+  .kpi-purple .kpi-value { color: #4338ca; }
+
+  /* ── Section cards ───────────────────────────────────── */
+  .section-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    margin-bottom: 24px;
+  }
+  .section-card .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid #f0f0f0;
+    font-weight: 600;
+    font-size: 14px;
+    color: #2d4a7a;
+    border-radius: 12px 12px 0 0;
+    background: #fff;
+  }
+  .section-card .section-header i { font-size: 16px; margin-right: 8px; }
+
+  /* ── Filtres ─────────────────────────────────────────── */
+  .filter-zone {
+    background: #f8f9fc;
+    border: 1px solid #e8ecf3;
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 24px;
+  }
+  .filter-zone .form-label { font-size: 12px; font-weight: 600; color: #555; margin-bottom: 4px; }
+  .filter-zone .btn-analyser {
+    background: var(--color-accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    padding: 9px 22px;
+  }
+  .filter-zone .btn-analyser:hover { background: var(--color-accent-hover); }
+
+  /* ── Heatmap ─────────────────────────────────────────── */
+  .heatmap-wrapper { overflow-x: auto; }
+  .heatmap-table { border-collapse: separate; border-spacing: 3px; width: 100%; min-width: 700px; }
+  .heatmap-table th {
+    background: #2d4a7a;
+    color: #fff;
+    padding: 9px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+  .heatmap-table th.th-total { background: #1a2e4a; }
+  .heatmap-table td.td-vehicle {
+    background: #1e3260;
+    color: #fff;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 9px 12px;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+  .heatmap-table td.td-amount {
+    padding: 7px 10px;
+    border-radius: 5px;
+    text-align: right;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: default;
+    transition: transform 0.1s, box-shadow 0.1s;
+    white-space: nowrap;
+  }
+  .heatmap-table td.td-amount:hover {
+    transform: scale(1.06);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    z-index: 10;
+    position: relative;
+  }
+  .heatmap-table td.td-total {
+    padding: 9px 12px;
+    border-radius: 5px;
+    text-align: right;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .heat-none     { background: #f0f3f8; color: #aab0bc; font-style: italic; }
+  .heat-low      { background: #d1fae5; color: #065f46; }
+  .heat-mid      { background: #fef3c7; color: #78350f; }
+  .heat-high     { background: #fde8e8; color: #7f1d1d; }
+  .heat-critical { background: #dc3545; color: #fff; font-weight: 700; }
+  .total-row td  { border-top: 2px solid #dee2e6; }
+  .total-row .td-vehicle { background: #1a2e4a; }
+
+  .heatmap-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    font-size: 12px;
+    margin-top: 12px;
+  }
+  .legend-box { width: 16px; height: 16px; border-radius: 3px; display: inline-block; vertical-align: middle; margin-right: 4px; }
+
+  /* ── Filtre interactif ───────────────────────────────── */
+  .type-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+  .type-pill {
+    border: 2px solid #d0d7e6;
+    border-radius: 20px;
+    padding: 5px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    background: #fff;
+    color: #555;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .type-pill:hover { border-color: var(--color-accent); color: var(--color-accent); }
+  .type-pill.active { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
+
+  .chart-info-bar {
+    background: #f0f4fb;
+    border: 1px solid #dce5f5;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .chart-container { position: relative; height: 280px; }
+
+  /* ── Graphiques types ────────────────────────────────── */
+  .chart-types-container { position: relative; height: 280px; }
+
+  /* ── Alert niveaux ───────────────────────────────────── */
+  .niveau-badge {
+    display: inline-block;
+    border-radius: 12px;
+    padding: 2px 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .niveau-critique    { background: #fde8e8; color: #991b1b; }
+  .niveau-surveillance{ background: #fef3c7; color: #78350f; }
+  .niveau-normal      { background: #d1fae5; color: #065f46; }
+
+  /* ── Vide ────────────────────────────────────────────── */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #9ca3af;
+  }
+  .empty-state i { font-size: 3rem; display: block; margin-bottom: 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+  <!-- ── En-tête ──────────────────────────────────────────────── -->
+  <div class="rapport-header d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div>
+      <h4><i class="bi bi-tools me-2"></i>Rapport des Réparations Véhicules</h4>
+      <div class="periode-badge">
+        <i class="bi bi-calendar3 me-1"></i>
+        {{ date_debut }} &rarr; {{ date_fin }}
+      </div>
+    </div>
+    <a href="{% url 'vehicules:reparation_list' %}" class="btn btn-sm btn-light fw-semibold">
+      <i class="bi bi-list-ul me-1"></i>Liste des réparations
+    </a>
+  </div>
+
+  <!-- ── Filtres ───────────────────────────────────────────────── -->
+  <div class="filter-zone">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label"><i class="bi bi-calendar-event me-1"></i>Date début</label>
+        <input type="date" name="date_debut" class="form-control form-control-sm" value="{{ date_debut }}" required>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label"><i class="bi bi-calendar-event-fill me-1"></i>Date fin</label>
+        <input type="date" name="date_fin" class="form-control form-control-sm" value="{{ date_fin }}" required>
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-analyser w-100">
+          <i class="bi bi-search me-1"></i>Analyser
+        </button>
+      </div>
+      <div class="col-md-2">
+        <a href="?date_debut={{ date_debut }}&date_fin={{ date_fin }}" class="btn btn-sm btn-outline-secondary w-100">
+          <i class="bi bi-arrow-clockwise me-1"></i>Réinitialiser
+        </a>
+      </div>
+    </form>
+  </div>
+
+  {% if not vehicules_stats and not types_stats %}
+  <!-- ── État vide ──────────────────────────────────────────────── -->
+  <div class="section-card">
+    <div class="empty-state">
+      <i class="bi bi-search text-muted"></i>
+      <p class="fw-semibold">Aucune réparation trouvée pour cette période.</p>
+      <p class="text-muted small">Modifiez la plage de dates et réessayez.</p>
+    </div>
+  </div>
+
+  {% else %}
+
+  <!-- ── KPI ───────────────────────────────────────────────────── -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-blue">
+        <div class="kpi-ico"><i class="bi bi-cash-stack"></i></div>
+        <div>
+          <div class="kpi-value">{{ cout_total|floatformat:0|intcomma }}<small style="font-size:13px"> F</small></div>
+          <div class="kpi-label"><i class="bi bi-currency-exchange me-1"></i>Coût total réparations</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-orange">
+        <div class="kpi-ico"><i class="bi bi-wrench"></i></div>
+        <div>
+          <div class="kpi-value">{{ nb_reparations }}</div>
+          <div class="kpi-label"><i class="bi bi-tools me-1"></i>Nombre de réparations</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-green">
+        <div class="kpi-ico"><i class="bi bi-truck"></i></div>
+        <div>
+          <div class="kpi-value">{{ nb_vehicules }}</div>
+          <div class="kpi-label"><i class="bi bi-bus-front me-1"></i>Véhicules concernés</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-purple">
+        <div class="kpi-ico"><i class="bi bi-graph-up"></i></div>
+        <div>
+          <div class="kpi-value">{{ cout_moyen_vehicule|floatformat:0|intcomma }}<small style="font-size:13px"> F</small></div>
+          <div class="kpi-label"><i class="bi bi-calculator me-1"></i>Coût moyen / véhicule</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Analyse par type ──────────────────────────────────────── -->
+  {% if types_stats %}
+  <div class="section-card">
+    <div class="section-header">
+      <span><i class="bi bi-pie-chart-fill"></i>Analyse par type de réparation</span>
+      <small class="text-muted fw-normal">{{ types_stats|length }} type{{ types_stats|length|pluralize }} actif{{ types_stats|length|pluralize }}</small>
+    </div>
+    <div class="card-body p-4">
+      <div class="row">
+        <div class="col-lg-7 mb-3">
+          <div class="chart-types-container">
+            <canvas id="barChartTypes"></canvas>
+          </div>
+        </div>
+        <div class="col-lg-5 mb-3">
+          <div class="chart-types-container">
+            <canvas id="doughnutChartTypes"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── Matrice heatmap ───────────────────────────────────────── -->
+  {% if vehicules_stats %}
+  <div class="section-card">
+    <div class="section-header">
+      <span><i class="bi bi-grid-3x3"></i>Matrice des coûts — Véhicule × Type de réparation</span>
+    </div>
+    <div class="card-body p-4">
+      <div class="heatmap-wrapper">
+        <table class="heatmap-table" id="heatmapTable">
+          <thead>
+            <tr>
+              <th>Véhicule</th>
+              {% for nom in types_actifs_noms %}<th>{{ nom }}</th>{% endfor %}
+              <th class="th-total">TOTAL</th>
+            </tr>
+          </thead>
+          <tbody id="heatmapBody">
+            <!-- Généré par JS -->
+          </tbody>
+        </table>
+      </div>
+      <div class="heatmap-legend mt-3">
+        <span class="text-muted fw-semibold me-2" style="font-size:11px">Intensité :</span>
+        <span><span class="legend-box" style="background:#f0f3f8;border:1px solid #ddd"></span>Aucune</span>
+        <span><span class="legend-box" style="background:#d1fae5"></span>&lt; 1M FCFA</span>
+        <span><span class="legend-box" style="background:#fef3c7"></span>1M – 3M FCFA</span>
+        <span><span class="legend-box" style="background:#fde8e8"></span>3M – 6M FCFA</span>
+        <span><span class="legend-box" style="background:#dc3545"></span>&gt; 6M FCFA</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Filtre interactif ─────────────────────────────────────── -->
+  <div class="section-card">
+    <div class="section-header">
+      <span><i class="bi bi-bar-chart-line"></i>Détail par type — Comparaison véhicules</span>
+      <small class="text-muted fw-normal">Cliquer sur un type pour voir la répartition</small>
+    </div>
+    <div class="card-body p-4">
+      <div class="type-pills" id="typePills">
+        <!-- Généré par JS -->
+      </div>
+      <div class="chart-info-bar" id="chartInfoBar">
+        <i class="bi bi-info-circle text-primary"></i>
+        <span>Type : <strong id="infoType">—</strong> &nbsp;|&nbsp; Total : <strong id="infoTotal">—</strong> &nbsp;|&nbsp; <strong id="infoCount">—</strong> véhicule(s)</span>
+      </div>
+      <div class="chart-container">
+        <canvas id="detailChart"></canvas>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% endif %}{# fin if vehicules_stats/types_stats #}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script id="types-data"    type="application/json">{{ types_stats_json|safe }}</script>
+<script id="vehicules-data" type="application/json">{{ vehicules_stats_json|safe }}</script>
+<script id="matrice-data"  type="application/json">{{ matrice_json|safe }}</script>
+<script id="types-noms"    type="application/json">{{ types_actifs_noms_json|safe }}</script>
+
+<script src="{% static 'vendor/chartjs/chart.umd.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  /* ── Helpers ─────────────────────────────────────────────────── */
+  function fmt(v) {
+    if (!v || v === 0) return '—';
+    return v.toLocaleString('fr-FR') + ' F';
+  }
+  function fmtM(v) {
+    if (!v || v === 0) return '0';
+    if (v >= 1000000) return (v / 1000000).toFixed(1) + 'M';
+    if (v >= 1000) return (v / 1000).toFixed(0) + 'k';
+    return v.toLocaleString('fr-FR');
+  }
+  function heatClass(v) {
+    if (!v || v === 0) return 'heat-none';
+    if (v > 6000000) return 'heat-critical';
+    if (v > 3000000) return 'heat-high';
+    if (v > 1000000) return 'heat-mid';
+    return 'heat-low';
+  }
+  function barColor(v) {
+    if (!v || v === 0) return 'rgba(200,200,200,0.3)';
+    if (v > 6000000) return 'rgba(220,53,69,0.85)';
+    if (v > 3000000) return 'rgba(253,130,74,0.85)';
+    if (v > 1000000) return 'rgba(253,211,72,0.85)';
+    return 'rgba(16,185,129,0.85)';
+  }
+
+  var COULEURS = [
+    '#1e3260','#059669','#d97706','#7c3aed','#dc3545',
+    '#0891b2','#db2777','#65a30d','#ea580c','#6366f1',
+    '#0f766e','#b45309','#9333ea','#16a34a','#e11d48'
+  ];
+
+  /* ── Données ─────────────────────────────────────────────────── */
+  var typesData   = [];
+  var matriceData = [];
+  var typesNoms   = [];
+
+  try { typesData   = JSON.parse(document.getElementById('types-data').textContent);    } catch(e) {}
+  try { matriceData = JSON.parse(document.getElementById('matrice-data').textContent);  } catch(e) {}
+  try { typesNoms   = JSON.parse(document.getElementById('types-noms').textContent);    } catch(e) {}
+
+  /* ── Graphiques par type ─────────────────────────────────────── */
+  if (typesData.length > 0) {
+    var tLabels     = typesData.map(function(t) { return t.label; });
+    var tMontants   = typesData.map(function(t) { return t.cout; });
+    var tPourcentages = typesData.map(function(t) { return t.pourcentage; });
+    var tCouleurs   = COULEURS.slice(0, tLabels.length);
+
+    var barEl = document.getElementById('barChartTypes');
+    if (barEl) {
+      new Chart(barEl, {
+        type: 'bar',
+        data: {
+          labels: tLabels,
+          datasets: [{ label: 'Montant', data: tMontants, backgroundColor: tCouleurs, borderRadius: 5 }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: function(ctx) { return fmt(ctx.parsed.x); } } }
+          },
+          scales: {
+            x: { beginAtZero: true, ticks: { callback: function(v) { return fmtM(v); }, font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
+            y: { ticks: { font: { size: 12 } }, grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    var doughEl = document.getElementById('doughnutChartTypes');
+    if (doughEl) {
+      new Chart(doughEl, {
+        type: 'doughnut',
+        data: {
+          labels: tLabels,
+          datasets: [{ data: tPourcentages, backgroundColor: tCouleurs, borderWidth: 2, hoverOffset: 8 }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { padding: 10, font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  return ctx.label + ' : ' + ctx.parsed.toFixed(1) + '% (' + fmt(tMontants[ctx.dataIndex]) + ')';
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+  }
+
+  /* ── Heatmap ─────────────────────────────────────────────────── */
+  var tbody = document.getElementById('heatmapBody');
+  if (tbody && matriceData.length > 0) {
+    // Totaux par type pour la ligne TOTAL
+    var totalParType = {};
+    typesNoms.forEach(function(n) { totalParType[n] = 0; });
+
+    matriceData.forEach(function(row) {
+      var tr = document.createElement('tr');
+      var tdV = document.createElement('td');
+      tdV.className = 'td-vehicle';
+      tdV.textContent = row.label;
+      tr.appendChild(tdV);
+
+      typesNoms.forEach(function(nom) {
+        var v = row.costs[nom] || 0;
+        totalParType[nom] = (totalParType[nom] || 0) + v;
+        var td = document.createElement('td');
+        td.className = 'td-amount ' + heatClass(v);
+        td.textContent = v > 0 ? fmtM(v) : '—';
+        td.title = v > 0 ? v.toLocaleString('fr-FR') + ' FCFA' : 'Aucune réparation';
+        tr.appendChild(td);
+      });
+
+      var tdTotal = document.createElement('td');
+      tdTotal.className = 'td-total ' + heatClass(row.total);
+      tdTotal.textContent = fmtM(row.total);
+      tdTotal.title = row.total.toLocaleString('fr-FR') + ' FCFA';
+      tr.appendChild(tdTotal);
+      tbody.appendChild(tr);
+    });
+
+    // Ligne TOTAL
+    var totalGlobal = matriceData.reduce(function(s, r) { return s + r.total; }, 0);
+    var trTotal = document.createElement('tr');
+    trTotal.className = 'total-row';
+    var tdLbl = document.createElement('td');
+    tdLbl.className = 'td-vehicle';
+    tdLbl.textContent = 'TOTAL';
+    trTotal.appendChild(tdLbl);
+    typesNoms.forEach(function(nom) {
+      var td = document.createElement('td');
+      td.className = 'td-total ' + heatClass(totalParType[nom]);
+      td.textContent = totalParType[nom] > 0 ? fmtM(totalParType[nom]) : '—';
+      td.title = (totalParType[nom] || 0).toLocaleString('fr-FR') + ' FCFA';
+      trTotal.appendChild(td);
+    });
+    var tdTotalGlobal = document.createElement('td');
+    tdTotalGlobal.className = 'td-total heat-critical';
+    tdTotalGlobal.style.background = '#2d4a7a';
+    tdTotalGlobal.style.color = '#fff';
+    tdTotalGlobal.textContent = fmtM(totalGlobal);
+    tdTotalGlobal.title = totalGlobal.toLocaleString('fr-FR') + ' FCFA';
+    trTotal.appendChild(tdTotalGlobal);
+    tbody.appendChild(trTotal);
+  }
+
+  /* ── Filtre interactif ───────────────────────────────────────── */
+  var pillsContainer = document.getElementById('typePills');
+  var detailChartEl  = document.getElementById('detailChart');
+  var infoType       = document.getElementById('infoType');
+  var infoTotal      = document.getElementById('infoTotal');
+  var infoCount      = document.getElementById('infoCount');
+  var detailChart    = null;
+
+  if (pillsContainer && detailChartEl && typesNoms.length > 0 && matriceData.length > 0) {
+
+    function buildChart(typeNom) {
+      var labels  = matriceData.map(function(r) { return r.label; });
+      var values  = matriceData.map(function(r) { return r.costs[typeNom] || 0; });
+      var colors  = values.map(function(v) { return barColor(v); });
+      var total   = values.reduce(function(s, v) { return s + v; }, 0);
+      var count   = values.filter(function(v) { return v > 0; }).length;
+
+      infoType.textContent  = typeNom;
+      infoTotal.textContent = fmt(total);
+      infoCount.textContent = count;
+
+      if (detailChart) { detailChart.destroy(); }
+      detailChart = new Chart(detailChartEl, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: typeNom,
+            data: values,
+            backgroundColor: colors,
+            borderRadius: 6,
+            borderSkipped: false
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: function(ctx) { return ctx.raw > 0 ? fmt(ctx.raw) : 'Aucune réparation'; } } }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+            y: {
+              beginAtZero: true,
+              ticks: { callback: function(v) { return fmtM(v); }, font: { size: 11 } },
+              grid: { color: 'rgba(0,0,0,0.05)' }
+            }
+          }
+        }
+      });
+    }
+
+    typesNoms.forEach(function(nom, i) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'type-pill' + (i === 0 ? ' active' : '');
+      btn.textContent = nom;
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.type-pill').forEach(function(p) { p.classList.remove('active'); });
+        btn.classList.add('active');
+        buildChart(nom);
+      });
+      pillsContainer.appendChild(btn);
+    });
+
+    // Afficher le premier type par défaut
+    buildChart(typesNoms[0]);
+  }
+
+});
+</script>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Modifier{% else %}Créer{% endif %} une Gare - Gestion Billetterie{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">
+                    <i class="bi bi-building me-2 text-accent"></i>
+                    {% if object %}Modifier la gare{% else %}Nouvelle gare{% endif %}
+                </h2>
+                <a href="{% url 'gares:gare_list' %}" class="btn btn-danger text-white fw-bold">
+                    <i class="bi bi-arrow-left me-2"></i>Retour
+                </a>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label class="form-label">Nom de la gare *</label>
+                                {{ form.nom }}
+                                {% if form.nom.errors %}
+                                    <div class="text-danger small">{{ form.nom.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Code *</label>
+                                {{ form.code }}
+                                <small class="text-muted">Code unique pour les tickets</small>
+                                {% if form.code.errors %}
+                                    <div class="text-danger small">{{ form.code.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Ville *</label>
+                                {{ form.ville }}
+                                {% if form.ville.errors %}
+                                    <div class="text-danger small">{{ form.ville.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Téléphone</label>
+                                {{ form.telephone }}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Adresse</label>
+                            {{ form.adresse }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Compagnie *</label>
+                            {{ form.compagnie }}
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="form-check">
+                                {{ form.active }}
+                                <label class="form-check-label" for="{{ form.active.id_for_label }}">
+                                    Gare active
+                                </label>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{% url 'gares:gare_list' %}" class="btn btn-outline-secondary">Annuler</a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-2"></i>
+                                {% if object %}Enregistrer{% else %}Créer{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

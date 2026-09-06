@@ -1,0 +1,20 @@
+# Dépendances additionnelles pour un poste guichet autonome hors-ligne (Windows).
+# Installation : pip install -r requirements.txt -r requirements-gare-locale.txt
+-r requirements.txt
+
+# Serveur WSGI pour un déploiement local durable (équivalent Windows de Gunicorn,
+# utilisé en production sur le VPS — voir DEPLOIEMENT_PRODUCTION.md).
+waitress>=3.0
+
+# Client HTTP utilisé par les commandes sync_push/sync_pull (apps.sync) pour
+# dialoguer avec le serveur central.
+requests>=2.31
+
+# Impression thermique ESC/POS directe sur l'imprimante du poste (voir
+# apps/guichet/impression.py) — remplace QZ Tray/window.print(). pywin32
+# fournit le backend Win32Raw (envoie les octets bruts via le driver Windows
+# déjà installé, compatible Epson comme Xprinter). Marqueur sys_platform pour
+# que ce fichier reste installable sur une machine de dev Linux (backends
+# 'dummy'/'file', qui n'ont pas besoin de pywin32).
+python-escpos>=3.1
+pywin32>=306 ; sys_platform == 'win32'

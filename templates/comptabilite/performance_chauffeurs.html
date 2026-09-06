@@ -1,0 +1,395 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load static %}
+
+{% block title %}Performance Chauffeurs{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── En-tête ─────────────────────────────────────────── */
+  .rapport-header {
+    background: linear-gradient(135deg, #2d4a7a 0%, var(--color-accent) 100%);
+    border-radius: 14px;
+    padding: 28px 32px;
+    color: #fff;
+    margin-bottom: 28px;
+  }
+  .rapport-header h4 { font-weight: 700; margin-bottom: 4px; }
+  .periode-badge {
+    background: rgba(255,255,255,0.18);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 13px;
+    display: inline-block;
+    margin-top: 6px;
+  }
+
+  /* ── KPI ─────────────────────────────────────────────── */
+  .kpi-card {
+    background: #fff; border: none; border-radius: 13px;
+    border-top: 4px solid #e5e7eb; padding: 20px 22px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    transition: transform 0.2s, box-shadow 0.2s;
+    height: 100%; display: flex; align-items: center; gap: 16px;
+  }
+  .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.11); }
+  .kpi-card .kpi-ico {
+    width: 52px; height: 52px; border-radius: 12px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 1.4rem;
+  }
+  .kpi-card .kpi-val { font-size: 1.7rem; font-weight: 700; line-height: 1.2; }
+  .kpi-card .kpi-lbl { font-size: 12px; color: #6b7280; margin-top: 4px; }
+  .kpi-blue   { border-top-color: #1e3260; }
+  .kpi-blue   .kpi-ico { background: #eef1f8; color: #1e3260; }
+  .kpi-blue   .kpi-val { color: #1e3260; }
+  .kpi-green  { border-top-color: #27ae60; }
+  .kpi-green  .kpi-ico { background: #f0fdf4; color: #27ae60; }
+  .kpi-green  .kpi-val { color: #27ae60; }
+  .kpi-orange { border-top-color: #E67E22; }
+  .kpi-orange .kpi-ico { background: #fff7ed; color: #E67E22; }
+  .kpi-orange .kpi-val { color: #E67E22; }
+  .kpi-purple { border-top-color: #4338ca; }
+  .kpi-purple .kpi-ico { background: #eef2ff; color: #4338ca; }
+  .kpi-purple .kpi-val { color: #4338ca; }
+
+  /* ── Filtre ──────────────────────────────────────────── */
+  .filter-zone {
+    background: #f8f9fc; border: 1px solid #e5e7eb;
+    border-radius: 10px; padding: 16px 20px; margin-bottom: 24px;
+  }
+  .filter-zone .form-label { font-size: 12px; font-weight: 600; color: #555; margin-bottom: 3px; }
+
+  /* ── Section card ────────────────────────────────────── */
+  .section-card { border: none; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); margin-bottom: 24px; }
+  .section-header {
+    padding: 16px 20px; border-bottom: 1px solid #f0f0f0;
+    font-weight: 600; font-size: 14px; color: #2d4a7a;
+    display: flex; justify-content: space-between; align-items: center;
+    border-radius: 12px 12px 0 0;
+  }
+  .section-header i { margin-right: 8px; }
+
+  /* ── Graphique ───────────────────────────────────────── */
+  .chart-container { position: relative; }
+
+  /* ── Tableau classement ──────────────────────────────── */
+  .rank-table th { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+  .rank-table td { font-size: 13px; vertical-align: middle; }
+  .rank-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 50%;
+    font-size: 12px; font-weight: 700;
+  }
+  .rank-1 { background: #fef3c7; color: #92400e; }
+  .rank-2 { background: #f1f5f9; color: #475569; }
+  .rank-3 { background: #fef3c7; color: #78350f; }
+  .rank-other { background: #f3f4f6; color: #6b7280; }
+
+  .progress-bar-custom {
+    height: 8px; border-radius: 4px; background: #e5e7eb; overflow: hidden;
+  }
+  .progress-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #1e3260, #059669); }
+
+  .zero-badge { background: #fee2e2; color: #991b1b; border-radius: 10px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
+
+  /* ── Vide ────────────────────────────────────────────── */
+  .empty-state { text-align: center; padding: 60px 20px; color: #9ca3af; }
+  .empty-state i { font-size: 3rem; display: block; margin-bottom: 12px; }
+
+  /* Pagination — bleu nuit de l'application */
+  .pagination-nuit { gap: 6px; }
+  .pagination-nuit .page-item .page-link {
+      border: 1.5px solid var(--color-accent);
+      color: var(--color-accent);
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 12.5px;
+      padding: 6px 14px;
+      background: #fff;
+      transition: all 0.15s;
+  }
+  .pagination-nuit .page-item .page-link:hover {
+      background: var(--color-accent);
+      color: #fff;
+  }
+  .pagination-nuit .page-item.active .page-link {
+      background: var(--color-accent);
+      border-color: var(--color-accent);
+      color: #fff;
+      cursor: default;
+      font-weight: 700;
+  }
+  .pagination-nuit .page-item.active .page-link:hover {
+      background: var(--color-accent);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+  <!-- ── En-tête ──────────────────────────────────────────────── -->
+  <div class="rapport-header d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div>
+      <h4><i class="bi bi-person-badge me-2"></i>Performance des Chauffeurs</h4>
+      <div class="periode-badge">
+        <i class="bi bi-calendar3 me-1"></i>{{ date_debut }} &rarr; {{ date_fin }}
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Filtre ────────────────────────────────────────────────── -->
+  <div class="filter-zone">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label"><i class="bi bi-calendar-event me-1"></i>Date début</label>
+        <input type="date" name="date_debut" class="form-control form-control-sm" value="{{ date_debut }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label"><i class="bi bi-calendar-event-fill me-1"></i>Date fin</label>
+        <input type="date" name="date_fin" class="form-control form-control-sm" value="{{ date_fin }}">
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary btn-sm w-100">
+          <i class="bi bi-search me-1"></i>Analyser
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ── KPIs ──────────────────────────────────────────────────── -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-blue">
+        <div class="kpi-ico"><i class="bi bi-bus-front"></i></div>
+        <div>
+          <div class="kpi-val">{{ total_voyages }}</div>
+          <div class="kpi-lbl"><i class="bi bi-collection me-1"></i>Total voyages (période)</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-green">
+        <div class="kpi-ico"><i class="bi bi-people"></i></div>
+        <div>
+          <div class="kpi-val">{{ nb_chauffeurs }}</div>
+          <div class="kpi-lbl"><i class="bi bi-person-check me-1"></i>Chauffeurs actifs</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-orange">
+        <div class="kpi-ico"><i class="bi bi-bar-chart"></i></div>
+        <div>
+          <div class="kpi-val">{{ nb_avec_voyage }}</div>
+          <div class="kpi-lbl"><i class="bi bi-activity me-1"></i>Avec voyages sur la période</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-purple">
+        <div class="kpi-ico"><i class="bi bi-trophy"></i></div>
+        <div>
+          <div class="kpi-val">
+            {% if meilleur and meilleur.nb_voyages > 0 %}{{ meilleur.nb_voyages }}{% else %}—{% endif %}
+          </div>
+          <div class="kpi-lbl">
+            <i class="bi bi-star me-1"></i>
+            {% if meilleur and meilleur.nb_voyages > 0 %}
+              Record : {{ meilleur.nom_complet|truncatechars:20 }}
+            {% else %}
+              Meilleur chauffeur
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if total_voyages == 0 %}
+  <div class="section-card">
+    <div class="empty-state">
+      <i class="bi bi-bus-front text-muted"></i>
+      <p class="fw-semibold">Aucun voyage trouvé sur cette période.</p>
+      <p class="text-muted small">Modifiez les dates et relancez l'analyse.</p>
+    </div>
+  </div>
+
+  {% else %}
+
+  <!-- ── Graphique comparaison ─────────────────────────────────── -->
+  <div class="section-card">
+    <div class="section-header">
+      <span><i class="bi bi-bar-chart-line"></i>Classement — Nombre de voyages par chauffeur</span>
+      <small class="text-muted fw-normal">{{ nb_avec_voyage }} chauffeur{{ nb_avec_voyage|pluralize }} actif{{ nb_avec_voyage|pluralize }}</small>
+    </div>
+    <div class="card-body p-4">
+      <div style="max-height:460px; overflow-y:auto;">
+        <div class="chart-container" style="position:relative; height:{{ chart_height_px }}px;">
+          <canvas id="perfChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tableau classement ────────────────────────────────────── -->
+  <div class="section-card">
+    <div class="section-header">
+      <span><i class="bi bi-list-ol"></i>Classement détaillé</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover rank-table align-middle mb-0">
+          <thead>
+            <tr>
+              <th class="ps-4" style="width:60px">Rang</th>
+              <th>Chauffeur</th>
+              <th class="text-center" style="width:120px">Voyages</th>
+              <th style="min-width:200px">Progression</th>
+              <th class="text-end pe-4" style="width:100px">Fiche</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for chauffeur in chauffeurs_page %}
+            {% with rang=page_obj.start_index|add:forloop.counter0 %}
+            <tr>
+              <td class="ps-4">
+                {% if rang == 1 and chauffeur.nb_voyages > 0 %}
+                  <span class="rank-badge rank-1">🥇</span>
+                {% elif rang == 2 and chauffeur.nb_voyages > 0 %}
+                  <span class="rank-badge rank-2">🥈</span>
+                {% elif rang == 3 and chauffeur.nb_voyages > 0 %}
+                  <span class="rank-badge rank-3">🥉</span>
+                {% else %}
+                  <span class="rank-badge rank-other">{{ rang }}</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="fw-semibold" style="font-size:13px">{{ chauffeur.nom_complet }}</div>
+                <div class="text-muted" style="font-size:11px"><i class="bi bi-card-text me-1"></i>{{ chauffeur.numero_permis }}</div>
+              </td>
+              <td class="text-center">
+                {% if chauffeur.nb_voyages > 0 %}
+                  <span class="fw-bold" style="font-size:16px; color:var(--color-accent)">{{ chauffeur.nb_voyages }}</span>
+                {% else %}
+                  <span class="zero-badge">0</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if meilleur.nb_voyages > 0 %}
+                <div class="progress-bar-custom">
+                  <div class="progress-fill" style="width:{% widthratio chauffeur.nb_voyages meilleur.nb_voyages 100 %}%"></div>
+                </div>
+                {% endif %}
+              </td>
+              <td class="text-end pe-4">
+                <a href="{% url 'personnel:chauffeur_detail' chauffeur.pk %}?tab=activite&date_debut={{ date_debut }}&date_fin={{ date_fin }}"
+                   class="btn btn-sm btn-outline-primary" title="Voir fiche activité">
+                  <i class="bi bi-eye"></i>
+                </a>
+              </td>
+            </tr>
+            {% endwith %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if is_paginated %}
+      <nav class="d-flex justify-content-center py-3 border-top">
+        <ul class="pagination pagination-sm pagination-nuit mb-0">
+          {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?page=1&date_debut={{ date_debut }}&date_fin={{ date_fin }}">Première</a>
+            </li>
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.previous_page_number }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}">Précédent</a>
+            </li>
+          {% endif %}
+          <li class="page-item active">
+            <span class="page-link">Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span>
+          </li>
+          {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.next_page_number }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}">Suivant</a>
+            </li>
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}">Dernière</a>
+            </li>
+          {% endif %}
+        </ul>
+      </nav>
+      {% endif %}
+
+    </div>
+  </div>
+
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/chartjs/chart.umd.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var ctx = document.getElementById('perfChart');
+  if (!ctx) return;
+
+  var labels = {{ chart_labels_json|safe }};
+  var data   = {{ chart_data_json|safe }};
+  if (!labels.length) return;
+
+  var maxVal = Math.max.apply(null, data) || 1;
+
+  // Couleur selon performance : top 25% vert, médian bleu, bas rouge
+  var colors = data.map(function(v) {
+    if (v >= maxVal * 0.75) return 'rgba(5,150,105,0.82)';
+    if (v >= maxVal * 0.40) return 'rgba(74,111,165,0.82)';
+    return 'rgba(220,53,69,0.75)';
+  });
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Nombre de voyages',
+        data: data,
+        backgroundColor: colors,
+        borderRadius: 6,
+        borderSkipped: false,
+        maxBarThickness: 28,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              var v = ctx.parsed.x;
+              return v + ' voyage' + (v > 1 ? 's' : '');
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: { stepSize: 1, font: { size: 11 } },
+          grid: { color: 'rgba(0,0,0,0.05)' }
+        },
+        y: {
+          ticks: { font: { size: 12 }, color: '#374151' },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+});
+</script>
+{% endblock %}

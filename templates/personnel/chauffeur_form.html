@@ -1,0 +1,290 @@
+{% extends 'base.html' %}
+{% block title %}{% if object %}Modifier — {{ object.nom_complet }}{% else %}Nouveau chauffeur{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── En-tête formulaire ───────────────────────────────── */
+  .form-header {
+    background: linear-gradient(135deg, #2d4a7a 0%, var(--color-accent) 100%);
+    border-radius: 14px;
+    padding: 28px 32px;
+    color: #fff;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .form-header::after {
+    content: '\F4C4';
+    font-family: 'Bootstrap-Icons';
+    font-size: 9rem;
+    opacity: 0.06;
+    position: absolute;
+    right: 24px;
+    top: -10px;
+    line-height: 1;
+    pointer-events: none;
+  }
+  .form-header .avatar {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem;
+    flex-shrink: 0;
+  }
+  .form-header h4 { font-weight: 700; margin: 0 0 4px; }
+  .form-header .meta { font-size: 13px; opacity: 0.85; }
+
+  /* ── Sections ─────────────────────────────────────────── */
+  .section-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.8px; color: #9ca3af; margin-bottom: 16px;
+    padding-bottom: 8px; border-bottom: 1px solid #f0f0f0;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .section-title i { font-size: 13px; color: var(--color-accent); }
+
+  /* ── Champs ───────────────────────────────────────────── */
+  .field-label {
+    font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 5px;
+    display: block;
+  }
+  .field-label .req { color: #ef4444; margin-left: 2px; }
+  .form-control, .form-select {
+    font-size: 13px; border-color: #e5e7eb; border-radius: 8px;
+    padding: 8px 12px;
+  }
+  .form-control:focus, .form-select:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(74,111,165,0.12);
+  }
+  .form-control::placeholder { color: #c0c4cc; }
+  .field-hint { font-size: 11px; color: #9ca3af; margin-top: 3px; }
+  .invalid-feedback { font-size: 11px; }
+
+  /* ── Carte section ────────────────────────────────────── */
+  .form-card {
+    background: #fff;
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    padding: 24px 28px;
+    margin-bottom: 20px;
+  }
+
+  /* ── CV actuel ────────────────────────────────────────── */
+  .cv-current {
+    background: #f8f9fc; border: 1px solid #e5e7eb;
+    border-radius: 8px; padding: 10px 14px;
+    font-size: 13px; display: flex; align-items: center; gap: 8px;
+    margin-top: 8px;
+  }
+  .cv-current i { color: var(--color-accent); }
+
+  /* ── Statut toggle ────────────────────────────────────── */
+  .statut-toggle {
+    display: flex; align-items: center; gap: 12px;
+    background: #f8f9fc; border: 1px solid #e5e7eb;
+    border-radius: 10px; padding: 14px 18px;
+  }
+  .statut-toggle .form-check-input {
+    width: 2.5em; height: 1.4em; cursor: pointer;
+  }
+  .statut-toggle label {
+    font-size: 14px; font-weight: 600; color: #374151; cursor: pointer;
+    margin: 0;
+  }
+  .statut-toggle .sub { font-size: 12px; color: #9ca3af; }
+
+  /* ── Barre actions ────────────────────────────────────── */
+  .form-actions {
+    background: #fff; border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    padding: 20px 28px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4" style="max-width:1200px">
+
+  <!-- ── En-tête ──────────────────────────────────────────────── -->
+  <div class="form-header">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <div class="avatar">
+        {% if object %}{{ object.nom_complet|slice:":1"|upper }}{% else %}<i class="bi bi-person-plus" style="font-size:1.6rem"></i>{% endif %}
+      </div>
+      <div class="flex-grow-1">
+        <h4>{% if object %}Modifier le chauffeur{% else %}Nouveau chauffeur{% endif %}</h4>
+        <div class="meta">
+          {% if object %}
+            <span><i class="bi bi-person me-1"></i>{{ object.nom_complet }}</span>
+            <span class="ms-3"><i class="bi bi-card-text me-1"></i>Permis : {{ object.numero_permis }}</span>
+          {% else %}
+            <span><i class="bi bi-info-circle me-1"></i>Remplissez les informations du chauffeur</span>
+          {% endif %}
+        </div>
+      </div>
+      <a href="{% if object %}{% url 'personnel:chauffeur_detail' object.pk %}{% else %}{% url 'personnel:chauffeur_list' %}{% endif %}"
+         class="btn btn-sm btn-danger">
+        <i class="bi bi-arrow-left me-1"></i>{% if object %}Retour à la fiche{% else %}Retour à la liste{% endif %}
+      </a>
+    </div>
+  </div>
+
+  <!-- ── Formulaire ────────────────────────────────────────────── -->
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger rounded-3 mb-4">
+      <i class="bi bi-exclamation-triangle me-2"></i>{{ form.non_field_errors }}
+    </div>
+    {% endif %}
+
+    <div class="row g-4">
+
+      <!-- ════ Colonne gauche ════════════════════════════════════ -->
+      <div class="col-lg-6">
+
+        <!-- Identité -->
+        <div class="form-card">
+          <div class="section-title"><i class="bi bi-person-badge"></i>Identité</div>
+          <div class="mb-3">
+            <label class="field-label">Nom complet <span class="req">*</span></label>
+            {{ form.nom_complet }}
+            {% if form.nom_complet.errors %}<div class="invalid-feedback d-block">{{ form.nom_complet.errors }}</div>{% endif %}
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="field-label">N° CNI</label>
+              {{ form.numero_cni }}
+              {% if form.numero_cni.errors %}<div class="invalid-feedback d-block">{{ form.numero_cni.errors }}</div>{% endif %}
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="field-label">Situation matrimoniale</label>
+              {{ form.situation_matrimoniale }}
+              {% if form.situation_matrimoniale.errors %}<div class="invalid-feedback d-block">{{ form.situation_matrimoniale.errors }}</div>{% endif %}
+            </div>
+          </div>
+          <div class="mb-0">
+            <label class="field-label">Enfants en charge</label>
+            {{ form.nombre_enfants }}
+            {% if form.nombre_enfants.errors %}<div class="invalid-feedback d-block">{{ form.nombre_enfants.errors }}</div>{% endif %}
+          </div>
+        </div>
+
+        <!-- Coordonnées -->
+        <div class="form-card">
+          <div class="section-title"><i class="bi bi-telephone"></i>Coordonnées</div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="field-label">Téléphone principal <span class="req">*</span></label>
+              {{ form.telephone }}
+              {% if form.telephone.errors %}<div class="invalid-feedback d-block">{{ form.telephone.errors }}</div>{% endif %}
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="field-label">Téléphone secondaire</label>
+              {{ form.telephone_2 }}
+              {% if form.telephone_2.errors %}<div class="invalid-feedback d-block">{{ form.telephone_2.errors }}</div>{% endif %}
+            </div>
+          </div>
+          <div class="mb-0">
+            <label class="field-label">Lieu d'habitation</label>
+            {{ form.lieu_habitation }}
+            {% if form.lieu_habitation.errors %}<div class="invalid-feedback d-block">{{ form.lieu_habitation.errors }}</div>{% endif %}
+          </div>
+        </div>
+
+        <!-- Contact d'urgence -->
+        <div class="form-card">
+          <div class="section-title"><i class="bi bi-heart-pulse"></i>Contact d'urgence</div>
+          <div class="mb-3">
+            <label class="field-label">Personne à contacter</label>
+            {{ form.personne_urgence }}
+            {% if form.personne_urgence.errors %}<div class="invalid-feedback d-block">{{ form.personne_urgence.errors }}</div>{% endif %}
+          </div>
+          <div class="mb-0">
+            <label class="field-label">Téléphone d'urgence</label>
+            {{ form.telephone_urgence }}
+            {% if form.telephone_urgence.errors %}<div class="invalid-feedback d-block">{{ form.telephone_urgence.errors }}</div>{% endif %}
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ════ Colonne droite ════════════════════════════════════ -->
+      <div class="col-lg-6">
+
+        <!-- Informations professionnelles -->
+        <div class="form-card">
+          <div class="section-title"><i class="bi bi-briefcase"></i>Informations professionnelles</div>
+          <div class="mb-3">
+            <label class="field-label">N° Permis de conduire <span class="req">*</span></label>
+            {{ form.numero_permis }}
+            {% if form.numero_permis.errors %}<div class="invalid-feedback d-block">{{ form.numero_permis.errors }}</div>{% endif %}
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="field-label">Date d'embauche</label>
+              {{ form.date_embauche }}
+              {% if form.date_embauche.errors %}<div class="invalid-feedback d-block">{{ form.date_embauche.errors }}</div>{% endif %}
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="field-label">Salaire (FCFA)</label>
+              {{ form.salaire }}
+              {% if form.salaire.errors %}<div class="invalid-feedback d-block">{{ form.salaire.errors }}</div>{% endif %}
+            </div>
+          </div>
+          <div class="mb-0">
+            <label class="field-label">CV <span class="field-hint d-inline">(PDF)</span></label>
+            {{ form.cv }}
+            {% if object.cv %}
+            <div class="cv-current mt-2">
+              <i class="bi bi-file-earmark-pdf"></i>
+              <span>Fichier actuel :</span>
+              <a href="{{ object.cv.url }}" target="_blank" class="fw-semibold text-primary">Voir le CV</a>
+            </div>
+            {% endif %}
+            {% if form.cv.errors %}<div class="invalid-feedback d-block">{{ form.cv.errors }}</div>{% endif %}
+          </div>
+        </div>
+
+        <!-- Statut -->
+        <div class="form-card">
+          <div class="section-title"><i class="bi bi-toggle-on"></i>Statut</div>
+          <div class="statut-toggle">
+            {{ form.actif }}
+            <div>
+              <label class="form-check-label" for="{{ form.actif.id_for_label }}">Chauffeur actif</label>
+              <div class="sub">Décocher pour désactiver sans supprimer le chauffeur</div>
+            </div>
+          </div>
+          {% if form.actif.errors %}<div class="invalid-feedback d-block mt-2">{{ form.actif.errors }}</div>{% endif %}
+        </div>
+
+        <!-- Note informative -->
+        <div class="alert alert-info rounded-3 border-0" style="background:#eff6ff;font-size:13px">
+          <i class="bi bi-folder2-open me-2 text-primary"></i>
+          Les documents du dossier (scan CNI, permis, etc.) s'ajoutent depuis la <strong>fiche du chauffeur</strong>, onglet <strong>Dossier</strong>.
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Barre d'actions ──────────────────────────────────────── -->
+    <div class="form-actions mt-2">
+      <a href="{% if object %}{% url 'personnel:chauffeur_detail' object.pk %}{% else %}{% url 'personnel:chauffeur_list' %}{% endif %}"
+         class="btn btn-danger">
+        <i class="bi bi-x-lg me-1"></i>Annuler
+      </a>
+      <button type="submit" class="btn btn-primary px-4 fw-semibold">
+        <i class="bi bi-check-lg me-1"></i>
+        {% if object %}Enregistrer les modifications{% else %}Créer le chauffeur{% endif %}
+      </button>
+    </div>
+
+  </form>
+</div>
+{% endblock %}

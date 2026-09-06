@@ -1,0 +1,454 @@
+{% extends 'base.html' %}
+{% load custom_filters humanize %}
+
+{% block title %}Tableau de bord{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── Bannière d'accueil ──────────────────────────────── */
+  .welcome-banner {
+    background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
+    border-radius: 14px;
+    padding: 26px 32px;
+    color: #fff;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .welcome-banner::after {
+    content: '\F4C0';
+    font-family: 'Bootstrap-Icons';
+    font-size: 10rem;
+    opacity: 0.05;
+    position: absolute;
+    right: 20px;
+    top: -20px;
+    line-height: 1;
+  }
+  .welcome-banner .greeting   { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .welcome-banner .sub        { font-size: 13px; opacity: 0.82; }
+  .welcome-banner .date-badge {
+    background: rgba(255,255,255,0.15);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .welcome-banner .btn-vendre {
+    background: #fff;
+    color: var(--color-accent);
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 8px 20px;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .welcome-banner .btn-vendre:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    color: var(--color-accent);
+  }
+
+  /* ── KPI cards ───────────────────────────────────────── */
+  .kpi-card {
+    background: #fff;
+    border: none;
+    border-radius: 13px;
+    border-top: 4px solid #e5e7eb;
+    padding: 20px 22px;
+    position: relative;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    transition: transform 0.2s, box-shadow 0.2s;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  }
+  .kpi-card .kpi-ico {
+    width: 52px; height: 52px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+  }
+  .kpi-card .kpi-val  { font-size: 2rem; font-weight: 700; line-height: 1.1; color: #111827; }
+  .kpi-card .kpi-lbl  { font-size: 12px; color: #6b7280; margin-top: 4px; font-weight: 500; }
+
+  .kpi-blue   { border-top-color: #1e3260; }
+  .kpi-blue   .kpi-ico { background: #eef1f8; color: #1e3260; }
+  .kpi-blue   .kpi-val { color: #1e3260; }
+
+  .kpi-green  { border-top-color: #27ae60; }
+  .kpi-green  .kpi-ico { background: #f0fdf4; color: #27ae60; }
+  .kpi-green  .kpi-val { color: #27ae60; }
+
+  .kpi-orange { border-top-color: #E67E22; }
+  .kpi-orange .kpi-ico { background: #fff7ed; color: #E67E22; }
+  .kpi-orange .kpi-val { color: #E67E22; }
+
+  .kpi-indigo { border-top-color: #4338ca; }
+  .kpi-indigo .kpi-ico { background: #eef2ff; color: #4338ca; }
+  .kpi-indigo .kpi-val { color: #4338ca; }
+
+  /* ── Section card ────────────────────────────────────── */
+  .dash-card {
+    border: none;
+    border-radius: 13px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    height: 100%;
+  }
+  .dash-card .dash-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #f0f0f0;
+    font-weight: 700;
+    font-size: 14px;
+    color: #1e3260;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: 13px 13px 0 0;
+  }
+  .dash-card .dash-header i { margin-right: 8px; color: var(--color-accent); }
+
+  /* ── Table prochains voyages ─────────────────────────── */
+  .voyage-table th {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    background: #fafbfc;
+  }
+  .voyage-table td { font-size: 13px; padding: 11px 12px; vertical-align: middle; }
+  .voyage-table tr:last-child td { border-bottom: none; }
+
+  .date-badge-today {
+    background: #dcfce7; color: #166534;
+    border-radius: 10px; padding: 2px 8px;
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.4px;
+    margin-left: 6px; vertical-align: middle;
+  }
+  .date-badge-demain {
+    background: #fef3c7; color: #92400e;
+    border-radius: 10px; padding: 2px 8px;
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.4px;
+    margin-left: 6px; vertical-align: middle;
+  }
+
+  /* Barre capacité */
+  .cap-bar { height: 6px; border-radius: 3px; background: #e5e7eb; overflow: hidden; margin-top: 4px; }
+  .cap-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+  .cap-low   { background: #059669; }
+  .cap-mid   { background: #d97706; }
+  .cap-full  { background: #dc2626; }
+  .cap-label { font-size: 11px; font-weight: 600; }
+
+  /* ── Actions rapides ─────────────────────────────────── */
+  .action-tile {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    text-decoration: none;
+    color: #1f2937;
+    transition: all 0.18s;
+    margin-bottom: 10px;
+  }
+  .action-tile:hover {
+    border-color: var(--color-accent);
+    background: #f0f4fb;
+    color: var(--color-accent);
+    transform: translateX(3px);
+  }
+  .action-tile .tile-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+  .action-tile .tile-label { font-weight: 600; font-size: 13px; }
+  .action-tile .tile-sub   { font-size: 11px; color: #6b7280; margin-top: 1px; }
+  .tile-icon-blue   { background: #eff6ff; color: #2563eb; }
+  .tile-icon-green  { background: #f0fdf4; color: #16a34a; }
+  .tile-icon-orange { background: #fff7ed; color: #ea580c; }
+
+  /* ── Profil card ─────────────────────────────────────── */
+  .profil-card { padding: 20px; }
+  .profil-avatar {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1e3260, var(--color-accent));
+    color: #fff;
+    font-size: 1.3rem;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .profil-name  { font-weight: 700; font-size: 15px; color: #111827; }
+  .profil-role  {
+    display: inline-block;
+    background: #eff6ff; color: #1d4ed8;
+    border-radius: 10px; padding: 2px 10px;
+    font-size: 11px; font-weight: 600;
+    margin-top: 4px;
+  }
+  .profil-gare  { font-size: 12px; color: #6b7280; margin-top: 6px; }
+
+  /* ── Vide ────────────────────────────────────────────── */
+  .empty-voyages { text-align: center; padding: 44px 20px; color: #9ca3af; }
+  .empty-voyages i { font-size: 2.8rem; display: block; margin-bottom: 10px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-4">
+
+  <!-- ── Bannière d'accueil ───────────────────────────────────── -->
+  <div class="welcome-banner d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div>
+      <div class="greeting">Bonjour, {{ user.nom_complet }} 👋</div>
+      <div class="sub">
+        <i class="bi bi-shield-check me-1"></i>{{ user.get_role_display }}
+        {% if user.gare %} &nbsp;·&nbsp; <i class="bi bi-geo-alt me-1"></i>{{ user.gare.nom }}{% endif %}
+      </div>
+    </div>
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <div class="date-badge"><i class="bi bi-calendar3 me-2"></i>{% now "l d F Y" %}</div>
+      <a href="{% url 'guichet:voyage_list' %}" class="btn-vendre">
+        <i class="bi bi-cart-plus me-1"></i>Vendre un billet
+      </a>
+    </div>
+  </div>
+
+  <!-- ── KPI cards ────────────────────────────────────────────── -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-blue">
+        <div class="kpi-ico"><i class="bi bi-bus-front"></i></div>
+        <div>
+          <div class="kpi-val">{{ voyages_today }}</div>
+          <div class="kpi-lbl">Voyages aujourd'hui</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-green">
+        <div class="kpi-ico"><i class="bi bi-ticket-perforated"></i></div>
+        <div>
+          <div class="kpi-val">{{ billets_vendus_today }}</div>
+          <div class="kpi-lbl">Billets vendus aujourd'hui</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-orange">
+        <div class="kpi-ico"><i class="bi bi-cash-stack"></i></div>
+        <div>
+          <div class="kpi-val" style="font-size:1.5rem">{{ montant_today|format_montant }}<small style="font-size:12px;font-weight:500;color:#9ca3af"> F</small></div>
+          <div class="kpi-lbl">Montant encaissé aujourd'hui</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-indigo">
+        <div class="kpi-ico"><i class="bi bi-bookmark"></i></div>
+        <div>
+          <div class="kpi-val">{{ reservations_en_attente }}</div>
+          <div class="kpi-lbl">Réservations en attente</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Corps principal ──────────────────────────────────────── -->
+  <div class="row g-4">
+
+    <!-- Prochains voyages -->
+    <div class="col-lg-8">
+      <div class="dash-card">
+        <div class="dash-header">
+          <span><i class="bi bi-clock"></i>Prochains voyages</span>
+          <a href="{% url 'guichet:voyage_list' %}" class="btn btn-sm btn-outline-primary" style="font-size:12px">
+            Voir tout <i class="bi bi-arrow-right ms-1"></i>
+          </a>
+        </div>
+
+        {% if prochains_voyages %}
+        <div class="table-responsive">
+          <table class="table voyage-table mb-0">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Heure</th>
+                <th>Ligne</th>
+                <th>Véhicule</th>
+                <th>Remplissage</th>
+                <th>Recette Billets</th>
+                <th>Statut</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for voyage in prochains_voyages %}
+              <tr>
+                <td>
+                  <span class="fw-semibold">{{ voyage.date_depart|date:"d/m/Y" }}</span>
+                  {% now "Y-m-d" as today_str %}
+                  {% if voyage.date_depart|date:"Y-m-d" == today_str %}
+                    <span class="date-badge-today">Aujourd'hui</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="fw-semibold">{{ voyage.heure_depart|time:"H:i" }}</span>
+                </td>
+                <td>{{ voyage.ligne }}</td>
+                <td>
+                  {% if voyage.vehicule %}
+                    <span class="fw-semibold">{{ voyage.vehicule.display_immat }}</span>
+                  {% else %}
+                    <span class="text-muted fst-italic" style="font-size:12px">Non assigné</span>
+                  {% endif %}
+                </td>
+                <td style="min-width:110px">
+                  {% if voyage.vehicule %}
+                    {% with dispo=voyage.get_nb_places_disponibles total=voyage.capacite %}
+                    {% widthratio dispo total 100 as pct_dispo %}
+                    <div class="cap-label
+                      {% if pct_dispo|add:0 > 50 %}text-success
+                      {% elif pct_dispo|add:0 > 15 %}text-warning
+                      {% else %}text-danger{% endif %}">
+                      {{ dispo }}/{{ total }} places
+                    </div>
+                    <div class="cap-bar">
+                      {% widthratio dispo total 100 as fill_pct %}
+                      <div class="cap-fill
+                        {% if fill_pct|add:0 > 50 %}cap-low
+                        {% elif fill_pct|add:0 > 15 %}cap-mid
+                        {% else %}cap-full{% endif %}"
+                        style="width:{{ fill_pct }}%"></div>
+                    </div>
+                    {% endwith %}
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td class="fw-semibold text-success" style="white-space:nowrap;">
+                  {% if voyage.recette_billets %}
+                    {{ voyage.recette_billets|floatformat:0 }} F
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if voyage.statut == 'programme' %}
+                    <span class="badge" style="background:#dbeafe;color:#1e40af;font-size:11px;">
+                      <i class="bi bi-clock me-1"></i>Programmé
+                    </span>
+                  {% elif voyage.statut == 'en_cours' %}
+                    <span class="badge" style="background:#fef3c7;color:#92400e;font-size:11px;">
+                      <i class="bi bi-play-circle me-1"></i>En cours
+                    </span>
+                  {% elif voyage.statut == 'termine' %}
+                    <span class="badge" style="background:#dcfce7;color:#166534;font-size:11px;">
+                      <i class="bi bi-check-circle me-1"></i>Terminé
+                    </span>
+                  {% elif voyage.statut == 'annule' %}
+                    <span class="badge" style="background:#fee2e2;color:#991b1b;font-size:11px;">
+                      <i class="bi bi-x-circle me-1"></i>Annulé
+                    </span>
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{% url 'guichet:vente' voyage.public_id %}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-cart-plus me-1"></i>Vendre
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="empty-voyages">
+          <i class="bi bi-calendar-x text-muted"></i>
+          <p class="fw-semibold">Aucun voyage programmé</p>
+          <p class="text-muted small">Les prochains voyages apparaîtront ici.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Colonne droite -->
+    <div class="col-lg-4 d-flex flex-column gap-4">
+
+      <!-- Actions rapides -->
+      <div class="dash-card">
+        <div class="dash-header">
+          <span><i class="bi bi-lightning-charge"></i>Actions rapides</span>
+        </div>
+        <div class="card-body p-3">
+          <a href="{% url 'guichet:voyage_list' %}" class="action-tile">
+            <div class="tile-icon tile-icon-blue"><i class="bi bi-bus-front"></i></div>
+            <div>
+              <div class="tile-label">Voir les voyages</div>
+              <div class="tile-sub">Liste complète des voyages</div>
+            </div>
+          </a>
+          <a href="{% url 'guichet:reservations' %}" class="action-tile">
+            <div class="tile-icon tile-icon-orange"><i class="bi bi-bookmark-check"></i></div>
+            <div>
+              <div class="tile-label">Réservations en attente</div>
+              <div class="tile-sub">
+                {% if reservations_en_attente > 0 %}
+                  <span style="color:#d97706;font-weight:600">{{ reservations_en_attente }} en attente</span>
+                {% else %}
+                  Aucune réservation en attente
+                {% endif %}
+              </div>
+            </div>
+          </a>
+          <a href="{% url 'comptabilite:point_journalier' %}" class="action-tile mb-0">
+            <div class="tile-icon tile-icon-green"><i class="bi bi-cash-stack"></i></div>
+            <div>
+              <div class="tile-label">Point du jour</div>
+              <div class="tile-sub">Récapitulatif des ventes</div>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <!-- Profil -->
+      <div class="dash-card">
+        <div class="dash-header">
+          <span><i class="bi bi-person-badge"></i>Mon profil</span>
+        </div>
+        <div class="profil-card d-flex align-items-center gap-3">
+          <div class="profil-avatar">{{ user.nom_complet|slice:":1"|upper }}</div>
+          <div>
+            <div class="profil-name">{{ user.nom_complet }}</div>
+            <div class="profil-role">{{ user.get_role_display }}</div>
+            {% if user.gare %}
+            <div class="profil-gare"><i class="bi bi-geo-alt me-1"></i>{{ user.gare.nom }}</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

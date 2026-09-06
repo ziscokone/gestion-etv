@@ -1,0 +1,326 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Voyages - Gestion Billetterie{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Header ──────────────────────────────────────────────── */
+.page-header {
+    background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
+    border-radius: 14px;
+    padding: 26px 32px;
+    color: #fff;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+}
+.page-header::after {
+    content: '\F1B6';
+    font-family: 'Bootstrap-Icons';
+    font-size: 9rem;
+    opacity: 0.06;
+    position: absolute;
+    right: 24px;
+    top: -10px;
+    line-height: 1;
+}
+.page-header h4 { font-weight: 700; margin: 0; }
+
+.header-stat {
+    background: rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 8px 16px;
+    text-align: center;
+    min-width: 90px;
+}
+.header-stat .hs-val { font-size: 1.4rem; font-weight: 700; line-height: 1; }
+.header-stat .hs-lbl { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+
+.btn-header {
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 8px 18px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.btn-header.primary {
+    background: #E67E22;
+    color: #fff;
+    border: none;
+    position: relative;
+    z-index: 1;
+}
+.btn-header.primary:hover {
+    background: #cf6d1a;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(230,126,34,0.4);
+    color: #fff;
+}
+
+/* ── Filtres ─────────────────────────────────────────────── */
+.filter-zone {
+    background: #f8f9fc;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 22px;
+}
+.filter-zone .form-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+/* ── Table card ──────────────────────────────────────────── */
+.voy-card {
+    border: none;
+    border-radius: 13px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    overflow: hidden;
+}
+.voy-card .table-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid #f0f0f0;
+    font-weight: 600;
+    font-size: 14px;
+    color: #1e3260;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+}
+
+.v-table th {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+    padding: 11px 16px;
+    background: #fafbfc;
+    border-bottom: 1px solid #f0f0f0;
+}
+.v-table td {
+    padding: 11px 16px;
+    vertical-align: middle;
+    font-size: 13px;
+}
+.v-table tbody tr { transition: background 0.12s; }
+.v-table tbody tr:hover { background: #f8f9fc; }
+.v-table tbody tr:last-child td { border-bottom: none; }
+
+/* Date en gras */
+.date-cell { font-weight: 700; color: #111827; }
+
+/* Badges période */
+.periode-badge {
+    border-radius: 12px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-block;
+}
+.periode-matin { background: #fef3c7; color: #92400e; }
+.periode-soir  { background: #ede9fe; color: #5b21b6; }
+
+/* Badge N° départ */
+.num-badge {
+    width: 26px; height: 26px;
+    border-radius: 6px;
+    background: var(--color-accent);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* Véhicule / Non assigné */
+.v-assigné    { font-weight: 600; color: #111827; font-size: 13px; }
+.v-sub        { font-size: 11px; color: #9ca3af; }
+.v-non-assigne { color: #dc2626; font-size: 12px; font-weight: 600; }
+
+/* Places dispo badge */
+.places-badge {
+    border-radius: 10px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-block;
+}
+.places-ok    { background: #dcfce7; color: #166534; }
+.places-low   { background: #fef3c7; color: #92400e; }
+.places-full  { background: #fee2e2; color: #991b1b; }
+
+/* Badges statut voyage */
+.statut-badge {
+    border-radius: 12px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.statut-programme { background: #dbeafe; color: #1e40af; }
+.statut-en_cours  { background: #dcfce7; color: #166534; }
+.statut-termine   { background: #f3f4f6; color: #6b7280; }
+
+/* Boutons action */
+.btn-action {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #6b7280;
+    transition: all 0.15s;
+    text-decoration: none;
+}
+.btn-action:hover         { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+.btn-action.view:hover    { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+
+.btn-vendre {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--color-accent);
+    color: #fff;
+    border: none;
+    text-decoration: none;
+    transition: all 0.15s;
+}
+.btn-vendre:hover {
+    background: var(--color-accent-hover);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+/* ── Pagination ──────────────────────────────────────────── */
+.pagination-zone {
+    padding: 14px 20px;
+    border-top: 1px solid #f0f0f0;
+    background: #fafbfc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.pagination-info { font-size: 12px; color: #6b7280; }
+
+.c-pagination { display: flex; gap: 4px; align-items: center; margin: 0; padding: 0; list-style: none; }
+.c-pagination .page-btn {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600;
+    border: 1px solid #e5e7eb;
+    background: #fff; color: #374151;
+    text-decoration: none;
+    transition: all 0.15s;
+}
+.c-pagination .page-btn:hover    { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+.c-pagination .page-btn.active   { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
+.c-pagination .page-btn.disabled { opacity: 0.4; pointer-events: none; }
+
+/* État vide */
+.empty-state { text-align: center; padding: 56px 20px; color: #9ca3af; }
+.empty-state i { font-size: 3rem; display: block; margin-bottom: 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+
+    <!-- ── Header ── -->
+    <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h4><i class="bi bi-bus-front me-2"></i>Voyages disponibles</h4>
+            <div class="d-flex gap-3 mt-3 flex-wrap">
+                <div class="header-stat">
+                    <div class="hs-val">{{ voyages|length }}</div>
+                    <div class="hs-lbl">Résultats</div>
+                </div>
+            </div>
+        </div>
+        <a href="{% url 'voyages:voyage_create' %}" class="btn-header primary">
+            <i class="bi bi-plus-circle"></i> Nouveau Voyage
+        </a>
+    </div>
+
+    <!-- ── Filtres ── -->
+    <div class="filter-zone">
+        <form method="get" data-live-filter="{% url 'guichet:voyage_list_ajax' %}" data-target="voyageTableContainer" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Date</label>
+                <input type="date" name="date" class="form-control form-control-sm"
+                       value="{{ request.GET.date }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Ligne</label>
+                <select name="ligne" class="form-select form-select-sm">
+                    <option value="">Toutes les lignes</option>
+                    {% for ligne in lignes %}
+                    <option value="{{ ligne.id }}"
+                            {% if request.GET.ligne == ligne.id|stringformat:"i" %}selected{% endif %}>
+                        {{ ligne }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Période</label>
+                <select name="periode" class="form-select form-select-sm">
+                    <option value="">Toutes</option>
+                    <option value="matin" {% if request.GET.periode == 'matin' %}selected{% endif %}>Matinée</option>
+                    <option value="soir"  {% if request.GET.periode == 'soir'  %}selected{% endif %}>Soir</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Statut</label>
+                <select name="statut" class="form-select form-select-sm">
+                    <option value="actifs"  {% if statut_filter == 'actifs'  %}selected{% endif %}>Programmé & En cours</option>
+                    <option value="termine" {% if statut_filter == 'termine' %}selected{% endif %}>Terminé</option>
+                    <option value="tous"    {% if statut_filter == 'tous'    %}selected{% endif %}>Tous</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-search me-1"></i> Filtrer
+                </button>
+                <a href="{% url 'guichet:voyage_list' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- ── Table ── -->
+    <div class="voy-card" id="voyageTableContainer">
+        {% include 'guichet/partials/voyage_table.html' %}
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/live-filter.js' %}"></script>
+{% endblock %}

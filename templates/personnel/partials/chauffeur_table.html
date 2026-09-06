@@ -1,0 +1,117 @@
+    <div class="table-header">
+      <span><i class="bi bi-people me-2" style="color:var(--color-accent)"></i>Liste des chauffeurs</span>
+      <span class="badge rounded-pill" style="background:#eef2ff;color:#4338ca;font-size:12px;font-weight:600">
+        {{ nb_resultats_filtres }} résultat{{ nb_resultats_filtres|pluralize }}
+      </span>
+    </div>
+
+    {% if chauffeurs %}
+    <div class="table-responsive">
+      <table class="table ch-table mb-0">
+        <thead>
+          <tr>
+            <th>Chauffeur</th>
+            <th>Téléphone</th>
+            <th>Statut</th>
+            <th class="text-center">Voyages</th>
+            <th class="text-end pe-4">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for chauffeur in chauffeurs %}
+          <tr>
+            <td>
+              <div class="d-flex align-items-center gap-3">
+                <div class="ch-avatar {% if not chauffeur.actif %}inactif{% endif %}">
+                  {{ chauffeur.nom_complet|slice:":1"|upper }}
+                </div>
+                <div>
+                  <div class="ch-name">{{ chauffeur.nom_complet }}</div>
+                  <div class="ch-sub"><i class="bi bi-card-text me-1"></i>{{ chauffeur.numero_permis }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <i class="bi bi-telephone me-1 text-muted"></i>{{ chauffeur.telephone }}
+            </td>
+            <td>
+              {% if chauffeur.actif %}
+                <span class="badge-actif"><i class="bi bi-check-circle me-1"></i>Actif</span>
+              {% else %}
+                <span class="badge-inactif"><i class="bi bi-pause-circle me-1"></i>Inactif</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              {% if chauffeur.nb_voyages > 0 %}
+                <span class="voyages-count">
+                  <i class="bi bi-bus-front"></i>{{ chauffeur.nb_voyages }}
+                </span>
+              {% else %}
+                <span class="voyages-count zero">—</span>
+              {% endif %}
+            </td>
+            <td class="text-end pe-4">
+              <div class="d-flex gap-2 justify-content-end">
+                <a href="{% url 'personnel:chauffeur_detail' chauffeur.pk %}"
+                   class="btn-action view" title="Voir la fiche">
+                  <i class="bi bi-eye"></i>
+                </a>
+                <a href="{% url 'personnel:chauffeur_update' chauffeur.pk %}"
+                   class="btn-action edit" title="Modifier">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <a href="{% url 'personnel:chauffeur_delete' chauffeur.pk %}"
+                   class="btn-action del" title="Supprimer">
+                  <i class="bi bi-trash"></i>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if is_paginated %}
+    <nav class="d-flex justify-content-center py-3 border-top">
+      <ul class="pagination pagination-sm pagination-nuit mb-0">
+        {% if page_obj.has_previous %}
+          <li class="page-item">
+            <a class="page-link" href="?page=1&q={{ search_query }}&statut={{ statut_filtre }}">Première</a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ search_query }}&statut={{ statut_filtre }}">Précédent</a>
+          </li>
+        {% endif %}
+        <li class="page-item active">
+          <span class="page-link">Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        {% if page_obj.has_next %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ search_query }}&statut={{ statut_filtre }}">Suivant</a>
+          </li>
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&q={{ search_query }}&statut={{ statut_filtre }}">Dernière</a>
+          </li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+      <i class="bi bi-person-badge text-muted"></i>
+      {% if search_query %}
+        <p class="fw-semibold">Aucun résultat pour "{{ search_query }}"</p>
+        <p class="text-muted small">Essayez un autre terme de recherche.</p>
+        <a href="{% url 'personnel:chauffeur_list' %}" class="btn btn-sm btn-outline-secondary mt-2">
+          <i class="bi bi-x me-1"></i>Effacer la recherche
+        </a>
+      {% else %}
+        <p class="fw-semibold">Aucun chauffeur enregistré</p>
+        <a href="{% url 'personnel:chauffeur_create' %}" class="btn btn-primary btn-sm mt-2">
+          <i class="bi bi-plus-circle me-1"></i>Ajouter un chauffeur
+        </a>
+      {% endif %}
+    </div>
+    {% endif %}

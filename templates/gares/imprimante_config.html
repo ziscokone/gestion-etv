@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Configuration Imprimante Ticket{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-header {
+    background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
+    border-radius: 14px;
+    padding: 26px 32px;
+    color: #fff;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+}
+.page-header::after {
+    pointer-events: none;
+    content: '\F4C0';
+    font-family: 'Bootstrap-Icons';
+    font-size: 9rem;
+    opacity: 0.06;
+    position: absolute;
+    right: 24px;
+    top: -10px;
+    line-height: 1;
+}
+.page-header h4 { font-weight: 700; margin: 0; }
+.page-header p  { margin: 6px 0 0; opacity: 0.8; font-size: 13px; }
+
+.form-card {
+    border: none;
+    border-radius: 13px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    overflow: hidden;
+    background: #fff;
+}
+
+.section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--color-accent);
+    margin-bottom: 14px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid rgba(74,111,165,0.12);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.form-label-sm {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.form-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #f0f0f0;
+    background: #fafbfc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-submit {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 22px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    background: var(--color-accent);
+    color: #fff;
+    border: none;
+    transition: all 0.15s;
+    cursor: pointer;
+}
+.btn-submit:hover {
+    background: var(--color-accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(74,111,165,0.3);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            <!-- ── Header ── -->
+            <div class="page-header">
+                <h4><i class="bi bi-printer me-2"></i>Configuration Imprimante Ticket</h4>
+                <p>Nom de l'imprimante thermique et largeur du ticket pour ce poste — réservé au chef de gare et aux accès globaux</p>
+            </div>
+
+            <div class="form-card">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger mx-3 mt-3">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <div class="p-4">
+                        <div class="section-label">
+                            <i class="bi bi-printer"></i> Imprimante de ce poste
+                        </div>
+
+                        <div class="alert alert-info" style="font-size:12.5px;">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Ce réglage s'applique immédiatement au prochain ticket imprimé sur ce poste —
+                            aucun redémarrage nécessaire. Fonctionne à l'identique quelle que soit la marque
+                            de l'imprimante (Epson, Xprinter...).
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-8 mb-3">
+                                <label class="form-label-sm">{{ form.imprimante_nom.label }}</label>
+                                {{ form.imprimante_nom }}
+                                <div class="mt-1" style="font-size:11px;color:#9ca3af;">
+                                    <i class="bi bi-info-circle me-1"></i>{{ form.imprimante_nom.help_text }}
+                                </div>
+                                {% if form.imprimante_nom.errors %}<div class="invalid-feedback d-block">{{ form.imprimante_nom.errors }}</div>{% endif %}
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label-sm">{{ form.imprimante_largeur_caracteres.label }}</label>
+                                {{ form.imprimante_largeur_caracteres }}
+                                <div class="mt-1" style="font-size:11px;color:#9ca3af;">
+                                    <i class="bi bi-info-circle me-1"></i>{{ form.imprimante_largeur_caracteres.help_text }}
+                                </div>
+                                {% if form.imprimante_largeur_caracteres.errors %}<div class="invalid-feedback d-block">{{ form.imprimante_largeur_caracteres.errors }}</div>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── Footer ── -->
+                    <div class="form-footer">
+                        <a href="{% url 'hub' %}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Retour
+                        </a>
+                        <button type="submit" class="btn-submit">
+                            <i class="bi bi-check-circle"></i> Enregistrer
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

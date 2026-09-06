@@ -1,0 +1,420 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Gestion des Véhicules{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── En-tête ───────────────────────────────────────────────── */
+.page-header {
+    background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
+    border-radius: 14px;
+    padding: 26px 32px;
+    color: #fff;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+}
+.page-header::after {
+    pointer-events: none;
+    content: '\F4DA';
+    font-family: 'Bootstrap-Icons';
+    font-size: 9rem;
+    opacity: 0.06;
+    position: absolute;
+    right: 24px;
+    top: -10px;
+    line-height: 1;
+}
+.page-header h4 { font-weight: 700; margin: 0; }
+
+.btn-new {
+    background: #E67E22;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 8px 18px;
+    transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+    white-space: nowrap;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    position: relative;
+    z-index: 1;
+}
+.btn-new:hover {
+    background: #cf6d1a;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(230,126,34,0.4);
+    color: #fff;
+}
+
+.header-stat {
+    background: rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 8px 16px;
+    text-align: center;
+    min-width: 90px;
+}
+.header-stat .hs-val { font-size: 1.4rem; font-weight: 700; line-height: 1; }
+.header-stat .hs-lbl { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+
+/* ── Filtre ─────────────────────────────────────────────────── */
+.filter-zone {
+    background: #f8f9fc;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 22px;
+}
+.statut-pill {
+    border: 2px solid #d0d7e6;
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    background: #fff;
+    color: #555;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+}
+.statut-pill:hover    { border-color: var(--color-accent); color: var(--color-accent); }
+.statut-pill.active   { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
+.statut-pill.rep:hover  { border-color: var(--color-danger); color: var(--color-danger); }
+.statut-pill.rep.active { background: var(--color-danger); color: #fff; border-color: var(--color-danger); }
+
+/* ── Table ──────────────────────────────────────────────────── */
+.veh-card { border: none; border-radius: 13px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); overflow: hidden; }
+.veh-card .table-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid #f0f0f0;
+    font-weight: 600;
+    font-size: 14px;
+    color: #1e3260;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+}
+
+.v-table th {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+    padding: 11px 16px;
+    background: #fafbfc;
+    border-bottom: 1px solid #f0f0f0;
+}
+.v-table td { padding: 13px 16px; vertical-align: middle; font-size: 13px; }
+.v-table tbody tr { transition: background 0.12s; }
+.v-table tbody tr:hover { background: #f8f9fc; }
+.v-table tbody tr:last-child td { border-bottom: none; }
+
+/* Icône véhicule */
+.v-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #1e3260, var(--color-accent));
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+.v-icon.inactif { background: linear-gradient(135deg, #6b7280, #9ca3af); }
+
+.v-immat { font-weight: 700; color: #111827; font-size: 14px; }
+.v-sub   { font-size: 11px; color: #9ca3af; margin-top: 1px; }
+
+/* Badges statut */
+.badge-actif    { background: #dcfce7; color: #166534; border-radius: 12px; padding: 3px 10px; font-size: 11px; font-weight: 600; }
+.badge-inactif  { background: #f1f5f9; color: #64748b; border-radius: 12px; padding: 3px 10px; font-size: 11px; font-weight: 600; }
+.badge-rep      { background: #fee2e2; color: #991b1b; border-radius: 12px; padding: 3px 10px; font-size: 11px; font-weight: 600; }
+
+/* Boutons action */
+.btn-action {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #6b7280;
+    transition: all 0.15s;
+    text-decoration: none;
+}
+.btn-action:hover          { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+.btn-action.edit:hover     { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+.btn-action.del:hover      { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+
+/* Modèles btn */
+.btn-modeles {
+    background: #27ae60;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 8px 18px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+    position: relative;
+    z-index: 1;
+}
+.btn-modeles:hover { background: #219a52; color: #fff; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(39,174,96,0.4); }
+
+/* État vide */
+.empty-state { text-align: center; padding: 56px 20px; color: #9ca3af; }
+.empty-state i { font-size: 3rem; display: block; margin-bottom: 12px; }
+
+/* ── Alertes Documents ─────────────────────────────────────────── */
+.alert-docs-section {
+    background: #fff;
+    border: 1px solid #fde8e8;
+    border-radius: 13px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(220,38,38,0.06);
+    margin-bottom: 22px;
+}
+.alert-docs-header {
+    padding: 11px 20px;
+    background: linear-gradient(135deg, #1e3260 0%, #2d4a8a 100%);
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.alert-docs-header .ads-badge {
+    padding: 2px 9px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.6;
+}
+.ads-badge.danger  { background: #dc2626; color: #fff; }
+.ads-badge.warning { background: #f59e0b; color: #fff; }
+
+.alert-docs-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px 20px;
+    background: #fafbfc;
+}
+
+.doc-alert-card {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    border-left: 4px solid #e5e7eb;
+    padding: 10px 14px;
+    min-width: 190px;
+    max-width: 240px;
+    flex: 0 0 auto;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+.doc-alert-card.worst-danger  { border-left-color: #dc2626; }
+.doc-alert-card.worst-orange  { border-left-color: #ea580c; }
+.doc-alert-card.worst-warning { border-left-color: #d97706; }
+
+.doc-alert-veh {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding-bottom: 7px;
+    border-bottom: 1px solid #f3f4f6;
+}
+.doc-alert-immat {
+    font-weight: 700;
+    font-size: 13px;
+    color: #111827;
+}
+
+.doc-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 5px;
+}
+.doc-item-label { font-size: 11px; color: #6b7280; font-weight: 500; }
+.doc-item-badge {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 10px;
+    white-space: nowrap;
+}
+.doc-item-badge.danger  { background: #fee2e2; color: #991b1b; }
+.doc-item-badge.orange  { background: #ffedd5; color: #9a3412; }
+.doc-item-badge.warning { background: #fef9c3; color: #854d0e; }
+
+/* Pagination — bleu nuit de l'application */
+.pagination-nuit { gap: 6px; }
+.pagination-nuit .page-item .page-link {
+    border: 1.5px solid var(--color-accent);
+    color: var(--color-accent);
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 12.5px;
+    padding: 6px 14px;
+    background: #fff;
+    transition: all 0.15s;
+}
+.pagination-nuit .page-item .page-link:hover {
+    background: var(--color-accent);
+    color: #fff;
+}
+.pagination-nuit .page-item.active .page-link {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: #fff;
+    cursor: default;
+    font-weight: 700;
+}
+.pagination-nuit .page-item.active .page-link:hover {
+    background: var(--color-accent);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-4">
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show mb-3">
+                {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- ── En-tête ─────────────────────────────────────────────── -->
+    <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h4><i class="bi bi-bus-front me-2"></i>Véhicules</h4>
+            <div class="d-flex gap-3 mt-3 flex-wrap">
+                <div class="header-stat">
+                    <div class="hs-val">{{ nb_total }}</div>
+                    <div class="hs-lbl">Total</div>
+                </div>
+                <div class="header-stat">
+                    <div class="hs-val">{{ nb_actifs }}</div>
+                    <div class="hs-lbl">Actifs</div>
+                </div>
+                <div class="header-stat">
+                    <div class="hs-val">{{ nb_inactifs }}</div>
+                    <div class="hs-lbl">Inactifs</div>
+                </div>
+                <div class="header-stat">
+                    <div class="hs-val">{{ nb_en_reparation }}</div>
+                    <div class="hs-lbl">En réparation</div>
+                </div>
+            </div>
+        </div>
+        <div class="d-flex flex-row gap-2 align-items-center flex-wrap">
+            <a href="{% url 'vehicules:modele_list' %}" class="btn-modeles">
+                <i class="bi bi-collection"></i> Modèles
+            </a>
+            <a href="{% url 'vehicules:vehicule_create' %}" class="btn-new">
+                <i class="bi bi-plus-circle-fill"></i> Nouveau Véhicule
+            </a>
+        </div>
+    </div>
+
+    <!-- ── Filtres ──────────────────────────────────────────────── -->
+    <div class="filter-zone">
+        <form method="get" data-live-filter="{% url 'vehicules:vehicule_list_ajax' %}" data-target="vehiculeTableContainer" class="row g-3 align-items-center">
+            <div class="col-md-6">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" name="q" class="form-control"
+                           placeholder="Rechercher par immatriculation, marque ou modèle..."
+                           value="{{ search_query }}">
+                    {% if search_query %}
+                        <a href="?statut={{ statut_filtre }}" class="btn btn-outline-secondary"><i class="bi bi-x"></i></a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-auto d-flex gap-2 flex-wrap align-items-center">
+                <span class="text-muted fw-semibold" style="font-size:12px">Statut :</span>
+                <a href="?q={{ search_query }}&statut=tous" data-name="statut" data-value="tous"
+                   class="statut-pill js-filter-pill {% if statut_filtre == 'tous' %}active{% endif %}">Tous</a>
+                <a href="?q={{ search_query }}&statut=actif" data-name="statut" data-value="actif"
+                   class="statut-pill js-filter-pill {% if statut_filtre == 'actif' %}active{% endif %}">Actifs</a>
+                <a href="?q={{ search_query }}&statut=inactif" data-name="statut" data-value="inactif"
+                   class="statut-pill js-filter-pill {% if statut_filtre == 'inactif' %}active{% endif %}">Inactifs</a>
+                <a href="?q={{ search_query }}&statut=en_reparation" data-name="statut" data-value="en_reparation"
+                   class="statut-pill rep js-filter-pill {% if statut_filtre == 'en_reparation' %}active{% endif %}">En réparation</a>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-search me-1"></i>Rechercher
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- ── Alertes Documents ─────────────────────────────────────── -->
+    {% if alertes_docs %}
+    <div class="alert-docs-section">
+        <div class="alert-docs-header">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <span>Alertes Documents — {{ alertes_docs|length }} véhicule{{ alertes_docs|length|pluralize }}</span>
+            <div class="ms-auto d-flex gap-2">
+                {% if nb_docs_expiries > 0 %}
+                <span class="ads-badge danger"><i class="bi bi-x-circle me-1"></i>{{ nb_docs_expiries }} expiré{{ nb_docs_expiries|pluralize }}</span>
+                {% endif %}
+                {% if nb_docs_bientot > 0 %}
+                <span class="ads-badge warning"><i class="bi bi-clock me-1"></i>{{ nb_docs_bientot }} bientôt</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="alert-docs-grid">
+            {% for alerte in alertes_docs %}
+            <div class="doc-alert-card worst-{{ alerte.worst }}">
+                <div class="doc-alert-veh">
+                    <i class="bi bi-bus-front" style="color:var(--color-accent);font-size:14px"></i>
+                    <span class="doc-alert-immat">{{ alerte.vehicule.display_immat }}</span>
+                </div>
+                <div class="doc-alert-docs">
+                    {% for doc in alerte.docs %}
+                    <div class="doc-item">
+                        <span class="doc-item-label">{{ doc.label }}</span>
+                        <span class="doc-item-badge {{ doc.niveau }}">
+                            {% if doc.delta < 0 %}-{{ doc.abs_delta }}j
+                            {% elif doc.delta == 0 %}Auj.
+                            {% else %}J-{{ doc.delta }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ── Table ────────────────────────────────────────────────── -->
+    <div class="veh-card" id="vehiculeTableContainer">
+        {% include 'vehicules/partials/vehicule_table.html' %}
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/live-filter.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Convoyeurs{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-person-lines-fill me-2"></i>Convoyeurs</h2>
+        <a href="{% url 'personnel:convoyeur_create' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Nouveau Convoyeur</a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Barre de recherche -->
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <form method="get" data-live-filter="{% url 'personnel:convoyeur_list_ajax' %}" data-target="convoyeurTableContainer" class="row g-2 align-items-center">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" name="q" class="form-control" placeholder="Rechercher par nom ou téléphone..." value="{{ search_query }}">
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Rechercher</button>
+                    {% if search_query %}
+                        <a href="{% url 'personnel:convoyeur_list' %}" class="btn btn-outline-secondary">Effacer</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body" id="convoyeurTableContainer">
+            {% include 'personnel/partials/convoyeur_table.html' %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/live-filter.js' %}"></script>
+{% endblock %}

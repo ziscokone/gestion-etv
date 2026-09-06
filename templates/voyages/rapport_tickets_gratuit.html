@@ -1,0 +1,538 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+{% load humanize %}
+
+{% block title %}Rapport Tickets Gratuits{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Header ────────────────────────────────────────────── */
+.page-header {
+    background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+    border-radius: 14px;
+    padding: 26px 32px;
+    color: #fff;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+}
+.page-header::after {
+    pointer-events: none;
+    content: '\F718';
+    font-family: 'Bootstrap-Icons';
+    font-size: 9rem;
+    opacity: 0.06;
+    position: absolute;
+    right: 24px;
+    top: -10px;
+    line-height: 1;
+}
+.page-header h4 { font-weight: 700; margin: 0; font-size: 1.3rem; }
+.page-header p  { margin: 4px 0 0; opacity: 0.8; font-size: 13px; }
+
+.header-stat {
+    background: rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 10px 20px;
+    text-align: center;
+    min-width: 90px;
+}
+.header-stat .hs-val { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+.header-stat .hs-lbl { font-size: 11px; opacity: 0.85; margin-top: 3px; }
+
+/* ── Filtres ────────────────────────────────────────────── */
+.filter-zone {
+    background: #f8f9fc;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+}
+.filter-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ── Cards stats ────────────────────────────────────────── */
+.section-card {
+    border: none;
+    border-radius: 13px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    overflow: hidden;
+    height: 100%;
+    background: #fff;
+}
+.sc-header {
+    padding: 11px 16px;
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+.sc-header.cyan  { background: #ecfeff; color: #0e7490; }
+.sc-header.amber { background: #fefce8; color: #854d0e; }
+.sc-header.teal  { background: #f0fdfa; color: #0f766e; }
+
+/* ── Stat items (remplace les tableaux) ─────────────────── */
+.stat-list { padding: 8px 0; }
+.stat-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 16px;
+    border-bottom: 1px solid #f3f4f6;
+    gap: 10px;
+}
+.stat-item:last-child { border-bottom: none; }
+.stat-item:hover { background: #fafbfc; }
+.stat-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.stat-badges { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+
+/* ── Badges couleurs ────────────────────────────────────── */
+.badge-approuve { background:#dcfce7; color:#15803d; border-radius:10px; padding:3px 9px; font-size:11px; font-weight:700; white-space:nowrap; }
+.badge-rejete   { background:#fee2e2; color:#dc2626; border-radius:10px; padding:3px 9px; font-size:11px; font-weight:700; white-space:nowrap; }
+.badge-attente  { background:#fef9c3; color:#854d0e; border-radius:10px; padding:3px 9px; font-size:11px; font-weight:700; white-space:nowrap; }
+.badge-zero     { color: #d1d5db; font-size: 11px; font-weight: 600; padding: 3px 4px; }
+
+.nb-badge {
+    background: linear-gradient(135deg, #0e7490, #0891b2);
+    color: #fff;
+    border-radius: 10px;
+    padding: 2px 9px;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+/* ── Chips ──────────────────────────────────────────────── */
+.dest-chip {
+    background: #ecfeff;
+    color: #0e7490;
+    border-radius: 8px;
+    padding: 2px 9px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.gare-chip {
+    background: #eff6ff;
+    color: #1e40af;
+    border-radius: 8px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.gare-sub {
+    font-size: 10px;
+    color: #6b7280;
+    margin-top: 1px;
+}
+
+/* ── Table détaillée ─────────────────────────────────────── */
+.rep-table th {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #6b7280;
+    background: #fafbfc;
+    padding: 10px 14px;
+    border-bottom: 1px solid #f0f0f0;
+    white-space: nowrap;
+}
+.rep-table td {
+    padding: 11px 14px;
+    font-size: 13px;
+    vertical-align: middle;
+}
+.rep-table tbody tr:hover { background: #f8f9fc; }
+.rep-table tbody tr:last-child td { border-bottom: none; }
+
+.motif-cell {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    color: #6b7280;
+    font-style: italic;
+}
+
+/* ── Pagination — bleu nuit de l'application ───────────────── */
+.pagination-nuit { gap: 6px; }
+.pagination-nuit .page-item .page-link {
+    border: 1.5px solid var(--color-accent);
+    color: var(--color-accent);
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 12.5px;
+    padding: 6px 14px;
+    background: #fff;
+    transition: all 0.15s;
+}
+.pagination-nuit .page-item .page-link:hover {
+    background: var(--color-accent);
+    color: #fff;
+}
+.pagination-nuit .page-item.active .page-link {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: #fff;
+    cursor: default;
+    font-weight: 700;
+}
+.pagination-nuit .page-item.active .page-link:hover {
+    background: var(--color-accent);
+}
+
+/* ── Motifs ─────────────────────────────────────────────── */
+.motif-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    border-bottom: 1px solid #f3f4f6;
+    gap: 10px;
+}
+.motif-item:last-child { border-bottom: none; }
+.motif-item:hover { background: #fafbfc; }
+.motif-text {
+    font-size: 12px;
+    color: #374151;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-style: italic;
+}
+
+/* ── Empty state ─────────────────────────────────────────── */
+.empty-state { text-align: center; padding: 40px 20px; color: #9ca3af; }
+.empty-state i { font-size: 2.4rem; display: block; margin-bottom: 10px; }
+.empty-state-sm { text-align: center; padding: 20px; color: #9ca3af; font-size: 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- ── Header ──────────────────────────────────────── -->
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <h4><i class="bi bi-ticket-perforated-fill me-2"></i>Rapport — Tickets Gratuits</h4>
+                <p>
+                    {% if date_debut and date_fin %}Du {{ date_debut }} au {{ date_fin }}
+                    {% elif date_debut %}À partir du {{ date_debut }}
+                    {% elif date_fin %}Jusqu'au {{ date_fin }}
+                    {% else %}Toutes périodes confondues{% endif %}
+                </p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <div class="header-stat">
+                    <div class="hs-val">{{ total }}</div>
+                    <div class="hs-lbl">Total</div>
+                </div>
+                <div class="header-stat" style="background:rgba(134,239,172,.25);">
+                    <div class="hs-val">{{ nb_approuve }}</div>
+                    <div class="hs-lbl">Approuvés</div>
+                </div>
+                <div class="header-stat" style="background:rgba(253,224,71,.25);">
+                    <div class="hs-val">{{ nb_en_attente }}</div>
+                    <div class="hs-lbl">En attente</div>
+                </div>
+                <div class="header-stat" style="background:rgba(252,165,165,.25);">
+                    <div class="hs-val">{{ nb_rejete }}</div>
+                    <div class="hs-lbl">Rejetés</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Filtres ─────────────────────────────────────── -->
+    <div class="filter-zone">
+        <div class="filter-title"><i class="bi bi-funnel"></i> Filtres</div>
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label fw-semibold" style="font-size:12px;">Date début</label>
+                <input type="date" name="date_debut" class="form-control form-control-sm"
+                       value="{{ date_debut|default:'' }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-semibold" style="font-size:12px;">Date fin</label>
+                <input type="date" name="date_fin" class="form-control form-control-sm"
+                       value="{{ date_fin|default:'' }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-semibold" style="font-size:12px;">Statut</label>
+                <select name="statut" class="form-select form-select-sm">
+                    <option value="" {% if not statut_filtre %}selected{% endif %}>Tous les statuts</option>
+                    <option value="approuve" {% if statut_filtre == 'approuve' %}selected{% endif %}>Approuvés</option>
+                    <option value="en_attente" {% if statut_filtre == 'en_attente' %}selected{% endif %}>En attente</option>
+                    <option value="rejete" {% if statut_filtre == 'rejete' %}selected{% endif %}>Rejetés</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold" style="font-size:12px;">Guichetier demandeur</label>
+                <select name="guichetier" class="form-select form-select-sm">
+                    <option value="">Tous les guichetiers</option>
+                    {% for g in guichetiers %}
+                    <option value="{{ g.pk }}" {% if guichetier_id == g.pk|stringformat:"s" %}selected{% endif %}>
+                        {{ g.nom_complet }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% if gares %}
+            <div class="col-md-2">
+                <label class="form-label fw-semibold" style="font-size:12px;">Gare</label>
+                <select name="gare" class="form-select form-select-sm">
+                    <option value="">Toutes les gares</option>
+                    {% for g in gares %}
+                    <option value="{{ g.pk }}" {% if gare_id == g.pk|stringformat:"s" %}selected{% endif %}>
+                        {{ g.nom }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="col-md-1 d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-primary w-100">
+                    <i class="bi bi-search"></i>
+                </button>
+                <a href="{% url 'voyages:rapport_tickets_gratuit' %}" class="btn btn-sm btn-outline-secondary w-100">
+                    <i class="bi bi-x"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- ── Stats : 3 colonnes ──────────────────────────── -->
+    <div class="row g-3 mb-4">
+
+        <!-- Par guichetier -->
+        <div class="col-lg-5">
+            <div class="section-card">
+                <div class="sc-header cyan">
+                    <i class="bi bi-person-badge"></i> Par guichetier
+                </div>
+                {% if stats_guichetiers %}
+                <div class="stat-list">
+                    {% for s in stats_guichetiers %}
+                    <div class="stat-item">
+                        <div style="flex:1;min-width:0;">
+                            <div class="stat-name">{{ s.demande_par__nom_complet|default:"—" }}</div>
+                            {% if gares and s.demande_par__gare__nom %}
+                            <div class="gare-sub"><i class="bi bi-geo-alt-fill" style="font-size:9px;"></i> {{ s.demande_par__gare__nom }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="stat-badges">
+                            <span class="nb-badge">{{ s.nb_total }}</span>
+                            {% if s.nb_approuve %}<span class="badge-approuve">{{ s.nb_approuve }} ✓</span>{% endif %}
+                            {% if s.nb_attente %}<span class="badge-attente">{{ s.nb_attente }} ⏳</span>{% endif %}
+                            {% if s.nb_rejete %}<span class="badge-rejete">{{ s.nb_rejete }} ✗</span>{% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state-sm"><i class="bi bi-person-x d-block mb-1" style="font-size:1.4rem;"></i>Aucune donnée</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Par destination -->
+        <div class="col-lg-4">
+            <div class="section-card">
+                <div class="sc-header teal">
+                    <i class="bi bi-geo-alt"></i> Par destination
+                </div>
+                {% if stats_destinations %}
+                <div class="stat-list">
+                    {% for d in stats_destinations %}
+                    <div class="stat-item">
+                        <span class="dest-chip">{{ d.billet__destination__ville_arrivee }}</span>
+                        <div class="stat-badges">
+                            <span class="nb-badge">{{ d.nb }}</span>
+                            {% if d.nb_approuve %}<span class="badge-approuve">{{ d.nb_approuve }} ✓</span>{% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state-sm"><i class="bi bi-geo d-block mb-1" style="font-size:1.4rem;"></i>Aucune donnée</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Motifs fréquents -->
+        <div class="col-lg-3">
+            <div class="section-card">
+                <div class="sc-header amber">
+                    <i class="bi bi-chat-left-text"></i> Motifs fréquents
+                </div>
+                {% if stats_motifs %}
+                <div class="stat-list">
+                    {% for m in stats_motifs %}
+                    <div class="motif-item">
+                        <span class="motif-text" title="{{ m.motif }}">{{ m.motif }}</span>
+                        <span class="nb-badge">{{ m.count }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state-sm"><i class="bi bi-chat d-block mb-1" style="font-size:1.4rem;"></i>Aucun motif</div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ── Liste détaillée ─────────────────────────────── -->
+    <div class="section-card">
+        <div class="sc-header" style="background:linear-gradient(135deg,#0e7490,#0891b2);color:#fff;border-radius:13px 13px 0 0;">
+            <i class="bi bi-list-ul"></i>
+            Liste détaillée
+            <span class="ms-auto" style="font-size:12px;opacity:.8;">
+                {{ total }} demande{{ total|pluralize }}
+                {% if page_obj.paginator.num_pages > 1 %}
+                — page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+                {% endif %}
+            </span>
+        </div>
+
+        {% if page_obj.object_list %}
+        <div class="table-responsive">
+            <table class="table rep-table mb-0">
+                <thead>
+                    <tr>
+                        <th>N° Ticket</th>
+                        <th>Passager</th>
+                        <th>Siège</th>
+                        <th>Destination</th>
+                        <th>Voyage / Date</th>
+                        {% if gares %}<th>Gare</th>{% endif %}
+                        <th>Motif</th>
+                        <th>Demandé par</th>
+                        <th>Traité par</th>
+                        <th>Date demande</th>
+                        <th class="text-center">Statut</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in page_obj %}
+                    <tr>
+                        <td>
+                            <span style="font-weight:700;color:#0e7490;font-size:12px;">{{ d.billet.numero }}</span>
+                        </td>
+                        <td>
+                            <div class="fw-semibold" style="font-size:13px;">{{ d.billet.client_nom }}</div>
+                            <div style="font-size:11px;color:#9ca3af;">{{ d.billet.client_telephone }}</div>
+                        </td>
+                        <td>
+                            <span style="background:#f1f5f9;color:#475569;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700;">
+                                N° {{ d.billet.numero_siege|default:"—" }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if d.billet.destination %}
+                            <span class="dest-chip">{{ d.billet.destination.ville_arrivee }}</span>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td style="font-size:12px;">
+                            <div class="fw-semibold" style="color:#374151;">{{ d.billet.voyage.ligne }}</div>
+                            <div style="color:#9ca3af;">{{ d.billet.voyage.date_depart|date:"d/m/Y" }}</div>
+                        </td>
+                        {% if gares %}
+                        <td>
+                            <span class="gare-chip">
+                                <i class="bi bi-geo-alt-fill"></i>
+                                {{ d.billet.voyage.gare.nom }}
+                            </span>
+                        </td>
+                        {% endif %}
+                        <td class="motif-cell" title="{{ d.motif }}">
+                            {% if d.motif %}{{ d.motif }}{% else %}<em>—</em>{% endif %}
+                        </td>
+                        <td style="font-size:12px;">{{ d.demande_par.nom_complet|default:"—" }}</td>
+                        <td style="font-size:12px;color:#6b7280;">{{ d.traite_par.nom_complet|default:"—" }}</td>
+                        <td style="font-size:12px;color:#6b7280;white-space:nowrap;">
+                            {{ d.date_demande|date:"d/m/Y H:i" }}
+                        </td>
+                        <td class="text-center">
+                            {% if d.statut == 'approuve' %}
+                                <span class="badge-approuve"><i class="bi bi-check-circle me-1"></i>Approuvé</span>
+                            {% elif d.statut == 'rejete' %}
+                                <span class="badge-rejete"><i class="bi bi-x-circle me-1"></i>Rejeté</span>
+                            {% else %}
+                                <span class="badge-attente"><i class="bi bi-hourglass-split me-1"></i>En attente</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if page_obj.paginator.num_pages > 1 %}
+        <nav class="d-flex justify-content-center py-3 border-top">
+            <ul class="pagination pagination-sm pagination-nuit mb-0">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{{ query_string }}&page=1">Première</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?{{ query_string }}&page={{ page_obj.previous_page_number }}">Précédent</a>
+                    </li>
+                {% endif %}
+                <li class="page-item active">
+                    <span class="page-link">Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span>
+                </li>
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{{ query_string }}&page={{ page_obj.next_page_number }}">Suivant</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?{{ query_string }}&page={{ page_obj.paginator.num_pages }}">Dernière</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-ticket-perforated"></i>
+            <p class="fw-semibold mb-1">Aucune demande de ticket gratuit trouvée</p>
+            <p style="font-size:13px;">Modifiez les filtres ou sélectionnez une autre période.</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

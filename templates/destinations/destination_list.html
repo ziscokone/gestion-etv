@@ -1,0 +1,269 @@
+{% extends 'base.html' %}
+{% load custom_filters static %}
+
+{% block title %}Gestion des Destinations{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Header ──────────────────────────────────────────────── */
+.page-header {
+    background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
+    border-radius: 14px;
+    padding: 26px 32px;
+    color: #fff;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+}
+.page-header::after {
+    pointer-events: none;
+    content: '\F3E0';
+    font-family: 'Bootstrap-Icons';
+    font-size: 9rem;
+    opacity: 0.06;
+    position: absolute;
+    right: 24px;
+    top: -10px;
+    line-height: 1;
+}
+.page-header h4 { font-weight: 700; margin: 0; }
+
+.header-stat {
+    background: rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 8px 16px;
+    text-align: center;
+    min-width: 90px;
+}
+.header-stat .hs-val { font-size: 1.4rem; font-weight: 700; line-height: 1; }
+.header-stat .hs-lbl { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+
+.btn-header {
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 8px 18px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+/* Nouvelle Destination — vert succès plein */
+.btn-header.success { background: #198754; color: #fff; border: 1px solid transparent; }
+.btn-header.success:hover { background: #157347; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); color: #fff; }
+
+/* Exporter Excel — teal translucide (couleur de marque Excel) */
+.btn-header.export { background: rgba(20,184,166,0.22); color: #fff; border: 1px solid rgba(20,184,166,0.55); }
+.btn-header.export:hover { background: rgba(20,184,166,0.35); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); color: #fff; }
+
+/* Importer Excel — ambre translucide */
+.btn-header.import { background: rgba(245,158,11,0.22); color: #fff; border: 1px solid rgba(245,158,11,0.55); }
+.btn-header.import:hover { background: rgba(245,158,11,0.35); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); color: #fff; }
+
+/* ── Filtres ─────────────────────────────────────────────── */
+.filter-zone {
+    background: #f8f9fc;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 22px;
+}
+.filter-zone .form-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+/* ── Table card ──────────────────────────────────────────── */
+.dest-card {
+    border: none;
+    border-radius: 13px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    overflow: hidden;
+}
+.dest-card .table-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid #f0f0f0;
+    font-weight: 600;
+    font-size: 14px;
+    color: #1e3260;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+}
+
+.d-table th {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+    padding: 11px 16px;
+    background: #fafbfc;
+    border-bottom: 1px solid #f0f0f0;
+}
+.d-table td { padding: 11px 16px; vertical-align: middle; font-size: 13px; }
+.d-table tbody tr { transition: background 0.12s; }
+.d-table tbody tr:hover { background: #f8f9fc; }
+.d-table tbody tr:last-child td { border-bottom: none; }
+
+/* Ligne badge */
+.ligne-badge {
+    font-weight: 700;
+    color: #111827;
+    font-size: 13px;
+}
+
+/* Montant */
+.montant-cell {
+    font-weight: 700;
+    color: var(--color-accent);
+    font-size: 13px;
+}
+
+/* Statut actif/inactif */
+.statut-actif {
+    display: inline-flex; align-items: center; gap: 4px;
+    border-radius: 12px; padding: 3px 10px;
+    font-size: 11px; font-weight: 600;
+    background: #dcfce7; color: #166534;
+}
+.statut-inactif {
+    display: inline-flex; align-items: center; gap: 4px;
+    border-radius: 12px; padding: 3px 10px;
+    font-size: 11px; font-weight: 600;
+    background: #fee2e2; color: #991b1b;
+}
+
+/* Boutons action */
+.btn-action {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    border: 1px solid #e5e7eb;
+    background: #fff; color: #6b7280;
+    transition: all 0.15s; text-decoration: none;
+}
+.btn-action:hover         { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+.btn-action.edit:hover    { background: #fefce8; color: #92400e; border-color: #fde68a; }
+.btn-action.del:hover     { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+
+/* État vide */
+.empty-state { text-align: center; padding: 56px 20px; color: #9ca3af; }
+.empty-state i { font-size: 3rem; display: block; margin-bottom: 12px; }
+
+/* Pagination — bleu nuit de l'application */
+.pagination-nuit { gap: 6px; }
+.pagination-nuit .page-item .page-link {
+    border: 1.5px solid var(--color-accent);
+    color: var(--color-accent);
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 12.5px;
+    padding: 6px 14px;
+    background: #fff;
+    transition: all 0.15s;
+}
+.pagination-nuit .page-item .page-link:hover {
+    background: var(--color-accent);
+    color: #fff;
+}
+.pagination-nuit .page-item.active .page-link {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: #fff;
+    cursor: default;
+    font-weight: 700;
+}
+.pagination-nuit .page-item.active .page-link:hover {
+    background: var(--color-accent);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- ── Header ── -->
+    <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h4><i class="bi bi-geo-alt me-2"></i>Destinations</h4>
+            <div class="d-flex gap-3 mt-3 flex-wrap">
+                <div class="header-stat">
+                    <div class="hs-val" id="destTotalCount">{{ total_count }}</div>
+                    <div class="hs-lbl">Total</div>
+                </div>
+                <div class="header-stat">
+                    <div class="hs-val">{{ destinations|length }}</div>
+                    <div class="hs-lbl">Affichées</div>
+                </div>
+            </div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            {% if request.user.has_global_access %}
+            <a href="{% url 'destinations:destination_export' %}{% if search_query %}?q={{ search_query|urlencode }}{% endif %}"
+               class="btn-header export">
+                <i class="bi bi-file-earmark-excel"></i> Exporter Excel
+            </a>
+            <a href="{% url 'destinations:destination_import' %}"
+               class="btn-header import">
+                <i class="bi bi-file-earmark-arrow-up"></i> Importer Excel
+            </a>
+            {% endif %}
+            <a href="{% url 'destinations:destination_create' %}" class="btn-header success">
+                <i class="bi bi-plus-circle"></i> Nouvelle Destination
+            </a>
+        </div>
+    </div>
+
+    <!-- ── Filtres ── -->
+    <div class="filter-zone">
+        <form method="get" data-live-filter="{% url 'destinations:destination_list_ajax' %}"
+              data-target="destTableContainer" data-count-target="destTotalCount"
+              class="row g-3 align-items-end">
+            <div class="col-md-9">
+                <label class="form-label">Recherche</label>
+                <input type="text" name="q" class="form-control form-control-sm"
+                       placeholder="Rechercher par ville ou ligne..."
+                       value="{{ search_query }}">
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-search me-1"></i> Rechercher
+                </button>
+                {% if search_query %}
+                <a href="{% url 'destinations:destination_list' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- ── Table ── -->
+    <div class="dest-card" id="destTableContainer">
+        {% include 'destinations/partials/destination_table.html' %}
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/live-filter.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,395 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Paramètres de la compagnie{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-header {
+    background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
+    border-radius: 14px;
+    padding: 26px 32px;
+    color: #fff;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+}
+.page-header::after {
+    pointer-events: none;
+    content: '\F3E0';
+    font-family: 'Bootstrap-Icons';
+    font-size: 9rem;
+    opacity: 0.06;
+    position: absolute;
+    right: 24px;
+    top: -10px;
+    line-height: 1;
+}
+.page-header h4 { font-weight: 700; margin: 0; }
+.page-header p  { margin: 6px 0 0; opacity: 0.8; font-size: 13px; }
+
+.form-card {
+    border: none;
+    border-radius: 13px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    overflow: hidden;
+    background: #fff;
+}
+
+.section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--color-accent);
+    margin-bottom: 14px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid rgba(74,111,165,0.12);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.form-label-sm {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.toggle-zone {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #f8f9fc;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px 16px;
+}
+.toggle-zone .form-check-input {
+    width: 2.5em;
+    height: 1.35em;
+    cursor: pointer;
+}
+.toggle-zone .toggle-label {
+    font-weight: 600;
+    font-size: 13px;
+    color: #374151;
+}
+.toggle-zone .toggle-hint {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 2px;
+}
+
+.form-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #f0f0f0;
+    background: #fafbfc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-submit {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 22px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    background: var(--color-accent);
+    color: #fff;
+    border: none;
+    transition: all 0.15s;
+    cursor: pointer;
+}
+.btn-submit:hover {
+    background: var(--color-accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(74,111,165,0.3);
+}
+
+/* Colonne aperçu */
+.apercu-panel {
+    position: sticky;
+    top: 90px;
+}
+.apercu-panel .apercu-header {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--color-accent);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.apercu-panel .apercu-note {
+    font-size: 11.5px;
+    color: #9ca3af;
+    margin-top: 10px;
+    text-align: center;
+}
+
+.doc-alerte-card {
+    background: #f8f9fc;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px 16px;
+}
+.doc-alerte-card .toggle-label {
+    font-weight: 600;
+    font-size: 13px;
+    color: #374151;
+}
+.doc-alerte-card .form-check-input {
+    width: 2.5em;
+    height: 1.35em;
+    cursor: pointer;
+}
+.doc-alerte-seuils.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+
+            <!-- ── Header ── -->
+            <div class="page-header">
+                <h4><i class="bi bi-building-gear me-2"></i>Paramètres de la compagnie</h4>
+                <p>Coordonnées, logo, et réglages d'impression des tickets — réservé au Super Administrateur</p>
+            </div>
+
+            <div class="row g-4">
+                <!-- ── Formulaire ── -->
+                <div class="col-lg-7">
+                    <div class="form-card">
+                        <form method="post" enctype="multipart/form-data" novalidate>
+                            {% csrf_token %}
+
+                            {% if form.non_field_errors %}
+                                <div class="alert alert-danger mx-3 mt-3">{{ form.non_field_errors }}</div>
+                            {% endif %}
+
+                            <div class="p-4">
+
+                                <!-- Section : Informations générales -->
+                                <div class="section-label">
+                                    <i class="bi bi-info-circle"></i> Informations générales
+                                </div>
+                                <div class="row mb-4">
+                                    <div class="col-md-8 mb-3">
+                                        <label class="form-label-sm">{{ form.nom.label }} <span class="text-danger">*</span></label>
+                                        {{ form.nom }}
+                                        {% if form.nom.errors %}<div class="invalid-feedback d-block">{{ form.nom.errors }}</div>{% endif %}
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label-sm">{{ form.nom_pdg.label }}</label>
+                                        {{ form.nom_pdg }}
+                                        {% if form.nom_pdg.errors %}<div class="invalid-feedback d-block">{{ form.nom_pdg.errors }}</div>{% endif %}
+                                    </div>
+                                    <div class="col-md-12 mb-3">
+                                        <label class="form-label-sm">{{ form.logo.label }}</label>
+                                        {{ form.logo }}
+                                        {% if object.logo %}
+                                            <div class="mt-2"><img src="{{ object.logo.url }}" alt="Logo actuel" style="max-height:50px;"></div>
+                                        {% endif %}
+                                        {% if form.logo.errors %}<div class="invalid-feedback d-block">{{ form.logo.errors }}</div>{% endif %}
+                                    </div>
+                                </div>
+
+                                <!-- Section : Contact -->
+                                <div class="section-label">
+                                    <i class="bi bi-telephone"></i> Contact
+                                </div>
+                                <div class="row mb-4">
+                                    <div class="col-md-12 mb-3">
+                                        <label class="form-label-sm">{{ form.adresse.label }}</label>
+                                        {{ form.adresse }}
+                                        {% if form.adresse.errors %}<div class="invalid-feedback d-block">{{ form.adresse.errors }}</div>{% endif %}
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label-sm">{{ form.telephone.label }}</label>
+                                        {{ form.telephone }}
+                                        {% if form.telephone.errors %}<div class="invalid-feedback d-block">{{ form.telephone.errors }}</div>{% endif %}
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label-sm">{{ form.email.label }}</label>
+                                        {{ form.email }}
+                                        {% if form.email.errors %}<div class="invalid-feedback d-block">{{ form.email.errors }}</div>{% endif %}
+                                    </div>
+                                </div>
+
+                                <!-- Section : Configuration ticket -->
+                                <div class="section-label">
+                                    <i class="bi bi-receipt"></i> Configuration des tickets
+                                </div>
+                                <div class="toggle-zone mb-3">
+                                    {{ form.utiliser_souche }}
+                                    <div>
+                                        <div class="toggle-label">{{ form.utiliser_souche.label }}</div>
+                                        <div class="toggle-hint">{{ form.utiliser_souche.help_text }}</div>
+                                    </div>
+                                </div>
+                                <div class="mb-1">
+                                    <label class="form-label-sm">{{ form.message_bas_ticket.label }}</label>
+                                    {{ form.message_bas_ticket }}
+                                    <div class="mt-1" style="font-size:11px;color:#9ca3af;">
+                                        <i class="bi bi-info-circle me-1"></i>{{ form.message_bas_ticket.help_text }}
+                                    </div>
+                                    {% if form.message_bas_ticket.errors %}<div class="invalid-feedback d-block">{{ form.message_bas_ticket.errors }}</div>{% endif %}
+                                </div>
+
+                                <!-- Section : Alertes documents véhicules -->
+                                <div class="section-label mt-4">
+                                    <i class="bi bi-file-earmark-medical"></i> Alertes documents véhicules
+                                </div>
+                                <p style="font-size:12px;color:#9ca3af;margin-top:-8px;margin-bottom:16px;">
+                                    Décoche un document s'il n'expire jamais chez toi (ex: carte grise) — il sera
+                                    alors ignoré partout, y compris sur la fiche véhicule.
+                                </p>
+
+                                <div class="doc-alerte-card mb-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="toggle-label">Assurance</span>
+                                        {{ form.alerte_assurance_active }}
+                                    </div>
+                                    <div class="row g-2 mt-1 doc-alerte-seuils" data-doc-seuils="assurance">
+                                        <div class="col-6">
+                                            <label class="form-label-sm">Alerter (jours avant)</label>
+                                            {{ form.alerte_assurance_jours }}
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label-sm">Seuil urgent (jours)</label>
+                                            {{ form.alerte_assurance_urgent_jours }}
+                                        </div>
+                                        {% if form.alerte_assurance_urgent_jours.errors %}<div class="invalid-feedback d-block">{{ form.alerte_assurance_urgent_jours.errors }}</div>{% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="doc-alerte-card mb-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="toggle-label">Visite technique</span>
+                                        {{ form.alerte_visite_technique_active }}
+                                    </div>
+                                    <div class="row g-2 mt-1 doc-alerte-seuils" data-doc-seuils="visite_technique">
+                                        <div class="col-6">
+                                            <label class="form-label-sm">Alerter (jours avant)</label>
+                                            {{ form.alerte_visite_technique_jours }}
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label-sm">Seuil urgent (jours)</label>
+                                            {{ form.alerte_visite_technique_urgent_jours }}
+                                        </div>
+                                        {% if form.alerte_visite_technique_urgent_jours.errors %}<div class="invalid-feedback d-block">{{ form.alerte_visite_technique_urgent_jours.errors }}</div>{% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="doc-alerte-card mb-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="toggle-label">Carte grise</span>
+                                        {{ form.alerte_carte_grise_active }}
+                                    </div>
+                                    <div class="row g-2 mt-1 doc-alerte-seuils" data-doc-seuils="carte_grise">
+                                        <div class="col-6">
+                                            <label class="form-label-sm">Alerter (jours avant)</label>
+                                            {{ form.alerte_carte_grise_jours }}
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label-sm">Seuil urgent (jours)</label>
+                                            {{ form.alerte_carte_grise_urgent_jours }}
+                                        </div>
+                                        {% if form.alerte_carte_grise_urgent_jours.errors %}<div class="invalid-feedback d-block">{{ form.alerte_carte_grise_urgent_jours.errors }}</div>{% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="doc-alerte-card mb-1">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="toggle-label">Licence de transport</span>
+                                        {{ form.alerte_licence_transport_active }}
+                                    </div>
+                                    <div class="row g-2 mt-1 doc-alerte-seuils" data-doc-seuils="licence_transport">
+                                        <div class="col-6">
+                                            <label class="form-label-sm">Alerter (jours avant)</label>
+                                            {{ form.alerte_licence_transport_jours }}
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label-sm">Seuil urgent (jours)</label>
+                                            {{ form.alerte_licence_transport_urgent_jours }}
+                                        </div>
+                                        {% if form.alerte_licence_transport_urgent_jours.errors %}<div class="invalid-feedback d-block">{{ form.alerte_licence_transport_urgent_jours.errors }}</div>{% endif %}
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <!-- ── Footer ── -->
+                            <div class="form-footer">
+                                <a href="{% url 'hub' %}" class="btn btn-secondary">
+                                    <i class="bi bi-arrow-left"></i> Retour
+                                </a>
+                                <button type="submit" class="btn-submit">
+                                    <i class="bi bi-check-circle"></i> Enregistrer
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- ── Aperçu du ticket ── -->
+                <div class="col-lg-5">
+                    <div class="apercu-panel">
+                        <div class="apercu-header">
+                            <i class="bi bi-eye"></i> Aperçu du ticket (données de démonstration)
+                        </div>
+                        <div id="apercu-ticket-container"></div>
+                        <p class="apercu-note">
+                            Se met à jour automatiquement quand tu coches/décoches "Imprimer avec souche"
+                            ou modifies le message — même avant d'enregistrer.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/ticket-preview.js' %}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        initApercuTicket({
+            checkboxSoucheId: '{{ form.utiliser_souche.id_for_label }}',
+            textareaMessageId: '{{ form.message_bas_ticket.id_for_label }}',
+            containerId: 'apercu-ticket-container',
+            compagnieNom: '{{ object.nom|default:""|escapejs }}',
+            compagnieLogo: '{% if object.logo %}{{ object.logo.url|escapejs }}{% endif %}'
+        });
+
+        // Grise/dégrise les seuils selon que le document "expire" ou non.
+        document.querySelectorAll('.doc-alerte-toggle').forEach(function (checkbox) {
+            var doc = checkbox.dataset.doc;
+            var zone = document.querySelector('.doc-alerte-seuils[data-doc-seuils="' + doc + '"]');
+            if (!zone) return;
+
+            function actualiser() {
+                zone.classList.toggle('disabled', !checkbox.checked);
+            }
+            checkbox.addEventListener('change', actualiser);
+            actualiser();
+        });
+    });
+</script>
+{% endblock %}

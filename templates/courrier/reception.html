@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Réception de colis{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card shadow-sm">
+        <div class="card-header text-white">
+            <h5 class="mb-0"><i class="bi bi-box-arrow-in-down me-2"></i>Colis arrivés, en attente de réception</h5>
+        </div>
+        <div class="card-body">
+            {% if colis_a_receptionner %}
+            <div class="alert alert-info small">
+                <i class="bi bi-info-circle me-1"></i>
+                Sélectionnez les colis que vous avez physiquement en main puis confirmez — le retrait ne sera possible qu'après cette étape. Inutile d'attendre que le voyage soit marqué « Terminé » : dès que vous avez le colis, vous pouvez le réceptionner.
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th style="width:36px;"><input type="checkbox" id="selectAll"></th>
+                                <th>Code colis</th>
+                                <th>Origine</th>
+                                <th>Expéditeur</th>
+                                <th>Destinataire</th>
+                                <th>Type</th>
+                                <th class="text-center">Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for colis in colis_a_receptionner %}
+                            <tr>
+                                <td><input type="checkbox" name="colis_id" value="{{ colis.public_id }}" class="colis-checkbox"></td>
+                                <td><code>{{ colis.code_colis }}</code></td>
+                                <td>{{ colis.gare_origine.nom }}</td>
+                                <td class="small">{{ colis.expediteur_nom }}<br><span class="text-muted">{{ colis.expediteur_telephone }}</span></td>
+                                <td class="small">{{ colis.destinataire_nom }}<br><span class="text-muted">{{ colis.destinataire_telephone }}</span></td>
+                                <td>{{ colis.type_colis.nom }}</td>
+                                <td class="text-center">
+                                    {% if colis.statut == 'arrive' %}
+                                    <span class="badge rounded-pill statut-badge statut-arrive">Arrivé</span><br>
+                                    <span class="small text-muted">{{ colis.date_arrivee|date:"d/m/Y H:i" }}</span>
+                                    {% else %}
+                                    <span class="badge rounded-pill statut-badge statut-en_transit">En transit</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check-circle me-1"></i>Réceptionner les colis sélectionnés
+                </button>
+            </form>
+
+            {% if is_paginated %}
+            <nav class="mt-3">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Précédent</a></li>
+                    {% endif %}
+                    <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+                    {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Suivant</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+            {% else %}
+            <div class="alert alert-info mb-0"><i class="bi bi-info-circle me-2"></i>Aucun colis en attente de réception.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.statut-badge { font-size: 11px; font-weight: 600; padding: 5px 10px; }
+.statut-en_transit { background: #e0f2fe; color: #0369a1; }
+.statut-arrive      { background: #fef3c7; color: #92400e; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const selectAll = document.getElementById('selectAll');
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            document.querySelectorAll('.colis-checkbox').forEach(cb => { cb.checked = selectAll.checked; });
+        });
+    }
+});
+</script>
+{% endblock %}

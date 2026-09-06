@@ -1,0 +1,301 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Bilan Mensuel - Gestion Billetterie{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* En-tête page */
+    .bilan-header {
+        background: linear-gradient(135deg, #1e3260 0%, #162550 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    /* Sidebar mois */
+    .sidebar-mois .card-header {
+        background: linear-gradient(135deg, #1e3260 0%, #162550 100%);
+        color: white;
+        font-weight: 600;
+        font-size: 0.85rem;
+        border: none;
+    }
+    .sidebar-mois .list-group-item {
+        font-size: 0.875rem;
+        padding: 0.6rem 1rem;
+        border-left: none;
+        border-right: none;
+        transition: background 0.15s;
+    }
+    .sidebar-mois .list-group-item:hover {
+        background-color: #f0f4f8;
+    }
+    .sidebar-mois .list-group-item.active {
+        background-color: #1e3260;
+        border-color: #1e3260;
+        color: white;
+        font-weight: 600;
+    }
+
+    /* KPI cards */
+    .kpi-card {
+        border-radius: 10px;
+        padding: 1.25rem 1rem;
+        text-align: center;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+        border: none;
+        background: white;
+        border-top: 4px solid #1e3260;
+    }
+    .kpi-card .kpi-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        line-height: 1.1;
+    }
+    .kpi-card .kpi-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-top: 0.3rem;
+    }
+    .kpi-card.kpi-recettes { border-top-color: #17a2b8; }
+    .kpi-card.kpi-benefice-pos { border-top-color: #28a745; }
+    .kpi-card.kpi-benefice-neg { border-top-color: #dc3545; }
+
+    /* Tableau */
+    .table-rapport {
+        font-size: 0.875rem;
+        margin-bottom: 0;
+    }
+    .table-rapport thead th {
+        background-color: #1e3260;
+        color: white;
+        border-color: #162550;
+        font-weight: 600;
+        font-size: 0.82rem;
+        text-align: center;
+        vertical-align: middle;
+        padding: 0.7rem 0.5rem;
+        white-space: nowrap;
+    }
+    .table-rapport thead th.th-left {
+        text-align: left;
+    }
+    .table-rapport tbody td {
+        vertical-align: middle;
+        padding: 0.6rem 0.5rem;
+        border-color: #e2e8f0;
+    }
+    .table-rapport tbody tr:hover {
+        background-color: #f0f4f8;
+    }
+    .table-rapport .montant {
+        font-family: 'Courier New', monospace;
+        font-weight: 500;
+        text-align: right;
+    }
+    .table-rapport tfoot td {
+        background-color: #162550;
+        color: white;
+        border-top: 2px solid #1e3260;
+        font-weight: 700;
+        padding: 0.75rem 0.5rem;
+        font-size: 0.875rem;
+        text-align: center;
+        vertical-align: middle;
+    }
+    .table-rapport tfoot td.td-left {
+        text-align: left;
+    }
+    .table-rapport tfoot td.montant {
+        font-family: 'Courier New', monospace;
+        text-align: right;
+    }
+
+    /* Titre du mois sélectionné */
+    .mois-titre {
+        font-size: 1rem;
+        color: #5a6a85;
+        margin-bottom: 1rem;
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <!-- En-tête page -->
+    <div class="bilan-header d-flex align-items-center justify-content-between">
+        <div>
+            <i class="bi bi-calendar2-check me-2" style="font-size:1.3rem;"></i>
+            <span style="font-size:1.2rem; font-weight:600;">Bilan Mensuel</span>
+        </div>
+        {% if mois_selectionne %}
+        <span style="font-size:0.95rem; opacity:0.85;">
+            <i class="bi bi-bar-chart-line me-1"></i>{{ mois_selectionne|date:"F Y"|capfirst }}
+        </span>
+        {% endif %}
+    </div>
+
+    <div class="row g-4">
+
+        <!-- Sidebar : liste des mois -->
+        <div class="col-lg-2 col-md-3">
+            <div class="card sidebar-mois">
+                <div class="card-header">
+                    <i class="bi bi-calendar3 me-2"></i>Mois disponibles
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for mois in mois_disponibles %}
+                    <a href="?mois={{ mois|date:'Y-m' }}"
+                       class="list-group-item list-group-item-action {% if mois_selectionne and mois|date:'Y-m' == mois_selectionne|date:'Y-m' %}active{% endif %}">
+                        {{ mois|date:"F Y"|capfirst }}
+                    </a>
+                    {% empty %}
+                    <div class="list-group-item text-muted small py-3">Aucun voyage enregistré</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Contenu principal -->
+        <div class="col-lg-10 col-md-9">
+
+            {% if mois_selectionne %}
+
+            {% if bilan_gares %}
+
+            <!-- KPIs -->
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="kpi-card">
+                        <div class="kpi-value text-primary">{{ totaux.nb_voyages }}</div>
+                        <div class="kpi-label">Voyage{{ totaux.nb_voyages|pluralize }}</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="kpi-card">
+                        <div class="kpi-value text-success">{{ totaux.nb_billets_payes }}</div>
+                        <div class="kpi-label">Billets payés</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="kpi-card kpi-recettes">
+                        <div class="kpi-value text-info" style="font-size:1.4rem;">{{ totaux.recettes_totales|intcomma }}</div>
+                        <div class="kpi-label">Recettes totales (FCFA)</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="kpi-card {% if totaux.benefice_net >= 0 %}kpi-benefice-pos{% else %}kpi-benefice-neg{% endif %}">
+                        <div class="kpi-value {% if totaux.benefice_net >= 0 %}text-success{% else %}text-danger{% endif %}" style="font-size:1.4rem;">
+                            {{ totaux.benefice_net|intcomma }}
+                        </div>
+                        <div class="kpi-label">Recette net (FCFA)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tableau détaillé par gare -->
+            <div class="card" style="border-radius:10px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                <div class="card-header" style="background:linear-gradient(135deg,#1e3260 0%,#162550 100%); color:white; font-weight:600; border:none;">
+                    <i class="bi bi-table me-2"></i>Détail par gare
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover table-rapport">
+                        <thead>
+                            <tr>
+                                <th class="th-left">Gare</th>
+                                <th>Voyages</th>
+                                <th>Billets<br><small class="fw-normal opacity-75">Payés</small></th>
+                                <th>Billets<br><small class="fw-normal opacity-75">Reportés</small></th>
+                                <th>Recettes<br><small class="fw-normal opacity-75">Billets</small></th>
+                                <th>Recettes<br><small class="fw-normal opacity-75">Bagages</small></th>
+                                <th>Recettes<br><small class="fw-normal opacity-75">Totales</small></th>
+                                <th>Dépenses<br><small class="fw-normal opacity-75">Exploitation</small></th>
+                                <th>Dépenses<br><small class="fw-normal opacity-75">Réparations</small></th>
+                                <th>Total<br><small class="fw-normal opacity-75">Dépenses</small></th>
+                                <th>Recette<br><small class="fw-normal opacity-75">Net</small></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ligne in bilan_gares %}
+                            <tr>
+                                <td><strong>{{ ligne.gare.nom }}</strong></td>
+                                <td class="text-center">{{ ligne.nb_voyages }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-success">{{ ligne.nb_billets_payes }}</span>
+                                </td>
+                                <td class="text-center">
+                                    {% if ligne.nb_billets_reportes %}
+                                    <span class="badge bg-warning text-dark">{{ ligne.nb_billets_reportes }}</span>
+                                    {% else %}
+                                    <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td class="montant">{{ ligne.recettes_billets|intcomma }}</td>
+                                <td class="montant">
+                                    {% if ligne.recettes_bagages %}{{ ligne.recettes_bagages|intcomma }}
+                                    {% else %}<span class="text-muted">—</span>{% endif %}
+                                </td>
+                                <td class="montant fw-bold text-success">{{ ligne.recettes_totales|intcomma }}</td>
+                                <td class="montant text-danger">
+                                    {% if ligne.depenses_exploitation %}{{ ligne.depenses_exploitation|intcomma }}
+                                    {% else %}<span class="text-muted">—</span>{% endif %}
+                                </td>
+                                <td class="montant text-danger">
+                                    {% if ligne.depenses_reparations %}{{ ligne.depenses_reparations|intcomma }}
+                                    {% else %}<span class="text-muted">—</span>{% endif %}
+                                </td>
+                                <td class="montant fw-bold text-danger">{{ ligne.total_depenses|intcomma }}</td>
+                                <td class="montant fw-bold {% if ligne.benefice_net >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                    {{ ligne.benefice_net|intcomma }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td class="td-left">TOTAL COMPAGNIE</td>
+                                <td>{{ totaux.nb_voyages }}</td>
+                                <td>{{ totaux.nb_billets_payes }}</td>
+                                <td>{{ totaux.nb_billets_reportes }}</td>
+                                <td class="montant">{{ totaux.recettes_billets|intcomma }}</td>
+                                <td class="montant">{{ totaux.recettes_bagages|intcomma }}</td>
+                                <td class="montant" style="color:#6fffa0;">{{ totaux.recettes_totales|intcomma }}</td>
+                                <td class="montant" style="color:#ffaaaa;">{{ totaux.depenses_exploitation|intcomma }}</td>
+                                <td class="montant" style="color:#ffaaaa;">{{ totaux.depenses_reparations|intcomma }}</td>
+                                <td class="montant" style="color:#ffaaaa;">{{ totaux.total_depenses|intcomma }}</td>
+                                <td class="montant" style="color:{% if totaux.benefice_net >= 0 %}#6fffa0{% else %}#ffaaaa{% endif %};">
+                                    {{ totaux.benefice_net|intcomma }} FCFA
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            {% else %}
+            <div class="card">
+                <div class="card-body text-center py-5 text-muted">
+                    <i class="bi bi-inbox display-4"></i>
+                    <p class="mt-3">Aucun voyage enregistré pour ce mois.</p>
+                </div>
+            </div>
+            {% endif %}
+
+            {% else %}
+            <div class="card">
+                <div class="card-body text-center py-5 text-muted">
+                    <i class="bi bi-calendar-x display-4"></i>
+                    <p class="mt-3">Aucun mois disponible. Les bilans apparaîtront dès que des voyages seront enregistrés.</p>
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+{% endblock %}

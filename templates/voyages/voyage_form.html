@@ -1,0 +1,264 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if form.instance.pk %}Modifier{% else %}Nouveau{% endif %} Voyage{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Header ──────────────────────────────────────────────── */
+.page-header {
+    background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
+    border-radius: 14px;
+    padding: 26px 32px;
+    color: #fff;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+}
+.page-header::after {
+    pointer-events: none;
+    content: '\F1B6';
+    font-family: 'Bootstrap-Icons';
+    font-size: 9rem;
+    opacity: 0.06;
+    position: absolute;
+    right: 24px;
+    top: -10px;
+    line-height: 1;
+}
+.page-header h4 { font-weight: 700; margin: 0; }
+.page-header p  { margin: 6px 0 0; opacity: 0.8; font-size: 13px; }
+
+/* ── Form card ───────────────────────────────────────────── */
+.form-card {
+    border: none;
+    border-radius: 13px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    overflow: hidden;
+    background: #fff;
+}
+
+/* ── Section divider ─────────────────────────────────────── */
+.section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--color-accent);
+    margin-bottom: 14px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid rgba(74,111,165,0.12);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ── Labels compacts ─────────────────────────────────────── */
+.form-label-sm {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+/* ── Boutons footer ──────────────────────────────────────── */
+.form-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #f0f0f0;
+    background: #fafbfc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    background: #fff;
+    color: var(--color-danger);
+    border: 1.5px solid var(--color-danger);
+    text-decoration: none;
+    transition: all 0.15s;
+}
+.btn-back:hover {
+    background: var(--color-danger);
+    color: #fff;
+}
+
+.btn-submit {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 22px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    background: var(--color-accent);
+    color: #fff;
+    border: none;
+    transition: all 0.15s;
+    cursor: pointer;
+}
+.btn-submit:hover {
+    background: var(--color-accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(74,111,165,0.3);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <!-- ── Header ── -->
+    <div class="page-header">
+        <h4>
+            <i class="bi bi-bus-front me-2"></i>
+            {% if form.instance.pk %}Modifier le voyage{% else %}Nouveau voyage{% endif %}
+        </h4>
+        <p>
+            {% if form.instance.pk %}
+                Modification des informations du voyage
+            {% else %}
+                Renseignez les informations pour créer un nouveau voyage
+            {% endif %}
+        </p>
+    </div>
+
+    <!-- ── Form card ── -->
+    <div class="form-card">
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger mx-3 mt-3">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="p-4">
+
+                <!-- Section : Trajet -->
+                <div class="section-label">
+                    <i class="bi bi-signpost-2"></i> Trajet
+                </div>
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label-sm">{{ form.gare.label }} <span class="text-danger">*</span></label>
+                        {{ form.gare }}
+                        {% if form.gare.errors %}<div class="invalid-feedback d-block">{{ form.gare.errors }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label-sm">{{ form.ligne.label }} <span class="text-danger">*</span></label>
+                        {{ form.ligne }}
+                        {% if form.ligne.errors %}<div class="invalid-feedback d-block">{{ form.ligne.errors }}</div>{% endif %}
+                        {% if form.ligne.help_text %}
+                            <div class="mt-1" style="font-size:11px;color:#6b7280;">
+                                <i class="bi bi-info-circle me-1"></i>{{ form.ligne.help_text }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Section : Horaires -->
+                <div class="section-label">
+                    <i class="bi bi-clock"></i> Horaires
+                </div>
+                <div class="row mb-4">
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label-sm">{{ form.date_depart.label }} <span class="text-danger">*</span></label>
+                        {{ form.date_depart }}
+                        {% if form.date_depart.errors %}<div class="invalid-feedback d-block">{{ form.date_depart.errors }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label-sm">{{ form.heure_depart.label }} <span class="text-danger">*</span></label>
+                        {{ form.heure_depart }}
+                        {% if form.heure_depart.errors %}<div class="invalid-feedback d-block">{{ form.heure_depart.errors }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label-sm">{{ form.periode.label }} <span class="text-danger">*</span></label>
+                        {{ form.periode }}
+                        {% if form.periode.errors %}<div class="invalid-feedback d-block">{{ form.periode.errors }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label-sm">{{ form.numero_depart.label }} <span class="text-danger">*</span></label>
+                        {{ form.numero_depart }}
+                        {% if form.numero_depart.errors %}<div class="invalid-feedback d-block">{{ form.numero_depart.errors }}</div>{% endif %}
+                        {% if form.numero_depart.help_text %}
+                            <div class="mt-1" style="font-size:11px;color:#6b7280;">
+                                <i class="bi bi-info-circle me-1"></i>{{ form.numero_depart.help_text }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Section : Équipage -->
+                <div class="section-label">
+                    <i class="bi bi-people"></i> Équipage & Véhicule
+                </div>
+                <div class="row mb-4">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label-sm">{{ form.vehicule.label }}</label>
+                        {{ form.vehicule }}
+                        {% if form.vehicule.errors %}<div class="invalid-feedback d-block">{{ form.vehicule.errors }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label-sm">{{ form.chauffeur.label }}</label>
+                        {{ form.chauffeur }}
+                        {% if form.chauffeur.errors %}<div class="invalid-feedback d-block">{{ form.chauffeur.errors }}</div>{% endif %}
+                        {% if form.chauffeur.help_text %}
+                            <div class="mt-1" style="font-size:11px;color:#6b7280;">
+                                <i class="bi bi-info-circle me-1"></i>{{ form.chauffeur.help_text }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label-sm">{{ form.convoyeur.label }}</label>
+                        {{ form.convoyeur }}
+                        {% if form.convoyeur.errors %}<div class="invalid-feedback d-block">{{ form.convoyeur.errors }}</div>{% endif %}
+                        {% if form.convoyeur.help_text %}
+                            <div class="mt-1" style="font-size:11px;color:#6b7280;">
+                                <i class="bi bi-info-circle me-1"></i>{{ form.convoyeur.help_text }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Section : Statut -->
+                <div class="section-label">
+                    <i class="bi bi-toggle-on"></i> Statut
+                </div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <label class="form-label-sm">{{ form.statut.label }}</label>
+                        {{ form.statut }}
+                        {% if form.statut.errors %}<div class="invalid-feedback d-block">{{ form.statut.errors }}</div>{% endif %}
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ── Footer ── -->
+            <div class="form-footer">
+                <a href="{% url 'voyages:voyage_list' %}" class="btn-back">
+                    <i class="bi bi-arrow-left"></i> Retour
+                </a>
+                <button type="submit" class="btn-submit">
+                    <i class="bi bi-check-circle"></i>
+                    {% if form.instance.pk %}Enregistrer{% else %}Créer le voyage{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/searchable-select.js' %}"></script>
+{% endblock %}

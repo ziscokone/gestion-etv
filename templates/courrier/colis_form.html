@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+
+{% block title %}Enregistrer un colis{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header text-white">
+                    <h4 class="mb-0"><i class="bi bi-box-seam-fill me-2"></i>Enregistrer un colis</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                        {% endif %}
+
+                        <div class="row">
+                            <!-- Expéditeur -->
+                            <div class="col-md-6">
+                                <h6 class="text-muted text-uppercase small fw-bold mb-3"><i class="bi bi-person-fill me-1"></i>Expéditeur</h6>
+                                <div class="mb-3 position-relative">
+                                    <label class="form-label">{{ form.expediteur_telephone.label }} *</label>
+                                    {{ form.expediteur_telephone }}
+                                    <div id="expSuggestions" class="list-group position-absolute w-100 shadow" style="display:none; z-index:1050;"></div>
+                                    {% if form.expediteur_telephone.errors %}<div class="invalid-feedback d-block">{{ form.expediteur_telephone.errors }}</div>{% endif %}
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">{{ form.expediteur_nom.label }} *</label>
+                                    {{ form.expediteur_nom }}
+                                    {% if form.expediteur_nom.errors %}<div class="invalid-feedback d-block">{{ form.expediteur_nom.errors }}</div>{% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Destinataire -->
+                            <div class="col-md-6">
+                                <h6 class="text-muted text-uppercase small fw-bold mb-3"><i class="bi bi-person-check-fill me-1"></i>Destinataire</h6>
+                                <div class="mb-3 position-relative">
+                                    <label class="form-label">{{ form.destinataire_telephone.label }} *</label>
+                                    {{ form.destinataire_telephone }}
+                                    <div id="destSuggestions" class="list-group position-absolute w-100 shadow" style="display:none; z-index:1050;"></div>
+                                    {% if form.destinataire_telephone.errors %}<div class="invalid-feedback d-block">{{ form.destinataire_telephone.errors }}</div>{% endif %}
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">{{ form.destinataire_nom.label }} *</label>
+                                    {{ form.destinataire_nom }}
+                                    {% if form.destinataire_nom.errors %}<div class="invalid-feedback d-block">{{ form.destinataire_nom.errors }}</div>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="row">
+                            {% if form.gare_origine %}
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">{{ form.gare_origine.label }} *</label>
+                                {{ form.gare_origine }}
+                                {% if form.gare_origine.errors %}<div class="invalid-feedback d-block">{{ form.gare_origine.errors }}</div>{% endif %}
+                            </div>
+                            {% endif %}
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">{{ form.gare_destination.label }} *</label>
+                                {{ form.gare_destination }}
+                                {% if form.gare_destination.errors %}<div class="invalid-feedback d-block">{{ form.gare_destination.errors }}</div>{% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">{{ form.type_colis.label }} *</label>
+                                {{ form.type_colis }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">{{ form.valeur_declaree.label }}</label>
+                                {{ form.valeur_declaree }}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.description.label }}</label>
+                            {{ form.description }}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">{{ form.montant.label }} *</label>
+                                {{ form.montant }}
+                                {% if form.montant.errors %}<div class="invalid-feedback d-block">{{ form.montant.errors }}</div>{% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">{{ form.moyen_paiement.label }}</label>
+                                {{ form.moyen_paiement }}
+                            </div>
+                        </div>
+
+                        <div class="alert alert-secondary small">
+                            <i class="bi bi-shield-lock me-1"></i>
+                            Le port est payé maintenant par l'expéditeur. Un code colis et un code de retrait secret
+                            seront générés à l'enregistrement — communiquez le code de retrait à l'expéditeur, il devra
+                            le transmettre lui-même au destinataire.
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'courrier:colis_list' %}" class="btn btn-secondary"><i class="bi bi-arrow-left me-1"></i>Annuler</a>
+                            <button type="submit" class="btn btn-success fw-bold"><i class="bi bi-check-circle me-1"></i>Enregistrer le colis</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function initTypeahead(prefixInputId, nomInputId, suggestionsId) {
+    const telInput = document.getElementById(prefixInputId);
+    const nomInput = document.getElementById(nomInputId);
+    const suggestions = document.getElementById(suggestionsId);
+    let searchTimeout = null;
+
+    function hide() {
+        suggestions.style.display = 'none';
+        suggestions.innerHTML = '';
+    }
+
+    function select(tel, nom) {
+        telInput.value = tel;
+        nomInput.value = nom;
+        hide();
+    }
+
+    function display(clients) {
+        if (!clients.length) { hide(); return; }
+        suggestions.innerHTML = clients.map(c =>
+            `<button type="button" class="list-group-item list-group-item-action py-2 px-3"
+                     data-tel="${c.telephone}" data-nom="${c.nom_complet}">
+                <i class="bi bi-person me-2 text-muted"></i>
+                <strong>${c.telephone}</strong>
+                <span class="text-muted ms-2">— ${c.nom_complet}</span>
+            </button>`
+        ).join('');
+        suggestions.style.display = 'block';
+        suggestions.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                select(this.dataset.tel, this.dataset.nom);
+            });
+        });
+    }
+
+    telInput.addEventListener('input', function () {
+        clearTimeout(searchTimeout);
+        const q = this.value.trim();
+        if (q.length < 3) { hide(); return; }
+        searchTimeout = setTimeout(() => {
+            fetch(`/clients/api/suggerer/?q=${encodeURIComponent(q)}`)
+                .then(r => r.json())
+                .then(data => display(data.clients))
+                .catch(() => {});
+        }, 300);
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!telInput.contains(e.target) && !suggestions.contains(e.target)) hide();
+    });
+    telInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') hide();
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    initTypeahead('{{ form.expediteur_telephone.id_for_label }}', '{{ form.expediteur_nom.id_for_label }}', 'expSuggestions');
+    initTypeahead('{{ form.destinataire_telephone.id_for_label }}', '{{ form.destinataire_nom.id_for_label }}', 'destSuggestions');
+
+    // Pré-remplissage du montant à payer, toujours modifiable manuellement :
+    // priorité au taux de 10% de la valeur déclarée dès qu'elle est saisie,
+    // sinon on retombe sur le tarif indicatif du type de colis choisi.
+    // Dès que l'utilisateur touche lui-même le champ montant, on arrête
+    // toute suggestion automatique pour ne jamais écraser sa saisie.
+    const TAUX_VALEUR_DECLAREE = 0.10;
+    const tarifs = {
+        {% for t in types_colis %}'{{ t.id }}': {{ t.tarif_indicatif|default:0 }},{% endfor %}
+    };
+    const typeSelect = document.getElementById('id_type_colis');
+    const valeurDeclareeInput = document.getElementById('{{ form.valeur_declaree.id_for_label }}');
+    const montantInput = document.getElementById('id_montant');
+    let montantModifieManuellement = false;
+
+    if (montantInput) {
+        montantInput.addEventListener('input', function () {
+            montantModifieManuellement = true;
+        });
+    }
+
+    if (valeurDeclareeInput && montantInput) {
+        valeurDeclareeInput.addEventListener('input', function () {
+            if (montantModifieManuellement) return;
+            const valeur = parseFloat(this.value);
+            if (valeur > 0) {
+                montantInput.value = Math.round(valeur * TAUX_VALEUR_DECLAREE);
+            }
+        });
+    }
+
+    if (typeSelect && montantInput) {
+        typeSelect.addEventListener('change', function () {
+            if (montantModifieManuellement) return;
+            if (valeurDeclareeInput && parseFloat(valeurDeclareeInput.value) > 0) return;
+            const tarif = tarifs[this.value];
+            if (tarif !== undefined) {
+                montantInput.value = tarif;
+            }
+        });
+    }
+
+});
+</script>
+{% endblock %}

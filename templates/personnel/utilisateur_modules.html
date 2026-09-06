@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+
+{% block title %}Accès aux modules — {{ cible.nom_complet }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-header {
+    background: linear-gradient(135deg, #1e3260 0%, #1e3260 100%);
+    border-radius: 14px;
+    padding: 26px 32px;
+    color: #fff;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+}
+.page-header::after {
+    pointer-events: none;
+    content: '\F4DA';
+    font-family: 'Bootstrap-Icons';
+    font-size: 9rem;
+    opacity: 0.06;
+    position: absolute;
+    right: 24px;
+    top: -10px;
+    line-height: 1;
+}
+.page-header h4 { font-weight: 700; margin: 0; }
+.page-header p  { margin: 6px 0 0; opacity: 0.8; font-size: 13px; }
+
+/* ── Module cards ──────────────────────────────────────────── */
+.module-toggle {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: #fff;
+    border: 2px solid #e5eaf3;
+    border-radius: 14px;
+    padding: 18px 20px;
+    cursor: pointer;
+    transition: border-color .2s, box-shadow .2s;
+    user-select: none;
+}
+.module-toggle:hover {
+    border-color: #1e3260;
+    box-shadow: 0 4px 16px rgba(74,111,165,.12);
+}
+.module-toggle.checked {
+    border-color: #1e3260;
+    background: #f5f8ff;
+}
+
+.module-toggle input[type=checkbox] { display: none; }
+
+.mod-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    color: #fff;
+    flex-shrink: 0;
+}
+.mod-icon.voyages   { background: linear-gradient(135deg, #5b82c0, #3a5f9a); }
+.mod-icon.trajets   { background: linear-gradient(135deg, #2ecc71, #1a9e55); }
+.mod-icon.personnel { background: linear-gradient(135deg, #a05dc8, #7b3fa8); }
+.mod-icon.parc      { background: linear-gradient(135deg, #f0914e, #c75f1e); }
+.mod-icon.garage    { background: linear-gradient(135deg, #e05b52, #b52b22); }
+
+.mod-body { flex: 1; }
+.mod-name { font-weight: 700; font-size: .95rem; color: #1a2e4a; margin-bottom: 2px; }
+.mod-desc { font-size: .8rem; color: #8b95a5; margin: 0; }
+
+.mod-check {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid #d1d5db;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background .2s, border-color .2s;
+    color: transparent;
+    font-size: .9rem;
+}
+.module-toggle.checked .mod-check {
+    background: #1e3260;
+    border-color: #1e3260;
+    color: #fff;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:760px; padding-top:2rem;">
+
+    <!-- Header -->
+    <div class="page-header">
+        <h4><i class="bi bi-shield-lock-fill me-2"></i>Accès aux modules</h4>
+        <p>{{ cible.nom_complet }} &mdash; {{ cible.get_role_display }}</p>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }} alert-dismissible fade show mb-3" role="alert">
+        {{ msg }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+
+        <p class="text-muted mb-3" style="font-size:.88rem;">
+            Cochez les modules que <strong>{{ cible.nom_complet }}</strong> pourra voir sur son tableau de bord.
+        </p>
+
+        <div class="d-flex flex-column gap-3 mb-4">
+            {% for module in tous_modules %}
+            <label class="module-toggle {% if module.pk in modules_actifs %}checked{% endif %}" id="label-{{ module.pk }}">
+                <input type="checkbox" name="modules" value="{{ module.pk }}"
+                       {% if module.pk in modules_actifs %}checked{% endif %}
+                       onchange="toggleCard(this)">
+                <div class="mod-icon {{ module.cle }}">
+                    <i class="bi {{ module.icone }}"></i>
+                </div>
+                <div class="mod-body">
+                    <div class="mod-name">{{ module.nom }}</div>
+                    <p class="mod-desc">{{ module.description }}</p>
+                </div>
+                <div class="mod-check" id="check-{{ module.pk }}">
+                    <i class="bi bi-check2"></i>
+                </div>
+            </label>
+            {% empty %}
+            <p class="text-muted">Aucun module actif dans le système.</p>
+            {% endfor %}
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary px-4">
+                <i class="bi bi-floppy-fill me-1"></i> Enregistrer
+            </button>
+            <a href="{% url 'personnel:utilisateur_list' %}" class="btn btn-outline-secondary px-4">
+                Annuler
+            </a>
+        </div>
+    </form>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleCard(checkbox) {
+    const label = checkbox.closest('.module-toggle');
+    if (checkbox.checked) {
+        label.classList.add('checked');
+    } else {
+        label.classList.remove('checked');
+    }
+}
+</script>
+{% endblock %}

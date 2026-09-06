@@ -1,0 +1,294 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestion des Lignes{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Header ──────────────────────────────────────────────── */
+.page-header {
+    background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
+    border-radius: 14px;
+    padding: 26px 32px;
+    color: #fff;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+}
+.page-header::after {
+    content: '\F58B';
+    font-family: 'Bootstrap-Icons';
+    font-size: 9rem;
+    opacity: 0.06;
+    position: absolute;
+    right: 24px;
+    top: -10px;
+    line-height: 1;
+    pointer-events: none;
+}
+.page-header h4 { font-weight: 700; margin: 0; }
+
+.header-stat {
+    background: rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 8px 16px;
+    text-align: center;
+    min-width: 90px;
+}
+.header-stat .hs-val { font-size: 1.4rem; font-weight: 700; line-height: 1; }
+.header-stat .hs-lbl { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+
+.btn-header {
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 8px 18px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.btn-header.primary { background: #fff; color: var(--color-accent); border: none; }
+.btn-header.primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); color: var(--color-accent); }
+
+/* ── Table card ──────────────────────────────────────────── */
+.ligne-card {
+    border: none;
+    border-radius: 13px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    overflow: hidden;
+}
+.ligne-card .table-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid #f0f0f0;
+    font-weight: 600;
+    font-size: 14px;
+    color: #1e3260;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+}
+
+.l-table th {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+    padding: 11px 16px;
+    background: #fafbfc;
+    border-bottom: 1px solid #f0f0f0;
+}
+.l-table td { padding: 11px 16px; vertical-align: middle; font-size: 13px; }
+.l-table tbody tr { transition: background 0.12s; }
+.l-table tbody tr:hover { background: #f8f9fc; }
+.l-table tbody tr:last-child td { border-bottom: none; }
+
+/* Trajet arrow */
+.trajet-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    color: #111827;
+}
+.trajet-cell .trajet-arrow {
+    color: var(--color-accent);
+    font-size: 12px;
+}
+
+/* Info secondaire */
+.info-sub { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+
+/* Statut actif/inactif */
+.statut-actif {
+    display: inline-flex; align-items: center; gap: 4px;
+    border-radius: 12px; padding: 3px 10px;
+    font-size: 11px; font-weight: 600;
+    background: #dcfce7; color: #166534;
+}
+.statut-inactif {
+    display: inline-flex; align-items: center; gap: 4px;
+    border-radius: 12px; padding: 3px 10px;
+    font-size: 11px; font-weight: 600;
+    background: #fee2e2; color: #991b1b;
+}
+
+/* Boutons action */
+.btn-action {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    border: 1px solid #e5e7eb;
+    background: #fff; color: #6b7280;
+    transition: all 0.15s; text-decoration: none;
+}
+.btn-action:hover         { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+.btn-action.edit:hover    { background: #fefce8; color: #92400e; border-color: #fde68a; }
+.btn-action.del:hover     { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+
+/* État vide */
+.empty-state { text-align: center; padding: 56px 20px; color: #9ca3af; }
+.empty-state i { font-size: 3rem; display: block; margin-bottom: 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- ── Header ── -->
+    <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h4><i class="bi bi-signpost-2 me-2"></i>Lignes</h4>
+            <div class="d-flex gap-3 mt-3 flex-wrap">
+                <div class="header-stat">
+                    <div class="hs-val">{{ lignes|length }}</div>
+                    <div class="hs-lbl">Total</div>
+                </div>
+                <div class="header-stat">
+                    <div class="hs-val">{{ nb_actives }}</div>
+                    <div class="hs-lbl">Actives</div>
+                </div>
+                <div class="header-stat">
+                    <div class="hs-val">{{ nb_inactives }}</div>
+                    <div class="hs-lbl">Inactives</div>
+                </div>
+            </div>
+        </div>
+        <a href="{% url 'lignes:ligne_create' %}" class="btn-header primary">
+            <i class="bi bi-plus-circle"></i> Nouvelle Ligne
+        </a>
+    </div>
+
+    <!-- ── Table ── -->
+    <div class="ligne-card">
+        <div class="table-header">
+            <span><i class="bi bi-signpost-2 me-2" style="color:var(--color-accent)"></i>Liste des lignes</span>
+            <span class="badge rounded-pill" style="background:#eef2ff;color:#4338ca;font-size:12px;font-weight:600">
+                {{ lignes|length }} ligne{{ lignes|length|pluralize }}
+            </span>
+        </div>
+
+        {% if lignes %}
+        <div class="table-responsive">
+            <table class="table l-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Nom</th>
+                        <th>Trajet</th>
+                        <th>Gare</th>
+                        <th>Distance / Durée</th>
+                        <th>Statut</th>
+                        <th>Créée le</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ligne in lignes %}
+                    <tr>
+                        <td style="font-weight:700;color:#111827;">{{ ligne.nom }}</td>
+                        <td>
+                            <div class="trajet-cell">
+                                {{ ligne.ville_depart }}
+                                <i class="bi bi-arrow-right trajet-arrow"></i>
+                                {{ ligne.ville_arrivee }}
+                            </div>
+                        </td>
+                        <td style="color:#6b7280;font-size:12px;">{{ ligne.gare.nom|default:"—" }}</td>
+                        <td>
+                            {% if ligne.distance_km %}
+                                <div style="font-size:13px;font-weight:600;">{{ ligne.distance_km }} km</div>
+                            {% endif %}
+                            {% if ligne.duree_estimee %}
+                                <div class="info-sub">{{ ligne.duree_estimee }}</div>
+                            {% endif %}
+                            {% if not ligne.distance_km and not ligne.duree_estimee %}
+                                <span style="color:#d1d5db;">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if ligne.active %}
+                                <span class="statut-actif"><i class="bi bi-check-circle"></i> Active</span>
+                            {% else %}
+                                <span class="statut-inactif"><i class="bi bi-x-circle"></i> Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td style="color:#9ca3af;font-size:12px;">{{ ligne.date_creation|date:"d/m/Y" }}</td>
+                        <td class="text-end pe-4">
+                            <div class="d-flex gap-1 justify-content-end">
+                                <a href="{% url 'lignes:ligne_update' ligne.pk %}"
+                                   class="btn-action edit" title="Modifier">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                {% if user.is_super_admin and ligne.active %}
+                                <button type="button" class="btn-action del" title="Désactiver"
+                                        data-bs-toggle="modal" data-bs-target="#deactivateLigneModal{{ ligne.pk }}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if user.is_super_admin %}
+        {% for ligne in lignes %}
+        <div class="modal fade" id="deactivateLigneModal{{ ligne.pk }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content">
+                    <div class="modal-header bg-danger text-white">
+                        <h6 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Désactiver la ligne</h6>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-2">Voulez-vous désactiver :</p>
+                        <p class="fw-bold mb-2">{{ ligne.nom }}</p>
+                        <p class="text-muted small mb-0">
+                            La ligne ne sera plus proposée pour les nouveaux voyages/destinations, mais elle et son
+                            historique resteront conservés en base. Vous pourrez la réactiver plus tard.
+                        </p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+                        <form method="post" action="{% url 'lignes:ligne_delete' ligne.pk %}" class="mb-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                <i class="bi bi-slash-circle me-1"></i>Désactiver
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-signpost-2 text-muted"></i>
+            <p class="fw-semibold">Aucune ligne enregistrée</p>
+            <a href="{% url 'lignes:ligne_create' %}" class="btn btn-sm btn-primary mt-2">
+                <i class="bi bi-plus-circle me-1"></i>Créer la première ligne
+            </a>
+        </div>
+        {% endif %}
+
+    </div>
+
+</div>
+{% endblock %}

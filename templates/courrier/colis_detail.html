@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Colis {{ colis.code_colis }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            {% if colis.statut == 'enregistre' %}
+            <div class="alert alert-success">
+                <i class="bi bi-check-circle-fill me-2"></i>
+                <strong>Colis enregistré.</strong> Communiquez le code de retrait à l'expéditeur — il devra le transmettre au destinataire.
+            </div>
+            {% endif %}
+
+            <div class="card shadow-sm mb-3">
+                <div class="card-header text-white d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0"><i class="bi bi-box-seam-fill me-2"></i>{{ colis.code_colis }}</h5>
+                        <div class="small" style="opacity:.85;">
+                            Enregistré par {{ colis.guichetier_enregistrement|default:"—" }} le {{ colis.date_creation|date:"d/m/Y à H:i:s" }}
+                        </div>
+                    </div>
+                    <span class="badge rounded-pill statut-badge statut-{{ colis.statut }}">{{ colis.get_statut_display }}</span>
+                </div>
+                <div class="card-body">
+
+                    {% if not colis.code_retrait_verrouille %}
+                    <div class="p-3 mb-3 rounded" style="background:#eff6ff;border:1.5px solid #bfdbfe;">
+                        <div class="small text-muted text-uppercase fw-bold mb-1">Code de retrait (secret)</div>
+                        <div class="fs-4 fw-bold" style="letter-spacing:3px;">{{ colis.code_retrait }}</div>
+                        <div class="small text-muted mt-1">Ne jamais imprimer ce code sur un document public — seul l'expéditeur doit le connaître.</div>
+                    </div>
+                    {% endif %}
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted text-uppercase small fw-bold"><i class="bi bi-person-fill me-1"></i>Expéditeur</h6>
+                            <p class="mb-3">{{ colis.expediteur_nom }}<br><span class="text-muted">{{ colis.expediteur_telephone }}</span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted text-uppercase small fw-bold"><i class="bi bi-person-check-fill me-1"></i>Destinataire</h6>
+                            <p class="mb-3">{{ colis.destinataire_nom }}<br><span class="text-muted">{{ colis.destinataire_telephone }}</span></p>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted text-uppercase small fw-bold">Trajet</h6>
+                            <p class="mb-3">{{ colis.gare_origine.nom }} <i class="bi bi-arrow-right mx-1"></i> {{ colis.gare_destination.nom }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted text-uppercase small fw-bold">Voyage</h6>
+                            <p class="mb-3">{% if colis.voyage %}{{ colis.voyage }}{% else %}<span class="text-muted">Pas encore chargé sur un départ</span>{% endif %}</p>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted text-uppercase small fw-bold">Contenu</h6>
+                            <p class="mb-3">
+                                {{ colis.type_colis.nom }}
+                                {% if colis.description %}<br><span class="text-muted">{{ colis.description }}</span>{% endif %}
+                                {% if colis.valeur_declaree %}<br><span class="text-muted">Valeur déclarée : {{ colis.valeur_declaree|floatformat:0|intcomma }} FCFA</span>{% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted text-uppercase small fw-bold">Paiement</h6>
+                            <p class="mb-3">
+                                {{ colis.montant|floatformat:0|intcomma }} FCFA<br>
+                                <span class="text-success"><i class="bi bi-check-circle me-1"></i>Payé par l'expéditeur ({{ colis.get_moyen_paiement_display }})</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    {% if colis.piece_identite_retrait %}
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="text-muted text-uppercase small fw-bold">Retrait</h6>
+                            <p class="mb-0">
+                                Retiré par {{ colis.retirant_nom }} ({{ colis.retirant_telephone }}) — N° CNI {{ colis.piece_identite_retrait }}<br>
+                                <span class="text-muted">Remis par {{ colis.guichetier_retrait }} le {{ colis.date_retrait|date:"d/m/Y H:i" }}</span>
+                            </p>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                </div>
+                <div class="card-footer d-flex justify-content-between">
+                    <a href="{% url 'courrier:colis_list' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Retour</a>
+                    {% if peut_annuler_colis %}
+                    <form method="post" action="{% url 'courrier:colis_annuler' colis.public_id %}" onsubmit="return confirm('Annuler ce colis ?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-danger"><i class="bi bi-x-circle me-1"></i>Annuler le colis</button>
+                    </form>
+                    {% elif colis.statut == 'arrive' %}
+                    <a href="{% url 'courrier:reception_liste' %}" class="btn btn-warning"><i class="bi bi-box-arrow-in-down me-1"></i>Réceptionner</a>
+                    {% elif colis.statut == 'receptionne' %}
+                    <a href="{% url 'courrier:retrait' %}?q={{ colis.code_colis }}" class="btn btn-success"><i class="bi bi-box-arrow-down me-1"></i>Procéder au retrait</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header"><i class="bi bi-clock-history me-2"></i>Historique</div>
+                <ul class="list-group list-group-flush">
+                    {% for h in historique %}
+                    <li class="list-group-item d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong>{{ h.get_nouveau_statut_display }}</strong>
+                            {% if h.note %}<div class="small text-muted">{{ h.note }}</div>{% endif %}
+                            {% if h.agent %}<div class="small text-muted">par {{ h.agent }}{% if h.gare %} — {{ h.gare.nom }}{% endif %}</div>{% endif %}
+                        </div>
+                        <span class="small text-muted text-nowrap">{{ h.date|date:"d/m/Y H:i" }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.statut-badge { font-size: 11px; font-weight: 600; padding: 5px 10px; }
+.statut-enregistre  { background: #dbeafe; color: #1e40af; }
+.statut-en_transit  { background: #e0f2fe; color: #0369a1; }
+.statut-arrive      { background: #fef3c7; color: #92400e; }
+.statut-receptionne { background: #ede9fe; color: #5b21b6; }
+.statut-retire      { background: #dcfce7; color: #166534; }
+.statut-non_reclame { background: #fee2e2; color: #991b1b; }
+.statut-retourne    { background: #f3e8ff; color: #6b21a8; }
+.statut-annule      { background: #f3f4f6; color: #4b5563; }
+</style>
+{% endblock %}

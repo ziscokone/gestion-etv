@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}Statistiques - Gestion Billetterie{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            <i class="bi bi-graph-up me-2 text-accent"></i>
+            Statistiques globales
+        </h2>
+    </div>
+
+    <!-- Vue d'ensemble -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-value">{{ jour_billets }}</div>
+                <div class="stat-label">Billets aujourd'hui</div>
+                <div class="mt-2 small text-muted">{{ jour_montant|format_montant }} FCFA</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-value">{{ semaine_billets }}</div>
+                <div class="stat-label">Cette semaine</div>
+                <div class="mt-2 small text-muted">{{ semaine_montant|format_montant }} FCFA</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-value">{{ mois_billets }}</div>
+                <div class="stat-label">Ce mois</div>
+                <div class="mt-2 small text-muted">{{ mois_montant|format_montant }} FCFA</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-value">{{ voyages_jour }}</div>
+                <div class="stat-label">Voyages aujourd'hui</div>
+                <div class="mt-2 small text-muted">{{ reservations_attente }} réservations en attente</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Top gares -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-trophy me-2"></i>Top 5 gares (ce mois)
+                </div>
+                <div class="card-body p-0">
+                    {% if top_gares %}
+                    <div class="table-responsive">
+                        <table class="table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Gare</th>
+                                    <th class="text-end">Montant</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for gare in top_gares %}
+                                <tr>
+                                    <td>
+                                        {% if forloop.counter == 1 %}
+                                            <span class="badge bg-warning text-dark">1</span>
+                                        {% elif forloop.counter == 2 %}
+                                            <span class="badge bg-secondary">2</span>
+                                        {% elif forloop.counter == 3 %}
+                                            <span class="badge bg-danger">3</span>
+                                        {% else %}
+                                            {{ forloop.counter }}
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ gare.voyage__gare__nom }}</td>
+                                    <td class="text-end">
+                                        <strong>{{ gare.total|format_montant }}</strong> FCFA
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">Aucune donnée</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Top lignes -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-signpost me-2"></i>Top 5 lignes (ce mois)
+                </div>
+                <div class="card-body p-0">
+                    {% if top_lignes %}
+                    <div class="table-responsive">
+                        <table class="table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Ligne</th>
+                                    <th class="text-end">Montant</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ligne in top_lignes %}
+                                <tr>
+                                    <td>
+                                        {% if forloop.counter == 1 %}
+                                            <span class="badge bg-warning text-dark">1</span>
+                                        {% elif forloop.counter == 2 %}
+                                            <span class="badge bg-secondary">2</span>
+                                        {% elif forloop.counter == 3 %}
+                                            <span class="badge bg-danger">3</span>
+                                        {% else %}
+                                            {{ forloop.counter }}
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ ligne.voyage__ligne__nom }}</td>
+                                    <td class="text-end">
+                                        <strong>{{ ligne.total|format_montant }}</strong> FCFA
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">Aucune donnée</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liens rapides -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <i class="bi bi-link-45deg me-2"></i>Rapports détaillés
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <a href="{% url 'comptabilite:point_journalier' %}" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-calendar-day me-2"></i>Point journalier
+                    </a>
+                </div>
+                <div class="col-md-4">
+                    <a href="{% url 'comptabilite:rapport_periode' %}" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-calendar-range me-2"></i>Rapport période
+                    </a>
+                </div>
+                <div class="col-md-4">
+                    <a href="{% url 'admin:index' %}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-gear me-2"></i>Administration
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

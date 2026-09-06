@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+
+{% block title %}Importer des Destinations{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-header {
+    background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
+    border-radius: 14px;
+    padding: 26px 32px;
+    color: #fff;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+}
+.page-header::after {
+    pointer-events: none;
+    content: '\F3E0';
+    font-family: 'Bootstrap-Icons';
+    font-size: 9rem;
+    opacity: 0.06;
+    position: absolute;
+    right: 24px;
+    top: -10px;
+    line-height: 1;
+}
+.page-header h4 { font-weight: 700; margin: 0; }
+.page-header p  { margin: 6px 0 0; opacity: 0.8; font-size: 13px; }
+
+.form-card {
+    border: none;
+    border-radius: 13px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    overflow: hidden;
+    background: #fff;
+}
+
+.section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--color-accent);
+    margin-bottom: 14px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid rgba(74,111,165,0.12);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Étapes numérotées */
+.steps { list-style: none; margin: 0; padding: 0; }
+.steps li {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 10px 0;
+}
+.steps li + li { border-top: 1px dashed #e5e7eb; }
+.step-num {
+    flex: 0 0 26px;
+    height: 26px;
+    width: 26px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    color: #fff;
+    font-weight: 700;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.step-text { font-size: 13.5px; color: #374151; padding-top: 2px; }
+.step-text strong { color: #111827; }
+
+/* Règles de format */
+.rules-box {
+    background: #f8f9fc;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 14px 18px;
+}
+.rules-box ul { margin: 0; padding-left: 0; list-style: none; }
+.rules-box li {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    font-size: 12.5px;
+    color: #6b7280;
+    padding: 5px 0;
+}
+.rules-box li i { color: var(--color-accent); margin-top: 2px; }
+.rules-box li strong { color: #374151; }
+
+/* Zone de dépôt de fichier */
+.upload-zone {
+    border: 1.5px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 22px;
+    text-align: center;
+    background: #fafbfc;
+    transition: border-color 0.15s, background 0.15s;
+}
+.upload-zone:hover { border-color: var(--color-accent); background: #f5f7fb; }
+.upload-zone i { font-size: 1.8rem; color: var(--color-accent); }
+.upload-zone .form-control { max-width: 360px; margin: 10px auto 0; }
+
+.form-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #f0f0f0;
+    background: #fafbfc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-submit {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 22px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    background: var(--color-accent);
+    color: #fff;
+    border: none;
+    transition: all 0.15s;
+    cursor: pointer;
+}
+.btn-submit:hover {
+    background: var(--color-accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(74,111,165,0.3);
+}
+
+/* Télécharger un modèle vierge — reprend le bleu accent de la page */
+.btn-outline-accent {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 12.5px;
+    background: transparent;
+    color: var(--color-accent);
+    border: 1.5px solid var(--color-accent);
+    text-decoration: none;
+    transition: all 0.15s;
+}
+.btn-outline-accent:hover { background: var(--color-accent); color: #fff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            <!-- ── Header ── -->
+            <div class="page-header">
+                <h4><i class="bi bi-file-earmark-arrow-up me-2"></i>Importer des destinations</h4>
+                <p>Créez ou mettez à jour plusieurs destinations en une seule fois depuis un fichier Excel</p>
+            </div>
+
+            <!-- ── Card ── -->
+            <div class="form-card">
+                <div class="p-4">
+
+                    <div class="section-label">
+                        <i class="bi bi-info-circle"></i> Comment ça marche
+                    </div>
+                    <ul class="steps mb-4">
+                        <li>
+                            <div class="step-num">1</div>
+                            <div class="step-text">Exportez d'abord les destinations existantes (bouton <strong>"Exporter Excel"</strong> sur la liste), ou téléchargez un modèle vierge ci-dessous.</div>
+                        </li>
+                        <li>
+                            <div class="step-num">2</div>
+                            <div class="step-text">Modifiez le fichier dans Excel : par exemple changez la colonne <strong>"Gare (code)"</strong> pour dupliquer des destinations vers une autre gare, ou ajustez les montants.</div>
+                        </li>
+                        <li>
+                            <div class="step-num">3</div>
+                            <div class="step-text">Réimportez le fichier ici : chaque ligne (Gare, Ligne, Ville d'arrivée) déjà existante est mise à jour, chaque nouvelle combinaison est créée.</div>
+                        </li>
+                    </ul>
+
+                    <div class="section-label">
+                        <i class="bi bi-list-check"></i> Format attendu
+                    </div>
+                    <div class="rules-box mb-4">
+                        <ul>
+                            <li><i class="bi bi-dot"></i><span><strong>Gare (code)</strong> doit correspondre à un code de gare existant.</span></li>
+                            <li><i class="bi bi-dot"></i><span><strong>Ligne</strong> doit correspondre au nom exact d'une ligne active déjà créée.</span></li>
+                            <li><i class="bi bi-dot"></i><span><strong>Active</strong> accepte "Oui" / "Non".</span></li>
+                            <li><i class="bi bi-dot"></i><span>Les lignes en erreur (gare/ligne introuvable, montant invalide) sont ignorées et listées après l'import ; les autres sont importées normalement.</span></li>
+                        </ul>
+                    </div>
+
+                    <a href="{% url 'destinations:destination_export' %}?modele=1" class="btn-outline-accent mb-4">
+                        <i class="bi bi-download"></i> Télécharger un modèle vierge
+                    </a>
+
+                    <form method="post" enctype="multipart/form-data" id="import-form">
+                        {% csrf_token %}
+                        <div class="section-label">
+                            <i class="bi bi-upload"></i> Fichier
+                        </div>
+                        <div class="upload-zone mb-2">
+                            <i class="bi bi-file-earmark-spreadsheet d-block mb-2"></i>
+                            <input type="file" name="fichier" accept=".xlsx" class="form-control" required>
+                            <div class="mt-2" style="font-size:11px;color:#9ca3af;">Format .xlsx uniquement</div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- ── Footer ── -->
+                <div class="form-footer">
+                    <a href="{% url 'destinations:destination_list' %}" class="btn btn-danger">
+                        <i class="bi bi-arrow-left"></i> Annuler
+                    </a>
+                    <button type="submit" form="import-form" class="btn-submit">
+                        <i class="bi bi-upload"></i> Importer
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

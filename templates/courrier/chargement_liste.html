@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}Chargement colis{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card shadow-sm">
+        <div class="card-header text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0"><i class="bi bi-truck me-2"></i>Chargement colis — départs à venir</h4>
+            <a href="{% url 'courrier:colis_list' %}" class="btn btn-outline-light btn-sm"><i class="bi bi-arrow-left me-1"></i>Retour aux colis</a>
+        </div>
+        <div class="card-body">
+            <p class="text-muted small">
+                Choisissez le départ précis sur lequel vous chargez des colis — une gare peut avoir plusieurs voyages par jour vers une même destination.
+            </p>
+            {% if voyages_info %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Date / Heure</th>
+                            <th>Ligne</th>
+                            <th>N° départ</th>
+                            <th class="text-center">Colis en attente</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for info in voyages_info %}
+                        <tr>
+                            <td>{{ info.voyage.date_depart|date:"d/m/Y" }} à {{ info.voyage.heure_depart|time:"H:i" }}</td>
+                            <td>{{ info.voyage.ligne }}</td>
+                            <td>{{ info.voyage.numero_depart }}</td>
+                            <td class="text-center">
+                                {% if not info.destination_reconnue %}
+                                <span class="badge bg-secondary" title="Aucune gare de la compagnie ne correspond à la ville d'arrivée de ce voyage">Sans gare compagnie</span>
+                                {% elif info.nb_colis %}
+                                <span class="badge bg-primary">{{ info.nb_colis }} en attente</span>
+                                {% else %}
+                                <span class="text-muted small">Aucun</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if info.destination_reconnue %}
+                                <a href="{% url 'courrier:chargement_voyage' info.voyage.public_id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-box-arrow-in-down me-1"></i>Charger
+                                </a>
+                                {% else %}
+                                <span class="text-muted small">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>Aucun départ programmé pour le moment.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

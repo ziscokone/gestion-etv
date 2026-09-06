@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Chargement — {{ voyage.ligne }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-header text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-truck me-2"></i>{{ voyage.ligne }} — Départ {{ voyage.numero_depart }}, {{ voyage.date_depart|date:"d/m/Y" }} à {{ voyage.heure_depart|time:"H:i" }}</h5>
+            <a href="{% url 'courrier:bordereau_pdf' voyage.public_id %}" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-file-earmark-pdf me-1"></i>Télécharger le bordereau
+            </a>
+        </div>
+        <div class="card-body">
+            <a href="{% url 'courrier:chargement_liste' %}" class="btn btn-sm btn-outline-secondary mb-3"><i class="bi bi-arrow-left me-1"></i>Autres départs</a>
+
+            {% if not destination_reconnue %}
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                Aucune gare de la compagnie ne correspond à la ville d'arrivée de ce voyage — aucun colis ne peut y être chargé.
+            </div>
+            {% elif colis_en_attente %}
+            <form method="post">
+                {% csrf_token %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th style="width:36px;"><input type="checkbox" id="selectAll"></th>
+                                <th>Code colis</th>
+                                <th>Destination</th>
+                                <th>Expéditeur</th>
+                                <th>Destinataire</th>
+                                <th>Type</th>
+                                <th class="text-end">Montant</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for colis in colis_en_attente %}
+                            <tr>
+                                <td><input type="checkbox" name="colis_id" value="{{ colis.public_id }}" class="colis-checkbox"></td>
+                                <td><code>{{ colis.code_colis }}</code></td>
+                                <td>{{ colis.gare_destination.nom }}</td>
+                                <td class="small">{{ colis.expediteur_nom }}<br><span class="text-muted">{{ colis.expediteur_telephone }}</span></td>
+                                <td class="small">{{ colis.destinataire_nom }}<br><span class="text-muted">{{ colis.destinataire_telephone }}</span></td>
+                                <td>{{ colis.type_colis.nom }}</td>
+                                <td class="text-end">{{ colis.montant|floatformat:0|intcomma }} F</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-box-arrow-in-down me-1"></i>Charger les colis sélectionnés sur ce départ
+                </button>
+            </form>
+
+            {% if is_paginated %}
+            <nav class="mt-3">
+                <ul class="pagination justify-content-center">
+                    {% if colis_en_attente.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ colis_en_attente.previous_page_number }}">Précédent</a></li>
+                    {% endif %}
+                    <li class="page-item disabled"><span class="page-link">Page {{ colis_en_attente.number }} / {{ colis_en_attente.paginator.num_pages }}</span></li>
+                    {% if colis_en_attente.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ colis_en_attente.next_page_number }}">Suivant</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+            {% else %}
+            <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>Aucun colis en attente pour cette destination.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if colis_charges %}
+    <div class="card shadow-sm">
+        <div class="card-header"><i class="bi bi-box-seam-fill me-2"></i>Colis déjà chargés sur ce départ ({{ colis_charges|length }})</div>
+        <div class="table-responsive">
+            <table class="table mb-0 align-middle">
+                <thead>
+                    <tr><th>Code colis</th><th>Destination</th><th class="text-center">Statut</th></tr>
+                </thead>
+                <tbody>
+                    {% for colis in colis_charges %}
+                    <tr>
+                        <td><a href="{% url 'courrier:colis_detail' colis.public_id %}"><code>{{ colis.code_colis }}</code></a></td>
+                        <td>{{ colis.gare_destination.nom }}</td>
+                        <td class="text-center">{{ colis.get_statut_display }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const selectAll = document.getElementById('selectAll');
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            document.querySelectorAll('.colis-checkbox').forEach(cb => { cb.checked = selectAll.checked; });
+        });
+    }
+});
+</script>
+{% endblock %}

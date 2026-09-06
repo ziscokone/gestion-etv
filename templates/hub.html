@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Accueil — Modules{% endblock %}
+
+{% block navbar %}
+<header class="hub-topbar">
+    <div class="container d-flex justify-content-between align-items-center">
+
+        <div class="hub-brand d-flex align-items-center gap-3">
+            {% if compagnie and compagnie.logo %}
+                <img src="{{ compagnie.logo.url }}" alt="Logo" height="44" style="border-radius:6px;object-fit:contain;">
+            {% endif %}
+            <div>
+                <div class="hub-brand-name">
+                    {% if compagnie %}{{ compagnie.nom }}{% else %}Gestion Billetterie{% endif %}
+                </div>
+                {% if compagnie and compagnie.slogan %}
+                <div class="hub-brand-slogan">{{ compagnie.slogan }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-3">
+
+            <div class="hub-clock">
+                <div class="hub-clock-date" id="hub-date"></div>
+                <div class="hub-clock-time" id="hub-time"></div>
+            </div>
+
+            <div class="dropdown">
+            <button class="hub-user-btn dropdown-toggle" data-bs-toggle="dropdown">
+                <span class="hub-user-avatar">{{ user.username|first|upper }}</span>
+                <div class="hub-user-info">
+                    <span class="hub-user-name">{{ user.nom_complet|default:user.username }}</span>
+                    <span class="hub-user-role">{{ user.get_role_display }}</span>
+                </div>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" style="min-width:200px;border-radius:10px;margin-top:6px;box-shadow:0 8px 24px rgba(0,0,0,.12);">
+                {% if user.gare %}
+                <li><span class="dropdown-item-text text-muted small"><i class="bi bi-geo-alt me-1"></i>{{ user.gare.nom }}</span></li>
+                <li><hr class="dropdown-divider"></li>
+                {% endif %}
+                {% if user.role == 'super_admin' %}
+                <li>
+                    <a class="dropdown-item" href="{% url 'compagnie:parametres' %}">
+                        <i class="bi bi-building-gear me-2"></i> Paramètres compagnie
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                {% endif %}
+                <li>
+                    <form method="post" action="{% url 'personnel:logout' %}" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="dropdown-item text-danger">
+                            <i class="bi bi-box-arrow-right me-2"></i> Déconnexion
+                        </button>
+                    </form>
+                </li>
+            </ul>
+        </div>
+
+        </div><!-- end d-flex -->
+    </div>
+</header>
+{% endblock navbar %}
+
+{% block extra_css %}
+<style>
+/* ── Top bar ──────────────────────────────────────────────── */
+.hub-topbar {
+    background: #1e3260;
+    padding: 0.9rem 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,.25);
+    position: relative;
+    z-index: 10;
+}
+
+.hub-brand-name {
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: #fff;
+    line-height: 1.2;
+    letter-spacing: .3px;
+}
+
+.hub-brand-slogan {
+    font-size: 0.7rem;
+    color: rgba(255,255,255,.55);
+    text-transform: uppercase;
+    letter-spacing: .8px;
+}
+
+.hub-user-btn {
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 10px;
+    color: #fff;
+    padding: .45rem .9rem;
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    cursor: pointer;
+    transition: background .2s;
+}
+.hub-user-btn:hover { background: rgba(255,255,255,.18); }
+.hub-user-btn::after { filter: brightness(10); }
+
+.hub-user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #1e3260;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: .85rem;
+    flex-shrink: 0;
+}
+
+.hub-user-info {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+.hub-user-name { font-size: .85rem; font-weight: 600; line-height: 1.2; }
+.hub-user-role { font-size: .72rem; color: rgba(255,255,255,.6); line-height: 1.2; }
+
+/* ── Clock ────────────────────────────────────────────────── */
+.hub-clock {
+    text-align: right;
+    line-height: 1.25;
+    border-right: 1px solid rgba(255,255,255,.15);
+    padding-right: 1rem;
+}
+.hub-clock-date {
+    font-size: .72rem;
+    color: #fff;
+    font-weight: 700;
+    text-transform: capitalize;
+    letter-spacing: .3px;
+}
+.hub-clock-time {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 1px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Page background ──────────────────────────────────────── */
+body {
+    background-color: #dde4f0;
+    background-image:
+        radial-gradient(ellipse 100% 80% at 0% 0%,   rgba(30, 50, 96, 0.45) 0%, transparent 60%),
+        radial-gradient(ellipse  75% 60% at 100% 5%, rgba(30, 50, 96, 0.30) 0%, transparent 55%);
+}
+
+/* ── Hub layout ───────────────────────────────────────────── */
+.hub-main {
+    min-height: calc(100vh - 68px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem 1rem 3.5rem;
+}
+
+/* ── Hero ─────────────────────────────────────────────────── */
+.hub-hero {
+    text-align: center;
+    margin-bottom: 2.8rem;
+}
+
+.hub-hero-title {
+    font-size: 1.55rem;
+    font-weight: 800;
+    color: #1a2e4a;
+    margin-bottom: .35rem;
+    letter-spacing: -.2px;
+}
+
+.hub-hero-sub {
+    font-size: .88rem;
+    color: #8b95a5;
+}
+
+/* ── App grid (style Odoo) ────────────────────────────────── */
+.app-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    justify-content: center;
+    max-width: 860px;
+}
+
+/* ── App tile ─────────────────────────────────────────────── */
+.app-tile {
+    width: 162px;
+    background: #fff;
+    border-radius: 14px;
+    padding: 26px 14px 20px;
+    text-align: center;
+    text-decoration: none;
+    color: inherit;
+    box-shadow: 0 1px 3px rgba(0,0,0,.07), 0 1px 8px rgba(0,0,0,.04);
+    border: 1px solid rgba(0,0,0,.055);
+    transition: box-shadow .22s ease, transform .22s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.app-tile::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    opacity: 0;
+    transition: opacity .22s;
+}
+
+.app-tile:hover {
+    box-shadow: 0 12px 36px rgba(0,0,0,.13);
+    transform: translateY(-5px) scale(1.025);
+    text-decoration: none;
+    color: inherit;
+}
+.app-tile:hover::before { opacity: 1; }
+
+/* ── Icon block ───────────────────────────────────────────── */
+.app-tile-icon {
+    width: 68px;
+    height: 68px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.9rem;
+    margin: 0 auto 14px;
+    color: #fff;
+    transition: transform .22s ease;
+}
+.app-tile:hover .app-tile-icon { transform: scale(1.08); }
+
+.app-tile-icon.voyages   { background: linear-gradient(135deg, #5b82c0, #3a5f9a); }
+.app-tile-icon.trajets   { background: linear-gradient(135deg, #2ecc71, #1a9e55); }
+.app-tile-icon.personnel { background: linear-gradient(135deg, #a05dc8, #7b3fa8); }
+.app-tile-icon.parc      { background: linear-gradient(135deg, #f0914e, #c75f1e); }
+.app-tile-icon.garage    { background: linear-gradient(135deg, #e05b52, #b52b22); }
+.app-tile-icon.courrier  { background: linear-gradient(135deg, #26b39e, #0f7d6c); }
+
+/* ── Tile text ────────────────────────────────────────────── */
+.app-tile-name {
+    font-weight: 700;
+    font-size: .88rem;
+    color: #1a2e4a;
+    margin-bottom: 5px;
+    line-height: 1.35;
+}
+
+.app-tile-desc {
+    font-size: .73rem;
+    color: #9ca3af;
+    line-height: 1.45;
+    margin: 0;
+}
+
+/* ── Footer ───────────────────────────────────────────────── */
+footer {
+    background: transparent !important;
+    border-top: 1px solid #dde5ef !important;
+}
+
+/* ── Empty state ──────────────────────────────────────────── */
+.hub-empty {
+    width: 100%;
+    text-align: center;
+    color: #9ca3af;
+    padding: 3rem 1rem;
+}
+.hub-empty i { font-size: 2.5rem; margin-bottom: .75rem; display: block; }
+.hub-empty p { font-size: .9rem; line-height: 1.6; }
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 576px) {
+    .app-tile { width: calc(50% - 9px); }
+    .app-grid { gap: 14px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hub-main">
+
+    <!-- App grid -->
+    <div class="app-grid">
+
+        {% for module in modules %}
+        <a href="{{ module.get_url }}" class="app-tile">
+            <div class="app-tile-icon {{ module.cle }}">
+                <i class="bi {{ module.icone }}"></i>
+            </div>
+            <div class="app-tile-name">{{ module.nom }}</div>
+            <p class="app-tile-desc">{{ module.description }}</p>
+        </a>
+        {% empty %}
+        <div class="hub-empty">
+            <i class="bi bi-lock-fill"></i>
+            <p>Aucun module ne vous a été attribué.<br>Contactez votre administrateur.</p>
+        </div>
+        {% endfor %}
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const DAYS   = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+    const MONTHS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+
+    function pad(n) { return String(n).padStart(2, '0'); }
+
+    function tick() {
+        const now = new Date();
+        const dateStr = DAYS[now.getDay()] + ' ' + now.getDate() + ' ' + MONTHS[now.getMonth()] + ' ' + now.getFullYear();
+        const timeStr = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+        document.getElementById('hub-date').textContent = dateStr;
+        document.getElementById('hub-time').textContent = timeStr;
+    }
+
+    tick();
+    setInterval(tick, 1000);
+})();
+</script>
+{% endblock %}

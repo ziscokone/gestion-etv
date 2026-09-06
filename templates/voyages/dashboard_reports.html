@@ -1,0 +1,546 @@
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+{% load humanize %}
+
+{% block title %}Dashboard Reports de Billets{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Header gradient ───────────────────────────────────── */
+.page-header {
+    background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
+    border-radius: 14px;
+    padding: 26px 32px;
+    color: #fff;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+}
+.page-header::after {
+    pointer-events: none;
+    content: '\F129';
+    font-family: 'Bootstrap-Icons';
+    font-size: 9rem;
+    opacity: 0.06;
+    position: absolute;
+    right: 24px;
+    top: -10px;
+    line-height: 1;
+}
+.page-header h4 { font-weight: 700; margin: 0; font-size: 1.3rem; }
+.page-header p  { margin: 4px 0 0; opacity: 0.8; font-size: 13px; }
+
+.header-stat {
+    background: rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 10px 20px;
+    text-align: center;
+    min-width: 100px;
+}
+.header-stat .hs-val { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+.header-stat .hs-lbl { font-size: 11px; opacity: 0.85; margin-top: 3px; }
+
+/* ── Filtre ─────────────────────────────────────────────── */
+.filter-zone {
+    background: #f8f9fc;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+}
+.filter-zone .filter-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ── Section cards ──────────────────────────────────────── */
+.section-card {
+    border: none;
+    border-radius: 13px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    overflow: hidden;
+    height: 100%;
+}
+.section-card .sc-header {
+    padding: 13px 18px;
+    font-weight: 700;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+.sc-header.cyan   { background: #ecfeff; color: #0e7490; }
+.sc-header.yellow { background: #fefce8; color: #854d0e; }
+.sc-header.dark   { background: linear-gradient(135deg, #1e3260, var(--color-accent)); color: #fff; }
+
+/* Tables internes */
+.rep-table th {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #6b7280;
+    background: #fafbfc;
+    padding: 10px 14px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.rep-table td {
+    padding: 11px 14px;
+    font-size: 13px;
+    vertical-align: middle;
+}
+.rep-table tbody tr:hover { background: #f8f9fc; }
+.rep-table tbody tr:last-child td { border-bottom: none; }
+
+/* Badge nombre */
+.nb-badge {
+    background: linear-gradient(135deg, #1e3260, var(--color-accent));
+    color: #fff;
+    border-radius: 10px;
+    padding: 2px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-block;
+}
+
+/* Badge motif */
+.motif-badge {
+    background: #fef3c7;
+    color: #92400e;
+    border-radius: 10px;
+    padding: 2px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-block;
+}
+
+/* Chip gare */
+.gare-chip {
+    background: #eff6ff;
+    color: #1e40af;
+    border-radius: 8px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Avatar client initiales */
+.c-avatar-sm {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1e3260, var(--color-accent));
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+/* Siège badge */
+.siege-old { background: #f1f5f9; color: #475569; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+.siege-new { background: #dbeafe; color: #1e40af; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+
+/* Ticket badge */
+.ticket-badge {
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-block;
+}
+.ticket-badge.old { background: #f1f5f9; color: #64748b; }
+.ticket-badge.new { background: #dcfce7; color: #166534; }
+
+/* Montant */
+.montant-cell {
+    font-weight: 700;
+    color: var(--color-accent);
+    font-size: 13px;
+}
+
+/* État vide */
+.empty-state { text-align: center; padding: 50px 20px; color: #9ca3af; }
+.empty-state i { font-size: 2.8rem; display: block; margin-bottom: 12px; }
+
+/* Motif truncate with tooltip */
+.motif-text {
+    max-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 12px;
+    color: #6b7280;
+    display: block;
+}
+
+/* Pagination — bleu nuit de l'application */
+.pagination-nuit { gap: 6px; }
+.pagination-nuit .page-item .page-link {
+    border: 1.5px solid var(--color-accent);
+    color: var(--color-accent);
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 12.5px;
+    padding: 6px 14px;
+    background: #fff;
+    transition: all 0.15s;
+}
+.pagination-nuit .page-item .page-link:hover {
+    background: var(--color-accent);
+    color: #fff;
+}
+.pagination-nuit .page-item.active .page-link {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: #fff;
+    cursor: default;
+    font-weight: 700;
+}
+.pagination-nuit .page-item.active .page-link:hover {
+    background: var(--color-accent);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-4">
+
+    <!-- ── Header ───────────────────────────────────────────── -->
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h4><i class="bi bi-arrow-repeat me-2"></i>Reports de Billets</h4>
+                <p>Suivi et statistiques des reports effectués</p>
+            </div>
+            <div class="d-flex gap-3 flex-wrap">
+                <div class="header-stat">
+                    <div class="hs-val">{{ total_reports }}</div>
+                    <div class="hs-lbl">Total Reports</div>
+                </div>
+                <div class="header-stat">
+                    <div class="hs-val">{{ stats_guichetiers.count }}</div>
+                    <div class="hs-lbl">Guichetiers</div>
+                </div>
+                <div class="header-stat">
+                    <div class="hs-val">{{ stats_motifs.count }}</div>
+                    <div class="hs-lbl">Motifs différents</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Filtres ───────────────────────────────────────────── -->
+    <div class="filter-zone">
+        <div class="filter-title">
+            <i class="bi bi-funnel"></i> Filtres
+        </div>
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label" style="font-size:12px;font-weight:600;color:#374151;">Date début</label>
+                <input type="date" class="form-control form-control-sm" name="date_debut" value="{{ date_debut }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" style="font-size:12px;font-weight:600;color:#374151;">Date fin</label>
+                <input type="date" class="form-control form-control-sm" name="date_fin" value="{{ date_fin }}">
+            </div>
+            {% if gares %}
+            <div class="col-md-3">
+                <label class="form-label" style="font-size:12px;font-weight:600;color:#374151;">Gare</label>
+                <select class="form-select form-select-sm" name="gare">
+                    <option value="">Toutes les gares</option>
+                    {% for gare in gares %}
+                    <option value="{{ gare.id }}" {% if gare_id == gare.id|stringformat:"s" %}selected{% endif %}>
+                        {{ gare.nom }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="col-md-3">
+                <label class="form-label" style="font-size:12px;font-weight:600;color:#374151;">Guichetier</label>
+                <select class="form-select form-select-sm" name="guichetier">
+                    <option value="">Tous les guichetiers</option>
+                    {% for g in guichetiers %}
+                    <option value="{{ g.id }}" {% if guichetier_id == g.id|stringformat:"s" %}selected{% endif %}>
+                        {{ g.nom_complet }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary btn-sm w-100">
+                    <i class="bi bi-search me-1"></i>Filtrer
+                </button>
+            </div>
+            {% if date_debut or date_fin or guichetier_id or gare_id %}
+            <div class="col-md-1">
+                <a href="{% url 'voyages:dashboard_reports' %}" class="btn btn-outline-secondary btn-sm w-100">
+                    <i class="bi bi-x"></i>
+                </a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- ── Guichetiers + Motifs ──────────────────────────────── -->
+    <div class="row g-4 mb-4">
+
+        <!-- Reports par Guichetier -->
+        <div class="col-lg-6">
+            <div class="section-card">
+                <div class="sc-header cyan">
+                    <i class="bi bi-person-badge"></i>
+                    Reports par Guichetier
+                    <span class="ms-auto badge" style="background:#0e7490;color:#fff;font-size:11px;">
+                        {{ stats_guichetiers.count }} agent{{ stats_guichetiers.count|pluralize }}
+                    </span>
+                </div>
+                {% if stats_guichetiers %}
+                <div class="table-responsive">
+                    <table class="table rep-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Guichetier</th>
+                                <th>Gare</th>
+                                <th class="text-center">Reports</th>
+                                <th class="text-end pe-3">Montant total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stat in stats_guichetiers %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="c-avatar-sm">
+                                            {{ stat.guichetier__nom_complet|default:"?"|slice:":1"|upper }}
+                                        </div>
+                                        <span style="font-weight:600;font-size:13px;">
+                                            {{ stat.guichetier__nom_complet|default:"Non assigné" }}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if stat.guichetier__gare__nom %}
+                                    <span class="gare-chip">
+                                        <i class="bi bi-geo-alt"></i>
+                                        {{ stat.guichetier__gare__nom }}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted" style="font-size:12px;">—</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <span class="nb-badge">{{ stat.nb_reports }}</span>
+                                </td>
+                                <td class="text-end pe-3 montant-cell">
+                                    {{ stat.montant_total|default:0|floatformat:0|intcomma }} FCFA
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-person-x text-muted"></i>
+                    <p class="fw-semibold">Aucune statistique disponible</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Motifs Fréquents -->
+        <div class="col-lg-6">
+            <div class="section-card">
+                <div class="sc-header yellow">
+                    <i class="bi bi-chat-left-text"></i>
+                    Motifs Fréquents
+                    <span class="ms-auto badge" style="background:#854d0e;color:#fff;font-size:11px;">
+                        {{ stats_motifs.count }} motif{{ stats_motifs.count|pluralize }}
+                    </span>
+                </div>
+                {% if stats_motifs %}
+                <div class="table-responsive">
+                    <table class="table rep-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Motif</th>
+                                <th class="text-center pe-3">Occurrences</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stat in stats_motifs %}
+                            <tr>
+                                <td>
+                                    <span title="{{ stat.motif }}">{{ stat.motif|truncatewords:8 }}</span>
+                                </td>
+                                <td class="text-center pe-3">
+                                    <span class="motif-badge">{{ stat.count }}</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-chat-square-x text-muted"></i>
+                    <p class="fw-semibold">Aucun motif enregistré</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Tableau détaillé ──────────────────────────────────── -->
+    <div class="section-card">
+        <div class="sc-header dark">
+            <i class="bi bi-list-ul"></i>
+            Détails des Reports
+            <span class="ms-auto" style="font-size:12px;opacity:0.8;font-weight:400;">
+                {{ page_obj.paginator.count }} enregistrement{{ page_obj.paginator.count|pluralize }}
+            </span>
+        </div>
+
+        {% if reports %}
+        <div class="table-responsive">
+            <table class="table rep-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Date / Heure</th>
+                        <th>Billets</th>
+                        <th>Client</th>
+                        <th>Ancien voyage</th>
+                        <th>Nouveau voyage</th>
+                        <th class="text-center">Sièges</th>
+                        <th>Guichetier</th>
+                        <th>Motif</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for report in reports %}
+                    <tr>
+                        <!-- Date -->
+                        <td>
+                            <span style="font-size:12px;color:#6b7280;">{{ report.date_report|date:"d/m/Y" }}</span><br>
+                            <strong style="font-size:13px;">{{ report.date_report|time:"H:i" }}</strong>
+                        </td>
+
+                        <!-- Billets -->
+                        <td>
+                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                                <span class="ticket-badge old">{{ report.ancien_billet.numero }}</span>
+                                <i class="bi bi-arrow-right" style="font-size:10px;color:#9ca3af;"></i>
+                                <span class="ticket-badge new">{{ report.nouveau_billet.numero }}</span>
+                            </div>
+                        </td>
+
+                        <!-- Client -->
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="c-avatar-sm">
+                                    {{ report.ancien_billet.client_nom|slice:":1"|upper }}
+                                </div>
+                                <div>
+                                    <div style="font-weight:600;font-size:13px;">{{ report.ancien_billet.client_nom }}</div>
+                                    <div style="font-size:11px;color:#6b7280;">{{ report.ancien_billet.client_telephone }}</div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Ancien voyage -->
+                        <td>
+                            <span style="font-size:12px;color:#6b7280;">{{ report.ancien_voyage.date_depart|date:"d/m/Y" }}</span><br>
+                            <strong style="font-size:13px;">{{ report.ancien_voyage.heure_depart|time:"H:i" }}</strong>
+                        </td>
+
+                        <!-- Nouveau voyage -->
+                        <td>
+                            <span style="font-size:12px;color:#166534;">{{ report.nouveau_voyage.date_depart|date:"d/m/Y" }}</span><br>
+                            <strong style="font-size:13px;color:#166534;">{{ report.nouveau_voyage.heure_depart|time:"H:i" }}</strong>
+                        </td>
+
+                        <!-- Sièges -->
+                        <td class="text-center">
+                            <div class="d-flex align-items-center justify-content-center gap-1">
+                                <span class="siege-old">{{ report.ancien_siege }}</span>
+                                <i class="bi bi-arrow-right" style="font-size:10px;color:#9ca3af;"></i>
+                                <span class="siege-new">{{ report.nouveau_siege }}</span>
+                            </div>
+                        </td>
+
+                        <!-- Guichetier -->
+                        <td>
+                            <div style="font-weight:600;font-size:13px;">{{ report.guichetier.nom_complet|default:"N/A" }}</div>
+                            {% if report.guichetier.gare %}
+                            <span class="gare-chip mt-1">
+                                <i class="bi bi-geo-alt"></i>{{ report.guichetier.gare.nom }}
+                            </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Motif -->
+                        <td>
+                            <span class="motif-text" title="{{ report.motif }}">{{ report.motif }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if is_paginated %}
+        <nav class="d-flex justify-content-center py-3 border-top">
+            <ul class="pagination pagination-sm pagination-nuit mb-0">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1&date_debut={{ date_debut }}&date_fin={{ date_fin }}&guichetier={{ guichetier_id }}&gare={{ gare_id }}">Première</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}&guichetier={{ guichetier_id }}&gare={{ gare_id }}">Précédent</a>
+                    </li>
+                {% endif %}
+                <li class="page-item active">
+                    <span class="page-link">Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span>
+                </li>
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}&guichetier={{ guichetier_id }}&gare={{ gare_id }}">Suivant</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}&guichetier={{ guichetier_id }}&gare={{ gare_id }}">Dernière</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-inbox text-muted"></i>
+            <p class="fw-semibold">Aucun report trouvé avec les filtres sélectionnés</p>
+            {% if date_debut or date_fin or guichetier_id or gare_id %}
+            <a href="{% url 'voyages:dashboard_reports' %}" class="btn btn-sm btn-outline-secondary mt-2">
+                <i class="bi bi-x me-1"></i>Réinitialiser les filtres
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

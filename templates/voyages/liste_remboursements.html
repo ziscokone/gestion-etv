@@ -1,0 +1,443 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}Remboursements{% endblock %}
+
+{% block extra_css %}
+<style>
+  .remb-card {
+    border: none; border-radius: 13px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+  }
+  .stat-card {
+    border: none; border-radius: 12px;
+    padding: 18px 20px; text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  }
+  .stat-card .stat-val { font-size: 1.8rem; font-weight: 800; line-height: 1; }
+  .stat-card .stat-lbl { font-size: 11px; color: #6b7280; margin-top: 4px; font-weight: 500; }
+  .badge-attente  { background: #fef3c7; color: #92400e; border-radius: 20px; padding: 3px 12px; font-size: 11px; font-weight: 700; }
+  .badge-approuve { background: #dcfce7; color: #166534; border-radius: 20px; padding: 3px 12px; font-size: 11px; font-weight: 700; }
+  .badge-rejete   { background: #fee2e2; color: #991b1b; border-radius: 20px; padding: 3px 12px; font-size: 11px; font-weight: 700; }
+  .remb-table th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: #6b7280; background: #fafbfc; padding: 10px 12px; border-bottom: 1px solid #f0f0f0; }
+  .remb-table td { font-size: 13px; padding: 10px 12px; vertical-align: middle; border-bottom: 1px solid #f8f9fa; }
+  .remb-table tbody tr:hover { background: #f8f9fc; }
+
+  /* Pagination — bleu nuit de l'application */
+  .pagination-nuit { gap: 6px; }
+  .pagination-nuit .page-item .page-link {
+      border: 1.5px solid var(--color-accent);
+      color: var(--color-accent);
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 12.5px;
+      padding: 6px 14px;
+      background: #fff;
+      transition: all 0.15s;
+  }
+  .pagination-nuit .page-item .page-link:hover {
+      background: var(--color-accent);
+      color: #fff;
+  }
+  .pagination-nuit .page-item.active .page-link {
+      background: var(--color-accent);
+      border-color: var(--color-accent);
+      color: #fff;
+      cursor: default;
+      font-weight: 700;
+  }
+  .pagination-nuit .page-item.active .page-link:hover {
+      background: var(--color-accent);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 px-4">
+
+  <!-- En-tête -->
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+      <h4 class="mb-0 fw-bold" style="color:#1e3260;">
+        <i class="bi bi-cash-coin me-2" style="color:#dc2626;"></i>Remboursements de billets
+      </h4>
+      <p class="text-muted small mb-0">Gestion des demandes de remboursement</p>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <div class="card remb-card mb-4">
+    <div class="card-body py-3">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-2">
+          <label class="form-label small mb-1 fw-bold">Date début</label>
+          <input type="date" name="date_debut" class="form-control form-control-sm" value="{{ date_debut }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-1 fw-bold">Date fin</label>
+          <input type="date" name="date_fin" class="form-control form-control-sm" value="{{ date_fin }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-1 fw-bold">Statut</label>
+          <select name="statut" class="form-select form-select-sm">
+            <option value="">Tous</option>
+            {% for val, label in statut_choices %}
+            <option value="{{ val }}" {% if statut_filtre == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% if gares %}
+        <div class="col-md-3">
+          <label class="form-label small mb-1 fw-bold">Gare</label>
+          <select name="gare" class="form-select form-select-sm">
+            <option value="">Toutes les gares</option>
+            {% for g in gares %}
+            <option value="{{ g.pk }}" {% if gare_id == g.pk|stringformat:"s" %}selected{% endif %}>{{ g.nom }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-sm btn-primary w-100">
+            <i class="bi bi-search me-1"></i>Filtrer
+          </button>
+        </div>
+        <div class="col-md-1">
+          <a href="{% url 'voyages:liste_remboursements' %}" class="btn btn-sm btn-outline-secondary w-100" title="Réinitialiser">
+            <i class="bi bi-arrow-counterclockwise"></i>
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="stat-card" style="border-top: 4px solid #f59e0b;">
+        <div class="stat-val" style="color:#92400e;">{{ stats.nb_en_attente }}</div>
+        <div class="stat-lbl">En attente</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card" style="border-top: 4px solid #22c55e;">
+        <div class="stat-val" style="color:#166534;">{{ stats.nb_approuvees }}</div>
+        <div class="stat-lbl">Approuvées</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card" style="border-top: 4px solid #ef4444;">
+        <div class="stat-val" style="color:#991b1b;">{{ stats.nb_rejetees }}</div>
+        <div class="stat-lbl">Rejetées</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card" style="border-top: 4px solid #6366f1;">
+        <div class="stat-val" style="color:#4338ca;font-size:1.3rem;">{{ stats.montant_total|floatformat:0 }} F</div>
+        <div class="stat-lbl">Montant remboursé</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="card remb-card">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+      <h6 class="mb-0 fw-bold" style="color:#1e3260;">
+        <i class="bi bi-list-ul me-2"></i>Liste des demandes
+      </h6>
+      <span class="text-muted small">{{ page_obj.paginator.count }} demande(s)</span>
+    </div>
+    <div class="table-responsive">
+      {% if demandes %}
+      <table class="table remb-table mb-0">
+        <thead>
+          <tr>
+            <th>Date demande</th>
+            <th>Billet</th>
+            <th>Client</th>
+            <th>Gare / Voyage</th>
+            <th class="text-end">Montant</th>
+            <th>Motif</th>
+            <th>Demandée par</th>
+            <th class="text-center">Statut</th>
+            {% if user.is_chef_gare or user.is_manager or user.is_pdg or user.is_super_admin %}
+            <th class="text-center" style="width:130px">Actions</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in demandes %}
+          <tr>
+            <td>
+              <div>{{ d.date_demande|date:"d/m/Y" }}</div>
+              <div class="text-muted" style="font-size:11px;">{{ d.date_demande|time:"H:i" }}</div>
+            </td>
+            <td>
+              <div class="fw-semibold" style="font-size:12px;">{{ d.billet.numero }}</div>
+            </td>
+            <td>
+              <div class="fw-semibold">{{ d.billet.client_nom }}</div>
+              <div class="text-muted" style="font-size:11px;"><i class="bi bi-telephone me-1"></i>{{ d.billet.client_telephone }}</div>
+            </td>
+            <td>
+              <div>{{ d.billet.voyage.gare.nom }}</div>
+              <div class="text-muted" style="font-size:11px;">
+                {{ d.billet.voyage.ligne.nom }} — {{ d.billet.voyage.date_depart|date:"d/m/Y" }}
+              </div>
+            </td>
+            <td class="text-end fw-bold" style="color:#dc2626;">
+              {{ d.montant|floatformat:0 }} F
+            </td>
+            <td>
+              <span style="font-size:12px;">{{ d.motif|truncatechars:60 }}</span>
+            </td>
+            <td>
+              <div style="font-size:12px;">{{ d.demandee_par.nom_complet|default:"—" }}</div>
+            </td>
+            <td class="text-center">
+              {% if d.statut == 'en_attente' %}
+                <span class="badge-attente"><i class="bi bi-hourglass-split me-1"></i>En attente</span>
+              {% elif d.statut == 'approuvee' %}
+                <span class="badge-approuve"><i class="bi bi-check-circle me-1"></i>Approuvée</span>
+                {% if d.traitee_par %}
+                <div class="text-muted mt-1" style="font-size:10px;">par {{ d.traitee_par.nom_complet }}</div>
+                {% endif %}
+              {% else %}
+                <span class="badge-rejete"><i class="bi bi-x-circle me-1"></i>Rejetée</span>
+                {% if d.commentaire %}
+                <div class="text-muted mt-1" style="font-size:10px;" title="{{ d.commentaire }}">{{ d.commentaire|truncatechars:40 }}</div>
+                {% endif %}
+              {% endif %}
+            </td>
+            {% if user.is_chef_gare or user.is_manager or user.is_pdg or user.is_super_admin %}
+            <td class="text-center">
+              {% if d.statut == 'en_attente' %}
+              <div class="d-flex gap-1 justify-content-center">
+                <button type="button" class="btn btn-sm btn-success btn-approuver"
+                        data-demande-id="{{ d.pk }}" data-client="{{ d.billet.client_nom }}" data-montant="{{ d.montant }}"
+                        title="Approuver le remboursement">
+                  <i class="bi bi-check-lg"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-danger btn-rejeter"
+                        data-demande-id="{{ d.pk }}" data-client="{{ d.billet.client_nom }}"
+                        title="Rejeter la demande">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      {% if is_paginated %}
+      <nav class="d-flex justify-content-center py-3 border-top">
+        <ul class="pagination pagination-sm pagination-nuit mb-0">
+          {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?page=1&date_debut={{ date_debut }}&date_fin={{ date_fin }}&statut={{ statut_filtre }}&gare={{ gare_id }}">Première</a>
+            </li>
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.previous_page_number }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}&statut={{ statut_filtre }}&gare={{ gare_id }}">Précédent</a>
+            </li>
+          {% endif %}
+          <li class="page-item active">
+            <span class="page-link">Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span>
+          </li>
+          {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.next_page_number }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}&statut={{ statut_filtre }}&gare={{ gare_id }}">Suivant</a>
+            </li>
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}&statut={{ statut_filtre }}&gare={{ gare_id }}">Dernière</a>
+            </li>
+          {% endif %}
+        </ul>
+      </nav>
+      {% endif %}
+
+      {% else %}
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-inbox" style="font-size:2.5rem;display:block;margin-bottom:10px;"></i>
+        <p class="fw-semibold">Aucune demande de remboursement pour cette période</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal Approuver -->
+<div class="modal fade" id="approuverModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title"><i class="bi bi-check-circle me-2"></i>Approuver</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Approuver le remboursement de <strong id="approuver_client"></strong> ?</p>
+        <p class="text-danger fw-bold mb-0">Montant : <span id="approuver_montant"></span> F</p>
+        <p class="text-muted small mt-1">Le billet sera marqué remboursé et le siège libéré.</p>
+        <div id="approuverMessage" class="alert d-none mt-2"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-success" id="confirmApprouverBtn">
+          <i class="bi bi-check-lg me-1"></i>Confirmer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Rejeter -->
+<div class="modal fade" id="rejeterModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title"><i class="bi bi-x-circle me-2"></i>Rejeter la demande</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Rejeter la demande de remboursement de <strong id="rejeter_client"></strong> ?</p>
+        <div class="mb-3">
+          <label for="rejeter_commentaire" class="form-label fw-bold">Motif du rejet *</label>
+          <textarea class="form-control" id="rejeter_commentaire" rows="3" required
+                    placeholder="Expliquez pourquoi la demande est rejetée..."></textarea>
+        </div>
+        <div id="rejeterMessage" class="alert d-none"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-danger" id="confirmRejeterBtn">
+          <i class="bi bi-x-lg me-1"></i>Confirmer le rejet
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]') ?
+        document.querySelector('[name=csrfmiddlewaretoken]').value : '{{ csrf_token }}';
+
+    let currentDemandeId = null;
+
+    // Modal Approuver
+    const approuverModal = new bootstrap.Modal(document.getElementById('approuverModal'));
+    document.querySelectorAll('.btn-approuver').forEach(btn => {
+        btn.addEventListener('click', function() {
+            currentDemandeId = this.dataset.demandeId;
+            document.getElementById('approuver_client').textContent = this.dataset.client;
+            document.getElementById('approuver_montant').textContent = Number(this.dataset.montant).toLocaleString('fr-FR');
+            document.getElementById('approuverMessage').classList.add('d-none');
+            approuverModal.show();
+        });
+    });
+
+    document.getElementById('confirmApprouverBtn').addEventListener('click', function() {
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Traitement...';
+
+        fetch(`/voyages/remboursements/${currentDemandeId}/traiter/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify({ action: 'approuver', commentaire: '' })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const div = document.getElementById('approuverMessage');
+                div.className = 'alert alert-success';
+                div.textContent = data.message;
+                div.classList.remove('d-none');
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                const div = document.getElementById('approuverMessage');
+                div.className = 'alert alert-danger';
+                div.textContent = data.error || 'Erreur';
+                div.classList.remove('d-none');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Confirmer';
+            }
+        })
+        .catch(() => {
+            const div = document.getElementById('approuverMessage');
+            div.className = 'alert alert-danger';
+            div.textContent = 'Erreur de connexion';
+            div.classList.remove('d-none');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Confirmer';
+        });
+    });
+
+    // Modal Rejeter
+    const rejeterModal = new bootstrap.Modal(document.getElementById('rejeterModal'));
+    document.querySelectorAll('.btn-rejeter').forEach(btn => {
+        btn.addEventListener('click', function() {
+            currentDemandeId = this.dataset.demandeId;
+            document.getElementById('rejeter_client').textContent = this.dataset.client;
+            document.getElementById('rejeter_commentaire').value = '';
+            document.getElementById('rejeterMessage').classList.add('d-none');
+            rejeterModal.show();
+        });
+    });
+
+    document.getElementById('confirmRejeterBtn').addEventListener('click', function() {
+        const commentaire = document.getElementById('rejeter_commentaire').value.trim();
+        if (!commentaire) {
+            const div = document.getElementById('rejeterMessage');
+            div.className = 'alert alert-warning';
+            div.textContent = 'Le motif du rejet est obligatoire';
+            div.classList.remove('d-none');
+            return;
+        }
+
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Traitement...';
+
+        fetch(`/voyages/remboursements/${currentDemandeId}/traiter/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify({ action: 'rejeter', commentaire })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const div = document.getElementById('rejeterMessage');
+                div.className = 'alert alert-success';
+                div.textContent = data.message;
+                div.classList.remove('d-none');
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                const div = document.getElementById('rejeterMessage');
+                div.className = 'alert alert-danger';
+                div.textContent = data.error || 'Erreur';
+                div.classList.remove('d-none');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-x-lg me-1"></i>Confirmer le rejet';
+            }
+        })
+        .catch(() => {
+            const div = document.getElementById('rejeterMessage');
+            div.className = 'alert alert-danger';
+            div.textContent = 'Erreur de connexion';
+            div.classList.remove('d-none');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-x-lg me-1"></i>Confirmer le rejet';
+        });
+    });
+});
+</script>
+{% endblock %}

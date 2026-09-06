@@ -1,0 +1,381 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Gestion Billetterie{% endblock %}</title>
+
+    <link href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}" rel="stylesheet">
+    <link href="{% static 'css/custom.css' %}" rel="stylesheet">
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+{% block navbar %}
+<nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+    <div class="container">
+
+        <a class="navbar-brand d-flex align-items-center" href="{% url 'hub' %}">
+            {% if compagnie and compagnie.logo %}
+                <img src="{{ compagnie.logo.url }}" alt="Logo" height="35" class="me-2">
+            {% endif %}
+            <span>{% if compagnie %}{{ compagnie.nom }}{% else %}Gestion Billetterie{% endif %}</span>
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            {% if user.is_authenticated %}
+            <ul class="navbar-nav me-auto">
+
+                {# ── MODULE : VOYAGES ─────────────────────────────────── #}
+                {% if active_module == 'voyages' %}
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+                       href="{% url 'guichet:dashboard' %}">
+                        <i class="bi bi-speedometer2 me-1"></i> Tableau de bord
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'voyage_list' and request.resolver_match.app_name == 'guichet' %}active{% endif %}"
+                       href="{% url 'guichet:voyage_list' %}">
+                        <i class="bi bi-bus-front me-1"></i> Voyages
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'reservations' %}active{% endif %}"
+                       href="{% url 'guichet:reservations' %}">
+                        <i class="bi bi-bookmark me-1"></i> Réservations
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if 'clients' in request.path %}active{% endif %}"
+                       href="{% url 'clients:client_list' %}">
+                        <i class="bi bi-people me-1"></i> Clients
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'point_journalier' %}active{% endif %}"
+                       href="{% url 'comptabilite:point_journalier' %}">
+                        <i class="bi bi-cash-stack me-1"></i> Point du jour
+                    </a>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle {% if 'comptabilite' in request.path or 'dashboard/reports' in request.path %}active{% endif %}"
+                       href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-bar-chart me-1"></i> Rapports
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><h6 class="dropdown-header">Comptabilité</h6></li>
+                        {% if user.role in 'pdg,super_admin,manager' %}
+                        <li>
+                            <a class="dropdown-item" href="{% url 'comptabilite:bilan_mensuel' %}">
+                                <i class="bi bi-calendar2-check me-2"></i> Bilan mensuel
+                            </a>
+                        </li>
+                        {% endif %}
+                        <li>
+                            <a class="dropdown-item" href="{% url 'comptabilite:rapport_periode' %}">
+                                <i class="bi bi-calendar-range me-2"></i> Rapport période
+                            </a>
+                        </li>
+                        {% if user.role in 'pdg,super_admin,manager' %}
+                        <li>
+                            <a class="dropdown-item" href="{% url 'comptabilite:rapport_par_gare' %}">
+                                <i class="bi bi-graph-up me-2"></i> Rapport par gare
+                            </a>
+                        </li>
+                        {% endif %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header">Opérations</h6></li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'voyages:dashboard_reports' %}">
+                                <i class="bi bi-arrow-repeat me-2"></i> Reports de billets
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'voyages:liste_remboursements' %}">
+                                <i class="bi bi-cash-coin me-2"></i> Remboursements
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'voyages:rapport_tickets_gratuit' %}">
+                                <i class="bi bi-ticket-perforated me-2"></i> Tickets gratuits
+                            </a>
+                        </li>
+                        {% if user.role in 'pdg,super_admin,manager' %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header">Performance</h6></li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'comptabilite:performance_chauffeurs' %}">
+                                <i class="bi bi-person-badge me-2"></i> Performance chauffeurs
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </li>
+
+                {% if user.is_superuser or user.role == 'super_admin' %}
+                <li class="nav-item">
+                    <a class="nav-link {% if 'otci-admin-panel' in request.path %}active{% endif %}"
+                       href="/otci-admin-panel/">
+                        <i class="bi bi-gear-fill me-1"></i> Admin
+                    </a>
+                </li>
+                {% endif %}
+
+                {# ── MODULE : TRAJETS ─────────────────────────────────── #}
+                {% elif active_module == 'trajets' %}
+                <li class="nav-item">
+                    <a class="nav-link {% if 'lignes' in request.path %}active{% endif %}"
+                       href="{% url 'lignes:ligne_list' %}">
+                        <i class="bi bi-signpost-2 me-1"></i> Lignes
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if 'destinations' in request.path %}active{% endif %}"
+                       href="{% url 'destinations:destination_list' %}">
+                        <i class="bi bi-geo-alt me-1"></i> Destinations
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if 'gares' in request.path %}active{% endif %}"
+                       href="{% url 'gares:gare_list' %}">
+                        <i class="bi bi-building me-1"></i> Gares
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if 'programmes' in request.path %}active{% endif %}"
+                       href="{% url 'programmes:programme_list' %}">
+                        <i class="bi bi-calendar-week me-1"></i> Programmes
+                    </a>
+                </li>
+
+                {# ── MODULE : PERSONNEL ───────────────────────────────── #}
+                {% elif active_module == 'personnel' %}
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'utilisateur_list' %}active{% endif %}"
+                       href="{% url 'personnel:utilisateur_list' %}">
+                        <i class="bi bi-people me-1"></i> Utilisateurs
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if 'chauffeur' in request.resolver_match.url_name %}active{% endif %}"
+                       href="{% url 'personnel:chauffeur_list' %}">
+                        <i class="bi bi-person-badge me-1"></i> Chauffeurs
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if 'convoyeur' in request.resolver_match.url_name %}active{% endif %}"
+                       href="{% url 'personnel:convoyeur_list' %}">
+                        <i class="bi bi-person-check me-1"></i> Convoyeurs
+                    </a>
+                </li>
+
+                {# ── MODULE : PARC AUTOMOBILE ─────────────────────────── #}
+                {% elif active_module == 'parc' %}
+                <li class="nav-item">
+                    <a class="nav-link {% if 'vehicule' in request.resolver_match.url_name and 'modele' not in request.resolver_match.url_name %}active{% endif %}"
+                       href="{% url 'vehicules:vehicule_list' %}">
+                        <i class="bi bi-truck me-1"></i> Véhicules
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if 'modele' in request.resolver_match.url_name %}active{% endif %}"
+                       href="{% url 'vehicules:modele_list' %}">
+                        <i class="bi bi-bus-front me-1"></i> Modèles
+                    </a>
+                </li>
+
+                {# ── MODULE : GARAGE ──────────────────────────────────── #}
+                {% elif active_module == 'garage' %}
+                <li class="nav-item">
+                    <a class="nav-link {% if 'reparation' in request.resolver_match.url_name and 'type' not in request.resolver_match.url_name %}active{% endif %}"
+                       href="{% url 'vehicules:reparation_list' %}">
+                        <i class="bi bi-wrench me-1"></i> Réparations
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if 'type_reparation' in request.resolver_match.url_name %}active{% endif %}"
+                       href="{% url 'vehicules:type_reparation_list' %}">
+                        <i class="bi bi-tags me-1"></i> Types de réparation
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'rapport_reparations' %}active{% endif %}"
+                       href="{% url 'vehicules:rapport_reparations' %}">
+                        <i class="bi bi-file-earmark-bar-graph me-1"></i> Rapport
+                    </a>
+                </li>
+                {% if user.has_global_access %}
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'rentabilite' %}active{% endif %}"
+                       href="{% url 'vehicules:rentabilite' %}">
+                        <i class="bi bi-graph-up-arrow me-1"></i> Rentabilité
+                    </a>
+                </li>
+                {% endif %}
+
+                {# ── MODULE : COURRIER ────────────────────────────────── #}
+                {% elif active_module == 'courrier' %}
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+                       href="{% url 'courrier:dashboard' %}">
+                        <i class="bi bi-speedometer2 me-1"></i> Tableau de bord
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'colis_list' %}active{% endif %}"
+                       href="{% url 'courrier:colis_list' %}">
+                        <i class="bi bi-box-seam me-1"></i> Colis
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'colis_create' %}active{% endif %}"
+                       href="{% url 'courrier:colis_create' %}">
+                        <i class="bi bi-plus-circle me-1"></i> Enregistrer un colis
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if 'chargement' in request.resolver_match.url_name %}active{% endif %}"
+                       href="{% url 'courrier:chargement_liste' %}">
+                        <i class="bi bi-truck me-1"></i> Chargement
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'reception_liste' %}active{% endif %}"
+                       href="{% url 'courrier:reception_liste' %}">
+                        <i class="bi bi-box-arrow-in-down me-1"></i> Réception
+                    </a>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle {% if request.resolver_match.url_name in 'retrait,retrait_historique' %}active{% endif %}"
+                       href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-box-arrow-down me-1"></i> Retrait
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a class="dropdown-item" href="{% url 'courrier:retrait' %}">
+                                <i class="bi bi-box-arrow-down me-2"></i> Retrait
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'courrier:retrait_historique' %}">
+                                <i class="bi bi-clock-history me-2"></i> Historique Retrait
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if 'type_colis' in request.resolver_match.url_name %}active{% endif %}"
+                       href="{% url 'courrier:type_colis_list' %}">
+                        <i class="bi bi-tags me-1"></i> Types de colis
+                    </a>
+                </li>
+
+                {# ── Fallback : super_admin voit tout ─────────────────── #}
+                {% else %}
+                <li class="nav-item">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+                       href="{% url 'guichet:dashboard' %}">
+                        <i class="bi bi-speedometer2 me-1"></i> Tableau de bord
+                    </a>
+                </li>
+                {% endif %}
+
+            </ul>
+
+            <!-- Droite : bouton Modules + user dropdown -->
+            <ul class="navbar-nav align-items-center">
+                <li class="nav-item me-1">
+                    <a class="nav-link modules-btn" href="{% url 'hub' %}" title="Retour aux modules">
+                        <i class="bi bi-grid-3x3-gap-fill me-1"></i> Modules
+                    </a>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle me-1"></i>
+                        {{ user.nom_complet|default:user.username }}
+                        {% if user.gare %}
+                            <small class="opacity-75">({{ user.gare.code }})</small>
+                        {% endif %}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li class="dropdown-header">{{ user.get_role_display }}</li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'sync:statut' %}">
+                                <i class="bi bi-arrow-repeat me-2"></i> Synchronisation
+                            </a>
+                        </li>
+                        {% if user.has_global_access or user.is_chef_gare %}
+                        <li>
+                            <a class="dropdown-item" href="{% url 'gares:imprimante_config' %}">
+                                <i class="bi bi-printer me-2"></i> Configuration Imprimante Ticket
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if user.role == 'super_admin' %}
+                        <li>
+                            <a class="dropdown-item" href="{% url 'compagnie:parametres' %}">
+                                <i class="bi bi-building-gear me-2"></i> Paramètres compagnie
+                            </a>
+                        </li>
+                        {% endif %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form method="post" action="{% url 'personnel:logout' %}" class="m-0">
+                                {% csrf_token %}
+                                <button type="submit" class="dropdown-item text-danger">
+                                    <i class="bi bi-box-arrow-right me-2"></i> Déconnexion
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+{% endblock navbar %}
+
+<!-- Messages flash -->
+{% if messages %}
+<div class="container mt-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<main class="py-4">
+    {% block content %}{% endblock %}
+</main>
+
+<footer class="py-3 mt-auto border-top bg-white">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <span class="text-muted">
+                {% if compagnie %}{{ compagnie.nom }}{% else %}Gestion Billetterie{% endif %} &copy; {% now "Y" %}
+            </span>
+            <span class="text-muted small">
+                {% if user.is_authenticated and user.gare %}
+                    <i class="bi bi-geo-alt"></i> {{ user.gare.nom }}
+                {% endif %}
+            </span>
+        </div>
+    </div>
+</footer>
+
+<script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

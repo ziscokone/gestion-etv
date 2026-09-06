@@ -1,0 +1,446 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+{% load humanize %}
+
+{% block title %}Rentabilité véhicule - Gestion Billetterie{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-card {
+        background: linear-gradient(135deg, #1e3260 0%, #162550 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .filter-card .form-label {
+        color: white;
+        font-weight: 500;
+        margin-bottom: 0.4rem;
+        font-size: 0.85rem;
+    }
+
+    .filter-card .form-control,
+    .filter-card .form-select {
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.95);
+        font-size: 0.9rem;
+    }
+
+    .btn-afficher {
+        background-color: #E67E22;
+        border-color: #E67E22;
+        color: white;
+        font-weight: 600;
+        padding: 0.6rem 1.2rem;
+        font-size: 0.9rem;
+    }
+
+    .btn-afficher:hover {
+        background-color: #D35400;
+        border-color: #D35400;
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(230, 126, 34, 0.3);
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+
+    .rapport-header {
+        background: linear-gradient(135deg, #1e3260 0%, #162550 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px 10px 0 0;
+        margin-bottom: 0;
+    }
+
+    .rapport-header h4 {
+        margin: 0;
+        font-size: 1.25rem;
+    }
+
+    .rapport-header .badge {
+        background-color: rgba(255, 255, 255, 0.2);
+        color: white;
+        font-size: 0.9rem;
+        padding: 0.5rem 1rem;
+        margin-left: 0.5rem;
+    }
+
+    .table-rapport {
+        margin-bottom: 0;
+        font-size: 0.9rem;
+    }
+
+    .table-rapport thead th {
+        background-color: #1e3260;
+        color: white;
+        border-color: #162550;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-align: center;
+        vertical-align: middle;
+        padding: 0.75rem 0.5rem;
+        white-space: nowrap;
+    }
+
+    .table-rapport tbody td {
+        vertical-align: middle;
+        padding: 0.6rem 0.5rem;
+        border-color: #e2e8f0;
+    }
+
+    .table-rapport .montant {
+        text-align: right;
+        font-family: 'Courier New', monospace;
+        font-weight: 500;
+    }
+
+    .table-rapport .text-center {
+        text-align: center;
+    }
+
+    .table-rapport tbody tr:hover {
+        background-color: #f0f4f8;
+    }
+
+    .table-rapport tfoot {
+        background-color: #e2e8f0;
+        font-weight: bold;
+    }
+
+    .table-rapport tfoot td {
+        border-top: 2px solid #1e3260;
+        padding: 0.75rem 0.5rem;
+    }
+
+    .resume-card {
+        background: linear-gradient(135deg, #1e3260 0%, #162550 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .resume-row {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .resume-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        flex: 1;
+        min-width: 120px;
+    }
+
+    .resume-separator {
+        width: 2px;
+        height: 60px;
+        background-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .resume-label {
+        font-size: 0.8rem;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        opacity: 0.9;
+    }
+
+    .resume-value {
+        font-size: 1.3rem;
+        font-weight: bold;
+        font-family: 'Courier New', monospace;
+    }
+
+    .resume-value.text-success-light {
+        color: #2ecc71;
+    }
+
+    .resume-value.text-danger-light {
+        color: #ff7675;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #718096;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        color: #cbd5e0;
+    }
+
+    .table-responsive {
+        border-radius: 0 0 10px 10px;
+        overflow: hidden;
+    }
+
+    @media (max-width: 768px) {
+        .filter-card {
+            padding: 1.5rem;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .action-buttons .btn {
+            width: 100%;
+        }
+
+        .resume-row {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .resume-separator {
+            width: 100%;
+            height: 2px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            <i class="bi bi-truck me-2" style="color: #1e3260;"></i>
+            Rentabilité véhicule
+        </h2>
+    </div>
+
+    <!-- Filtres -->
+    <div class="filter-card">
+        <form method="get" id="filterForm">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Véhicule</label>
+                    <select name="vehicule" class="form-select form-select-sm" id="selectVehicule">
+                        <option value="">-- Sélectionner un véhicule --</option>
+                        {% for v in vehicules %}
+                        <option value="{{ v.id }}" {% if vehicule_selectionne and v.id == vehicule_selectionne.id %}selected{% endif %}>
+                            {{ v.display_immat }} ({{ v.modele.nom }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Du</label>
+                    <input type="date" name="date_debut" class="form-control form-control-sm"
+                           value="{{ date_debut|date:'Y-m-d' }}" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Au</label>
+                    <input type="date" name="date_fin" class="form-control form-control-sm"
+                           value="{{ date_fin|date:'Y-m-d' }}" required>
+                </div>
+                <div class="col-md-5 text-end">
+                    <div class="action-buttons justify-content-end">
+                        <button type="submit" class="btn btn-afficher">
+                            <i class="bi bi-funnel-fill me-1"></i> Afficher
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {% if vehicule_selectionne and donnees_rapport %}
+
+    <!-- Cartes récapitulatives -->
+    <div class="resume-card">
+        <div class="resume-row">
+            <div class="resume-item">
+                <span class="resume-label">
+                    <i class="bi bi-bus-front me-1"></i>
+                    NB VOYAGES
+                </span>
+                <span class="resume-value">{{ nb_voyages }}</span>
+            </div>
+            <div class="resume-separator"></div>
+            <div class="resume-item">
+                <span class="resume-label">
+                    <i class="bi bi-ticket-perforated me-1"></i>
+                    RECETTE TICKETS
+                </span>
+                <span class="resume-value">{{ total_recette_billets|floatformat:0|intcomma }}</span>
+            </div>
+            <div class="resume-separator"></div>
+            <div class="resume-item">
+                <span class="resume-label">
+                    <i class="bi bi-luggage me-1"></i>
+                    TOTAL BAGAGES
+                </span>
+                <span class="resume-value">{{ total_recette_bagages|floatformat:0|intcomma }}</span>
+            </div>
+            <div class="resume-separator"></div>
+            <div class="resume-item">
+                <span class="resume-label">
+                    <i class="bi bi-cash-stack me-1"></i>
+                    TOTAL DÉPENSES
+                </span>
+                <span class="resume-value text-danger-light">{{ total_depenses|floatformat:0|intcomma }}</span>
+            </div>
+            <div class="resume-separator"></div>
+            <div class="resume-item">
+                <span class="resume-label">
+                    <i class="bi bi-wrench me-1"></i>
+                    TOTAL RÉPARATIONS
+                </span>
+                <span class="resume-value text-danger-light">{{ total_reparations|floatformat:0|intcomma }}</span>
+            </div>
+            <div class="resume-separator"></div>
+            <div class="resume-item">
+                <span class="resume-label">
+                    <i class="bi bi-graph-up-arrow me-1"></i>
+                    RECETTE NET
+                </span>
+                <span class="resume-value {% if benefice_net_global >= 0 %}text-success-light{% else %}text-danger-light{% endif %}">
+                    {{ benefice_net_global|floatformat:0|intcomma }} FCFA
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- En-tête du rapport -->
+    <div class="card border-0 shadow-sm">
+        <div class="rapport-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4>
+                    <i class="bi bi-file-text me-2"></i>
+                    {{ vehicule_selectionne.display_immat }} - {{ vehicule_selectionne.modele.nom }}
+                    {% if date_debut == date_fin %}
+                    <span class="badge">{{ date_debut|date:"d/m/Y" }}</span>
+                    {% else %}
+                    <span class="badge">Du {{ date_debut|date:"d/m/Y" }} au {{ date_fin|date:"d/m/Y" }}</span>
+                    {% endif %}
+                </h4>
+                <span class="text-white-50">
+                    {{ vehicule_selectionne.modele.capacite }} places
+                </span>
+            </div>
+        </div>
+
+        <!-- Tableau des données -->
+        <div class="table-responsive">
+            <table class="table table-rapport table-hover mb-0">
+                <thead>
+                    <tr>
+                        {% for col in colonnes %}
+                        <th>{{ col }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ligne_data in donnees_rapport %}
+                    <tr>
+                        {% for col in colonnes %}
+                            {% if col == 'Date' %}
+                                <td class="text-center">{{ ligne_data.date|date:"d/m/Y" }}</td>
+                            {% elif col == 'Gare' %}
+                                <td>{{ ligne_data.gare }}</td>
+                            {% elif col == 'Ligne' %}
+                                <td>{{ ligne_data.ligne }}</td>
+                            {% elif col == 'N° Départ' %}
+                                <td class="text-center">
+                                    <span class="badge bg-secondary">{{ ligne_data.numero_depart }}</span>
+                                </td>
+                            {% elif col == 'Nb Pass.' %}
+                                <td class="text-center">
+                                    <span class="badge bg-info">{{ ligne_data.nb_passagers }}</span>
+                                </td>
+                            {% elif col == 'Recette Billets' %}
+                                <td class="montant">{{ ligne_data.recette_billets|floatformat:0|intcomma }}</td>
+                            {% elif col == 'Recette Bagages' %}
+                                <td class="montant">{{ ligne_data.recette_bagages|floatformat:0|intcomma }}</td>
+                            {% elif col == 'Total Dépenses' %}
+                                <td class="montant text-danger">{{ ligne_data.total_depenses|floatformat:0|intcomma }}</td>
+                            {% elif col == 'Recette Net' %}
+                                <td class="montant text-success fw-bold">{{ ligne_data.benefice_net|floatformat:0|intcomma }}</td>
+                            {% else %}
+                                {# Colonnes de dépenses dynamiques #}
+                                <td class="montant">{{ ligne_data.depenses|get_item:col|floatformat:0|intcomma }}</td>
+                            {% endif %}
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        {% for col in colonnes %}
+                            {% if col == 'Date' %}
+                                <td class="text-center">TOTAL</td>
+                            {% elif col == 'Gare' or col == 'Ligne' %}
+                                <td></td>
+                            {% elif col == 'N° Départ' %}
+                                <td></td>
+                            {% elif col == 'Nb Pass.' %}
+                                <td class="text-center">{{ totaux.nb_passagers }}</td>
+                            {% elif col == 'Recette Billets' %}
+                                <td class="montant">{{ totaux.recette_billets|floatformat:0|intcomma }}</td>
+                            {% elif col == 'Recette Bagages' %}
+                                <td class="montant">{{ totaux.recette_bagages|floatformat:0|intcomma }}</td>
+                            {% elif col == 'Total Dépenses' %}
+                                <td class="montant text-danger">{{ totaux.total_depenses|floatformat:0|intcomma }}</td>
+                            {% elif col == 'Recette Net' %}
+                                <td class="montant text-success">{{ totaux.benefice_net|floatformat:0|intcomma }}</td>
+                            {% else %}
+                                {# Totaux des colonnes de dépenses #}
+                                <td class="montant">{{ totaux|get_item:col|default:0|floatformat:0|intcomma }}</td>
+                            {% endif %}
+                        {% endfor %}
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    {% elif vehicule_selectionne and not donnees_rapport %}
+    <!-- État vide - véhicule sélectionné mais pas de données -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body empty-state">
+            <i class="bi bi-inbox"></i>
+            <h5 class="mt-3">Aucun voyage trouvé</h5>
+            <p class="text-muted">
+                Le véhicule <strong>{{ vehicule_selectionne.display_immat }}</strong> n'a effectué aucun voyage
+                {% if date_debut == date_fin %}
+                le {{ date_debut|date:"d/m/Y" }}.
+                {% else %}
+                du {{ date_debut|date:"d/m/Y" }} au {{ date_fin|date:"d/m/Y" }}.
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- État initial - pas de véhicule sélectionné -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body empty-state">
+            <i class="bi bi-truck"></i>
+            <h5 class="mt-3">Sélectionnez un véhicule</h5>
+            <p class="text-muted">
+                Choisissez un véhicule et une période pour afficher son rapport de rentabilité.
+            </p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

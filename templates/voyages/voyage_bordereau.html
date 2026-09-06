@@ -1,0 +1,590 @@
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bordereau - Voyage {{ voyage.ligne }} - {{ voyage.date_depart|date:"d/m/Y" }}</title>
+    <style>
+        @media print {
+            body { margin: 0; }
+            .no-print { display: none !important; }
+            @page { margin: 0; size: A4 portrait; }
+
+            /* Empêcher le tfoot de se répéter sur chaque page */
+            tfoot {
+                display: table-row-group;
+            }
+
+            /* Éviter les coupures dans les lignes du tableau */
+            tr {
+                page-break-inside: avoid;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 8pt;
+            line-height: 1.3;
+            color: #333;
+            background: #f5f5f5;
+        }
+
+        .page {
+            background: white;
+            width: 21cm;
+            margin: 1cm auto;
+            padding: 1cm;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        @media print {
+            .page {
+                margin: 0;
+                padding: 1cm;
+                box-shadow: none;
+                width: 100%;
+            }
+        }
+
+        /* En-tête */
+        .header {
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+        }
+
+        .company-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .company-name {
+            font-size: 14pt;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .logo {
+            max-width: 50px;
+            max-height: 50px;
+        }
+
+        .document-title {
+            text-align: center;
+            font-size: 12pt;
+            font-weight: bold;
+            color: #34495e;
+            margin: 8px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Informations du voyage */
+        .voyage-info {
+            background: #ecf0f1;
+            padding: 8px;
+            border-radius: 3px;
+            margin-bottom: 8px;
+        }
+
+        .voyage-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 5px 15px;
+        }
+
+        .info-row {
+            display: flex;
+            font-size: 8pt;
+        }
+
+        .info-label {
+            font-weight: bold;
+            min-width: 70px;
+            color: #2c3e50;
+        }
+
+        .info-value {
+            color: #34495e;
+        }
+
+        /* Statistiques */
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 8px 0;
+            padding: 6px;
+            background: #f8f9fa;
+            border-radius: 3px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #27ae60;
+        }
+
+        .stat-label {
+            font-size: 7pt;
+            color: #7f8c8d;
+            margin-top: 2px;
+        }
+
+        /* Tableau */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 8px 0;
+        }
+
+        thead {
+            background: #34495e;
+            color: white;
+        }
+
+        th {
+            padding: 4px 3px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 7pt;
+        }
+
+        th.text-center, td.text-center { text-align: center; }
+        th.text-end, td.text-end { text-align: right; }
+
+        tbody tr {
+            border-bottom: 1px solid #ddd;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        tbody tr:hover {
+            background: #e8f4f8;
+        }
+
+        td {
+            padding: 3px;
+            font-size: 7pt;
+        }
+
+        tfoot {
+            background: #ecf0f1;
+            font-weight: bold;
+        }
+
+        tfoot td {
+            padding: 5px 3px;
+            font-size: 8pt;
+        }
+
+        .total-amount {
+            font-size: 9pt;
+            color: #27ae60;
+        }
+
+        /* Pied de page */
+        .footer {
+            margin-top: 15px;
+            padding-top: 8px;
+            border-top: 1px solid #ecf0f1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 7pt;
+            color: #7f8c8d;
+        }
+
+        .signatures {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+
+        .signature-box {
+            text-align: center;
+            min-width: 100px;
+        }
+
+        .signature-line {
+            border-top: 1px solid #333;
+            margin-top: 30px;
+            padding-top: 3px;
+            font-size: 7pt;
+        }
+
+        /* Boutons (non imprimables) */
+        .action-buttons {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 11pt;
+            text-decoration: none;
+            color: white;
+        }
+
+        .btn-print {
+            background: #27ae60;
+        }
+
+        .btn-print:hover {
+            background: #229954;
+        }
+
+        .btn-close {
+            background: #95a5a6;
+        }
+
+        .btn-close:hover {
+            background: #7f8c8d;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 5px;
+            border-radius: 2px;
+            font-size: 6pt;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .badge-warning {
+            background: #f39c12;
+            color: white;
+        }
+    </style>
+    {% if print_mode %}
+    <script>
+        window.onload = function() {
+            window.print();
+        }
+    </script>
+    {% endif %}
+</head>
+<body>
+    <div class="action-buttons no-print">
+        <button onclick="window.print()" class="btn btn-print">Imprimer</button>
+        <button onclick="window.close()" class="btn btn-close">✕ Fermer</button>
+    </div>
+
+    <div class="page">
+        <!-- En-tête -->
+        <div class="header">
+            <div class="company-info">
+                <div>
+                    {% if compagnie %}
+                        <div class="company-name">{{ compagnie.nom }}</div>
+                        {% if compagnie.adresse %}
+                            <div style="font-size: 7pt; color: #7f8c8d;">{{ compagnie.adresse }}</div>
+                        {% endif %}
+                        {% if compagnie.telephone %}
+                            <div style="font-size: 7pt; color: #7f8c8d;">📞 {{ compagnie.telephone }}</div>
+                        {% endif %}
+                    {% else %}
+                        <div class="company-name">COMPAGNIE DE TRANSPORT</div>
+                    {% endif %}
+                </div>
+                <div>
+                    {% if compagnie.logo %}
+                        <img src="{{ compagnie.logo.url }}" alt="Logo" class="logo">
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Titre du document -->
+        <div class="document-title">
+            Bordereau de Voyage
+        </div>
+
+        <!-- Informations du voyage -->
+        <div class="voyage-info">
+            <div class="voyage-info-grid">
+                <div class="info-row">
+                    <span class="info-label">Ligne :</span>
+                    <span class="info-value">{{ voyage.ligne.nom }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Date de départ :</span>
+                    <span class="info-value">{{ voyage.date_depart|date:"l d F Y" }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Gare :</span>
+                    <span class="info-value">{{ voyage.gare.nom }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Heure :</span>
+                    <span class="info-value">{{ voyage.heure_depart|time:"H:i" }} - Départ N°{{ voyage.numero_depart }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Véhicule :</span>
+                    <span class="info-value">
+                        {% if voyage.vehicule %}
+                            {{ voyage.vehicule.display_immat }}
+                        {% else %}
+                            Non assigné
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Destination :</span>
+                    <span class="info-value">{{ voyage.ligne.ville_arrivee }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Récapitulatif des destinations -->
+        <table>
+            <thead>
+                <tr>
+                    <th>Destination</th>
+                    <th class="text-center">Nb Passagers</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for destination, count in destinations_recap %}
+                <tr>
+                    <td>{{ destination }}</td>
+                    <td class="text-center"><strong>{{ count }}</strong></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="2" style="text-align: center; padding: 15px; color: #7f8c8d;">
+                        Aucun passager enregistré pour ce voyage
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% if destinations_recap %}
+            <tfoot>
+                <tr>
+                    <td style="font-weight: bold;">TOTAL PASSAGERS</td>
+                    <td class="text-center" style="font-weight: bold;">{{ nb_billets_payes }}</td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+
+        <!-- ========== SECTION TICKETS GRATUITS ========== -->
+        {% if billets_gratuits %}
+        <div style="margin-top:15px;page-break-inside:avoid;">
+            <div style="font-size:10pt;font-weight:bold;margin-bottom:0;padding:6px 8px;background:#0891b2;color:#ffffff;text-align:center;text-transform:uppercase;letter-spacing:.5px;">
+                TICKETS GRATUITS ({{ nb_billets_gratuits }})
+            </div>
+            <!-- Récap destinations gratuites -->
+            <div style="margin-top:8px;border:1px solid #bae6fd;border-radius:4px;overflow:hidden;">
+                <div style="background:#075985;color:#ffffff;padding:5px 8px;font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">
+                    Récapitulatif destinations — Tickets gratuits
+                </div>
+                <table style="width:100%;border-collapse:collapse;font-size:8.5pt;">
+                    {% for dest, cnt in destinations_gratuits %}
+                    <tr style="border-bottom:1px solid #e0f2fe;{% cycle 'background:#f0f9ff;' 'background:#ffffff;' %}">
+                        <td style="padding:5px 8px;color:#111827;font-weight:600;">{{ dest }}</td>
+                        <td style="padding:5px 8px;text-align:right;font-weight:700;color:#0e7490;">{{ cnt }} passager{{ cnt|pluralize }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ========== SECTION 1 : RECETTES DU VOYAGE ========== -->
+        <div style="margin-top: 15px; page-break-inside: avoid;">
+            <div style="font-size: 10pt; font-weight: bold; margin-bottom: 8px; padding: 5px; background: #27ae60; color: white; text-align: center; text-transform: uppercase;">
+                RECETTES DU VOYAGE
+            </div>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tbody>
+                    <tr style="border-bottom: 1px solid #ecf0f1;">
+                        <td style="padding: 5px 3px; font-size: 8pt;">Recette Billets</td>
+                        <td style="padding: 5px 3px; font-size: 8pt; text-align: right; font-weight: bold;">
+                            {{ montant_total|format_montant }} FCFA
+                        </td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #ecf0f1;">
+                        <td style="padding: 5px 3px; font-size: 8pt;">Recette Bagages</td>
+                        <td style="padding: 5px 3px; font-size: 8pt; text-align: right; font-weight: bold;">
+                            {{ recette_bagages|format_montant }} FCFA
+                        </td>
+                    </tr>
+                </tbody>
+                <tfoot style="background: #d5f4e6; border-top: 2px solid #27ae60;">
+                    <tr>
+                        <td style="padding: 6px 3px; font-size: 9pt; font-weight: bold;">TOTAL RECETTES</td>
+                        <td style="padding: 6px 3px; font-size: 9pt; font-weight: bold; text-align: right; color: #27ae60;">
+                            {{ total_recettes|format_montant }} FCFA
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- ========== SECTION 2 : DÉPENSES DU VOYAGE ========== -->
+        <div style="margin-top: 15px; page-break-inside: avoid;">
+            <div style="font-size: 10pt; font-weight: bold; margin-bottom: 8px; padding: 5px; background: #e74c3c; color: white; text-align: center; text-transform: uppercase;">
+                DÉPENSES DU VOYAGE
+            </div>
+            {% if depenses %}
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead style="background: #ecf0f1;">
+                    <tr>
+                        <th style="padding: 5px 3px; font-size: 8pt; text-align: left; font-weight: bold;">Type</th>
+                        <th style="padding: 5px 3px; font-size: 8pt; text-align: right; font-weight: bold;">Montant</th>
+                        <th style="padding: 5px 3px; font-size: 8pt; text-align: left; font-weight: bold;">Description</th>
+                        <th style="padding: 5px 3px; font-size: 8pt; text-align: center; font-weight: bold;">Réparation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for depense in depenses %}
+                    <tr style="border-bottom: 1px solid #ecf0f1;">
+                        <td style="padding: 5px 3px; font-size: 8pt;">{{ depense.type_depense.nom }}</td>
+                        <td style="padding: 5px 3px; font-size: 8pt; text-align: right; font-weight: bold;">
+                            {{ depense.montant|format_montant }} FCFA
+                        </td>
+                        <td style="padding: 5px 3px; font-size: 7pt; color: #7f8c8d; font-style: italic;">
+                            {% if depense.description %}
+                                ({{ depense.description|truncatewords:10 }})
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td style="padding: 5px 3px; font-size: 7pt; text-align: center;">
+                            {% if depense.reparation %}
+                                <span style="color: #27ae60; font-weight: bold;">🔗 Fiche #{{ depense.reparation.pk }}</span>
+                            {% else %}
+                                <span style="color: #bdc3c7;">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot style="background: #fadbd8; border-top: 2px solid #e74c3c;">
+                    <tr>
+                        <td colspan="2" style="padding: 6px 3px; font-size: 9pt; font-weight: bold;">TOTAL DÉPENSES</td>
+                        <td colspan="2" style="padding: 6px 3px; font-size: 9pt; font-weight: bold; text-align: right; color: #e74c3c;">
+                            {{ total_depenses|format_montant }} FCFA
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+            {% else %}
+            <div style="padding: 10px; text-align: center; color: #7f8c8d; font-size: 8pt; font-style: italic;">
+                Aucune dépense enregistrée pour ce voyage
+            </div>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tfoot style="background: #fadbd8; border-top: 2px solid #e74c3c;">
+                    <tr>
+                        <td style="padding: 6px 3px; font-size: 9pt; font-weight: bold;">TOTAL DÉPENSES</td>
+                        <td style="padding: 6px 3px; font-size: 9pt; font-weight: bold; text-align: right; color: #e74c3c;">
+                            0 FCFA
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+            {% endif %}
+        </div>
+
+        <!-- ========== SECTION 3 : RECETTE NET DU VOYAGE ========== -->
+        <div style="margin-top: 15px; page-break-inside: avoid;">
+            <div style="font-size: 10pt; font-weight: bold; margin-bottom: 8px; padding: 5px; background: #34495e; color: white; text-align: center; text-transform: uppercase;">
+                RECETTE NET DU VOYAGE
+            </div>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tbody>
+                    <tr style="border-bottom: 1px solid #ecf0f1;">
+                        <td style="padding: 5px 3px; font-size: 8pt;">Total Recettes</td>
+                        <td style="padding: 5px 3px; font-size: 8pt; text-align: right; font-weight: bold; color: #27ae60;">
+                            {{ total_recettes|format_montant }} FCFA
+                        </td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #ecf0f1;">
+                        <td style="padding: 5px 3px; font-size: 8pt;">Total Dépenses</td>
+                        <td style="padding: 5px 3px; font-size: 8pt; text-align: right; font-weight: bold; color: #e74c3c;">
+                            - {{ total_depenses|format_montant }} FCFA
+                        </td>
+                    </tr>
+                </tbody>
+                <tfoot style="background: {% if benefice_net >= 0 %}#d5f4e6{% else %}#fadbd8{% endif %}; border-top: 2px solid #34495e;">
+                    <tr>
+                        <td style="padding: 8px 3px; font-size: 10pt; font-weight: bold;">RECETTE NET</td>
+                        <td style="padding: 8px 3px; font-size: 10pt; font-weight: bold; text-align: right; color: {% if benefice_net >= 0 %}#27ae60{% else %}#e74c3c{% endif %};">
+                            {{ benefice_net|format_montant }} FCFA
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Agents du voyage -->
+        <div class="signatures">
+            <div class="signature-box">
+                <div style="font-weight: bold; margin-bottom: 5px;">Chauffeur :</div>
+                <div style="font-size: 8pt;">
+                    {% if voyage.chauffeur %}
+                        {{ voyage.chauffeur.nom_complet }}
+                    {% else %}
+                        <em style="color: #7f8c8d;">Non assigné</em>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="signature-box">
+                <div style="font-weight: bold; margin-bottom: 5px;">Convoyeur :</div>
+                <div style="font-size: 8pt;">
+                    {% if voyage.convoyeur %}
+                        {{ voyage.convoyeur.nom_complet }}
+                    {% else %}
+                        <em style="color: #7f8c8d;">Non assigné</em>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="signature-box">
+                <div style="font-weight: bold; margin-bottom: 5px;">Chef de Gare :</div>
+                <div style="font-size: 8pt;">
+                    {% if voyage.gare.chef_gare %}
+                        {{ voyage.gare.chef_gare }}
+                    {% else %}
+                        <em style="color: #7f8c8d;">Non assigné</em>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Pied de page -->
+        <div class="footer">
+            <div>
+                Bordereau généré le {{ date_impression|date:"d/m/Y à H:i" }}
+            </div>
+            <div>
+                Page 1/1
+            </div>
+        </div>
+    </div>
+</body>
+</html>

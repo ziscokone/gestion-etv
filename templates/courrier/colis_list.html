@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Gestion du Courrier{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card shadow-sm">
+        <div class="card-header text-white">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h4 class="mb-0">
+                    <i class="bi bi-box-seam-fill me-2"></i>Colis (<span id="colisNbTotal">{{ nb_total }}</span>)
+                </h4>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'courrier:chargement_liste' %}" class="btn btn-outline-light btn-sm">
+                        <i class="bi bi-truck me-1"></i>Chargement
+                    </a>
+                    <a href="{% url 'courrier:retrait' %}" class="btn btn-outline-light btn-sm">
+                        <i class="bi bi-box-arrow-down me-1"></i>Retrait
+                    </a>
+                    <a href="{% url 'courrier:colis_create' %}" class="btn btn-success btn-sm">
+                        <i class="bi bi-plus-circle me-1"></i>Enregistrer un colis
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <form method="get" id="filtreColisForm" class="row g-2 align-items-end mb-4">
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">Recherche</label>
+                    <div class="position-relative">
+                        <input type="text" name="q" id="colisSearchInput" class="form-control" placeholder="Code colis, nom ou téléphone..." value="{{ search_query }}" autocomplete="off">
+                        <span id="colisSearchSpinner" class="spinner-border spinner-border-sm text-primary position-absolute" style="right:10px; top:10px; display:none;"></span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">Statut</label>
+                    <select name="statut" id="colisStatutSelect" class="form-select">
+                        <option value="">Tous les statuts</option>
+                        {% for code, label in statuts %}
+                        <option value="{{ code }}" {% if statut_filtre == code %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search me-1"></i>Filtrer</button>
+                </div>
+                {% if search_query or statut_filtre %}
+                <div class="col-md-2">
+                    <a href="{% url 'courrier:colis_list' %}" class="btn btn-outline-secondary w-100">Réinitialiser</a>
+                </div>
+                {% endif %}
+            </form>
+
+            <div id="colisTableContainer">
+                {% include 'courrier/partials/colis_table.html' %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.statut-badge { font-size: 11px; font-weight: 600; padding: 5px 10px; }
+.statut-enregistre  { background: #dbeafe; color: #1e40af; }
+.statut-en_transit  { background: #e0f2fe; color: #0369a1; }
+.statut-arrive      { background: #fef3c7; color: #92400e; }
+.statut-receptionne { background: #ede9fe; color: #5b21b6; }
+.statut-retire      { background: #dcfce7; color: #166534; }
+.statut-non_reclame { background: #fee2e2; color: #991b1b; }
+.statut-retourne    { background: #f3e8ff; color: #6b21a8; }
+.statut-annule      { background: #f3f4f6; color: #4b5563; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('filtreColisForm');
+    const searchInput = document.getElementById('colisSearchInput');
+    const statutSelect = document.getElementById('colisStatutSelect');
+    const container = document.getElementById('colisTableContainer');
+    const nbTotal = document.getElementById('colisNbTotal');
+    const spinner = document.getElementById('colisSearchSpinner');
+    let searchTimeout = null;
+
+    function rechercher() {
+        spinner.style.display = 'inline-block';
+        const params = new URLSearchParams({ q: searchInput.value.trim(), statut: statutSelect.value });
+        fetch(`{% url 'courrier:colis_list_ajax' %}?${params.toString()}`)
+            .then(r => {
+                if (nbTotal && r.headers.has('X-Nb-Total')) {
+                    nbTotal.textContent = r.headers.get('X-Nb-Total');
+                }
+                return r.text();
+            })
+            .then(html => {
+                container.innerHTML = html;
+                // Reflète les filtres dans l'URL, sans recharger la page (retour arrière / partage de lien).
+                window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+            })
+            .catch(() => {})
+            .finally(() => { spinner.style.display = 'none'; });
+    }
+
+    searchInput.addEventListener('input', function () {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(rechercher, 350);
+    });
+    statutSelect.addEventListener('change', rechercher);
+
+    // Le bouton "Filtrer" et l'entrée clavier restent utilisables (dégradation propre, pas de JS = formulaire classique).
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        clearTimeout(searchTimeout);
+        rechercher();
+    });
+});
+</script>
+{% endblock %}

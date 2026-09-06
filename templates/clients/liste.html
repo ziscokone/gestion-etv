@@ -1,0 +1,221 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Clients - Gestion Billetterie{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── En-tête ───────────────────────────────────────────────── */
+.page-header {
+    background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
+    border-radius: 14px;
+    padding: 26px 32px;
+    color: #fff;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+}
+.page-header::after {
+    content: '\F4DA';
+    font-family: 'Bootstrap-Icons';
+    font-size: 9rem;
+    opacity: 0.06;
+    position: absolute;
+    right: 24px;
+    top: -10px;
+    line-height: 1;
+}
+.page-header h4 { font-weight: 700; margin: 0; }
+
+.header-stat {
+    background: rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 8px 16px;
+    text-align: center;
+    min-width: 90px;
+}
+.header-stat .hs-val { font-size: 1.4rem; font-weight: 700; line-height: 1; }
+.header-stat .hs-lbl { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+
+/* ── Filtre ─────────────────────────────────────────────────── */
+.filter-zone {
+    background: #f8f9fc;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 22px;
+}
+
+/* ── Table ──────────────────────────────────────────────────── */
+.cli-card {
+    border: none;
+    border-radius: 13px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    overflow: hidden;
+}
+.cli-card .table-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid #f0f0f0;
+    font-weight: 600;
+    font-size: 14px;
+    color: #1e3260;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+}
+
+.c-table th {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+    padding: 11px 16px;
+    background: #fafbfc;
+    border-bottom: 1px solid #f0f0f0;
+}
+.c-table td { padding: 13px 16px; vertical-align: middle; font-size: 13px; }
+.c-table tbody tr { transition: background 0.12s; }
+.c-table tbody tr:hover { background: #f8f9fc; }
+.c-table tbody tr:last-child td { border-bottom: none; }
+
+/* Avatar client */
+.c-avatar {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1e3260, var(--color-accent));
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+    flex-shrink: 0;
+}
+
+.c-name { font-weight: 700; color: #111827; font-size: 13px; }
+.c-phone { font-size: 12px; color: #6b7280; }
+
+/* Badge voyages */
+.badge-voyages {
+    border-radius: 12px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+.badge-voyages.fidele  { background: #fef3c7; color: #92400e; }
+.badge-voyages.actif   { background: #dbeafe; color: #1e40af; }
+.badge-voyages.nouveau { background: #f1f5f9; color: #64748b; }
+
+/* Bouton voir fiche */
+.btn-fiche {
+    display: inline-flex; align-items: center; gap: 5px;
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: 12px; font-weight: 600;
+    border: 1px solid #e5e7eb;
+    background: #fff; color: #6b7280;
+    text-decoration: none;
+    transition: all 0.15s;
+}
+.btn-fiche:hover {
+    background: #eff6ff; color: #2563eb;
+    border-color: #bfdbfe;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+/* ── Pagination ─────────────────────────────────────────────── */
+.pagination-zone {
+    padding: 14px 20px;
+    border-top: 1px solid #f0f0f0;
+    background: #fafbfc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.pagination-info { font-size: 12px; color: #6b7280; }
+
+.c-pagination { display: flex; gap: 4px; align-items: center; margin: 0; padding: 0; list-style: none; }
+.c-pagination .page-btn {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600;
+    border: 1px solid #e5e7eb;
+    background: #fff; color: #374151;
+    text-decoration: none;
+    transition: all 0.15s;
+    cursor: pointer;
+}
+.c-pagination .page-btn:hover   { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+.c-pagination .page-btn.active  { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
+.c-pagination .page-btn.dots    { border: none; background: transparent; cursor: default; color: #9ca3af; }
+.c-pagination .page-btn.disabled { opacity: 0.4; pointer-events: none; }
+
+/* État vide */
+.empty-state { text-align: center; padding: 56px 20px; color: #9ca3af; }
+.empty-state i { font-size: 3rem; display: block; margin-bottom: 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-4">
+
+    <!-- ── En-tête ─────────────────────────────────────────────── -->
+    <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h4><i class="bi bi-people me-2"></i>Clients</h4>
+            <div class="d-flex gap-3 mt-3 flex-wrap">
+                <div class="header-stat">
+                    <div class="hs-val">{{ nb_total }}</div>
+                    <div class="hs-lbl">Total</div>
+                </div>
+                <div class="header-stat">
+                    <div class="hs-val">{{ nb_ce_mois }}</div>
+                    <div class="hs-lbl">Ce mois</div>
+                </div>
+                <div class="header-stat">
+                    <div class="hs-val">{{ nb_fideles }}</div>
+                    <div class="hs-lbl">Fidèles (5+)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Filtre ────────────────────────────────────────────────── -->
+    <div class="filter-zone">
+        <form method="get" data-live-filter="{% url 'clients:client_list_ajax' %}" data-target="clientTableContainer" class="d-flex gap-3 align-items-center flex-wrap">
+            <div class="flex-grow-1">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" name="search" class="form-control"
+                           placeholder="Rechercher par nom ou téléphone..."
+                           value="{{ search }}">
+                    {% if search %}
+                        <a href="{% url 'clients:client_list' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x"></i>
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">
+                <i class="bi bi-search me-1"></i>Rechercher
+            </button>
+        </form>
+    </div>
+
+    <!-- ── Table ─────────────────────────────────────────────────── -->
+    <div class="cli-card" id="clientTableContainer">
+        {% include 'clients/partials/client_table.html' %}
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/live-filter.js' %}"></script>
+{% endblock %}

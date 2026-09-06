@@ -1,0 +1,143 @@
+    <div class="table-header">
+        <span><i class="bi bi-people me-2" style="color:var(--color-accent)"></i>Liste des clients</span>
+        <span class="badge rounded-pill" style="background:#eef2ff;color:#4338ca;font-size:12px;font-weight:600">
+            {{ page_obj.paginator.count }} client{{ page_obj.paginator.count|pluralize }}
+        </span>
+    </div>
+
+    {% if clients %}
+    <div class="table-responsive">
+        <table class="table c-table mb-0">
+            <thead>
+                <tr>
+                    <th>Client</th>
+                    <th>Téléphone</th>
+                    <th>Voyages</th>
+                    <th>Client depuis</th>
+                    <th class="text-end pe-4">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for client in clients %}
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="c-avatar">
+                                {{ client.nom_complet|slice:":1"|upper }}
+                            </div>
+                            <div class="c-name">{{ client.nom_complet }}</div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="c-phone">
+                            <i class="bi bi-telephone me-1"></i>{{ client.telephone }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if client.nb_billets >= 10 %}
+                            <span class="badge-voyages fidele">
+                                <i class="bi bi-star-fill"></i> {{ client.nb_billets }}
+                            </span>
+                        {% elif client.nb_billets >= 2 %}
+                            <span class="badge-voyages actif">{{ client.nb_billets }}</span>
+                        {% else %}
+                            <span class="badge-voyages nouveau">{{ client.nb_billets }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted" style="font-size:12px;">
+                        {{ client.date_creation|date:"d/m/Y" }}
+                    </td>
+                    <td class="text-end pe-4">
+                        <a href="{% url 'clients:client_detail' client.public_id %}" class="btn-fiche">
+                            <i class="bi bi-eye"></i> Voir fiche
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ── Pagination ── -->
+    {% if page_obj.has_other_pages %}
+    <div class="pagination-zone">
+        <div class="pagination-info">
+            Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}
+            &nbsp;·&nbsp;
+            {{ page_obj.paginator.count }} client{{ page_obj.paginator.count|pluralize }} au total
+        </div>
+
+        <ul class="c-pagination">
+            <!-- Précédent -->
+            {% if page_obj.has_previous %}
+            <li>
+                <a class="page-btn" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            </li>
+            {% else %}
+            <li><span class="page-btn disabled"><i class="bi bi-chevron-left"></i></span></li>
+            {% endif %}
+
+            <!-- Première page -->
+            {% if page_obj.number > 3 %}
+            <li>
+                <a class="page-btn" href="?page=1{% if search %}&search={{ search }}{% endif %}">1</a>
+            </li>
+            {% if page_obj.number > 4 %}
+            <li><span class="page-btn dots">…</span></li>
+            {% endif %}
+            {% endif %}
+
+            <!-- Pages autour de la courante -->
+            {% for num in page_obj.paginator.page_range %}
+                {% if num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+                    {% if page_obj.number == num %}
+                    <li><span class="page-btn active">{{ num }}</span></li>
+                    {% else %}
+                    <li>
+                        <a class="page-btn" href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+
+            <!-- Dernière page -->
+            {% if page_obj.number < page_obj.paginator.num_pages|add:"-2" %}
+            {% if page_obj.number < page_obj.paginator.num_pages|add:"-3" %}
+            <li><span class="page-btn dots">…</span></li>
+            {% endif %}
+            <li>
+                <a class="page-btn" href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}">
+                    {{ page_obj.paginator.num_pages }}
+                </a>
+            </li>
+            {% endif %}
+
+            <!-- Suivant -->
+            {% if page_obj.has_next %}
+            <li>
+                <a class="page-btn" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+            {% else %}
+            <li><span class="page-btn disabled"><i class="bi bi-chevron-right"></i></span></li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <i class="bi bi-people text-muted"></i>
+        {% if search %}
+            <p class="fw-semibold">Aucun client trouvé pour "{{ search }}"</p>
+            <a href="{% url 'clients:client_list' %}" class="btn btn-sm btn-outline-secondary mt-2">
+                <i class="bi bi-x me-1"></i>Réinitialiser
+            </a>
+        {% else %}
+            <p class="fw-semibold">Aucun client enregistré</p>
+        {% endif %}
+    </div>
+    {% endif %}

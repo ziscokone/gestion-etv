@@ -1,0 +1,136 @@
+{% load humanize %}
+<div class="p-4">
+
+    <!-- Compteur km actuel -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div style="background:linear-gradient(135deg,#1e3260,var(--color-accent));border-radius:12px;padding:18px 20px;color:#fff;text-align:center;">
+                <div style="font-size:11px;opacity:.8;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">
+                    <i class="bi bi-speedometer2 me-1"></i>Km actuel
+                </div>
+                <div style="font-size:2rem;font-weight:800;line-height:1;">
+                    {{ form.instance.kilometrage_actuel|intcomma }}
+                </div>
+                <div style="font-size:12px;opacity:.75;margin-top:2px;">km</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cartes de suivi par type -->
+    {% if suivi_entretien %}
+    <div style="font-size:13px;font-weight:700;color:#1e3260;margin-bottom:14px;">
+        <i class="bi bi-activity me-2"></i>État des entretiens périodiques
+    </div>
+    <div class="row g-3 mb-4">
+        {% for suivi in suivi_entretien %}
+        <div class="col-md-4">
+            {% if suivi.km_restants is not None %}
+                {% if suivi.km_restants <= 0 %}
+                <div style="background:#fef2f2;border:2px solid #fca5a5;border-radius:12px;padding:16px 18px;">
+                    <div style="font-size:11px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ suivi.type.nom }} — Dépassé
+                    </div>
+                    <div style="font-size:1.5rem;font-weight:800;color:#dc2626;line-height:1;">
+                        {{ suivi.km_restants|intcomma }}
+                    </div>
+                    <div style="font-size:12px;color:#991b1b;margin-top:2px;">km de dépassement</div>
+                    {% if suivi.derniere %}
+                    <div style="font-size:11px;color:#6b7280;margin-top:8px;border-top:1px solid #fecaca;padding-top:8px;">
+                        Fait à {{ suivi.derniere.kilometrage|intcomma }} km — {{ suivi.derniere.reparation.date_reparation|date:"d/m/Y" }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% elif suivi.km_restants <= 1000 %}
+                <div style="background:#fefce8;border:2px solid #fde68a;border-radius:12px;padding:16px 18px;">
+                    <div style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">
+                        <i class="bi bi-exclamation-circle-fill me-1"></i>{{ suivi.type.nom }} — Bientôt
+                    </div>
+                    <div style="font-size:1.5rem;font-weight:800;color:#d97706;line-height:1;">
+                        {{ suivi.km_restants|intcomma }}
+                    </div>
+                    <div style="font-size:12px;color:#92400e;margin-top:2px;">km restants</div>
+                    {% if suivi.derniere %}
+                    <div style="font-size:11px;color:#6b7280;margin-top:8px;border-top:1px solid #fde68a;padding-top:8px;">
+                        Fait à {{ suivi.derniere.kilometrage|intcomma }} km — Prochain à {{ suivi.km_prochaine|intcomma }} km
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div style="background:#f0fdf4;border:2px solid #86efac;border-radius:12px;padding:16px 18px;">
+                    <div style="font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">
+                        <i class="bi bi-check-circle-fill me-1"></i>{{ suivi.type.nom }}
+                    </div>
+                    <div style="font-size:1.5rem;font-weight:800;color:#16a34a;line-height:1;">
+                        {{ suivi.km_restants|intcomma }}
+                    </div>
+                    <div style="font-size:12px;color:#166534;margin-top:2px;">km restants</div>
+                    {% if suivi.derniere %}
+                    <div style="font-size:11px;color:#6b7280;margin-top:8px;border-top:1px solid #86efac;padding-top:8px;">
+                        Fait à {{ suivi.derniere.kilometrage|intcomma }} km — Prochain à {{ suivi.km_prochaine|intcomma }} km
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Barre de progression -->
+                {% if suivi.derniere and suivi.km_prochaine and suivi.derniere.kilometrage %}
+                {% with km_debut=suivi.derniere.kilometrage km_fin=suivi.km_prochaine km_actuel=form.instance.kilometrage_actuel %}
+                {% if km_fin > km_debut %}
+                <div style="margin-top:8px;">
+                    {% widthratio km_actuel km_fin 100 as pct %}
+                    <div style="background:#f3f4f6;border-radius:6px;height:8px;overflow:hidden;">
+                        {% if km_actuel >= km_fin %}
+                            <div style="width:100%;height:100%;background:#ef4444;border-radius:6px;"></div>
+                        {% else %}
+                            <div style="width:{{ pct }}%;height:100%;background:{% if pct > 80 %}#ef4444{% elif pct > 60 %}#f59e0b{% else %}#22c55e{% endif %};border-radius:6px;transition:width .3s;"></div>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex justify-content-between mt-1" style="font-size:10px;color:#9ca3af;">
+                        <span>{{ km_debut|intcomma }} km</span>
+                        <span>{{ km_fin|intcomma }} km</span>
+                    </div>
+                </div>
+                {% endif %}
+                {% endwith %}
+                {% endif %}
+
+            {% else %}
+                <!-- Pas encore d'intervention -->
+                <div style="background:#f8f9fc;border:1px dashed #d1d5db;border-radius:12px;padding:16px 18px;text-align:center;">
+                    <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:4px;">
+                        <i class="bi bi-wrench me-1"></i>{{ suivi.type.nom }}
+                    </div>
+                    <div style="font-size:11px;color:#9ca3af;">Aucune intervention enregistrée</div>
+                    {% if suivi.type.intervalle_km_defaut %}
+                    <div style="font-size:11px;color:#6b7280;margin-top:4px;">Intervalle : {{ suivi.type.intervalle_km_defaut|intcomma }} km</div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <!-- Aucun type avec suivi km configuré -->
+    <div style="background:#f8f9fc;border:1px dashed #d1d5db;border-radius:12px;padding:32px;text-align:center;color:#9ca3af;">
+        <i class="bi bi-activity" style="font-size:2.5rem;display:block;margin-bottom:12px;"></i>
+        <p class="mb-1 fw-semibold">Aucun entretien périodique configuré.</p>
+        <p class="mb-3" style="font-size:12px;">Pour activer le suivi km, cochez <strong>« Intervalle km »</strong> sur un type de réparation.</p>
+        <a href="{% url 'vehicules:type_reparation_list' %}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-gear me-1"></i>Gérer les types
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Historique des entretiens kilométriques — chargé en AJAX -->
+    <div style="font-size:13px;font-weight:700;color:#1e3260;margin-bottom:12px;">
+        <i class="bi bi-list-ul me-2"></i>Historique des entretiens kilométriques
+    </div>
+    <div id="entretien-historique-container">
+        <div class="text-center py-4" id="entretien-spinner">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="text-muted mt-2" style="font-size:13px;">Chargement…</p>
+        </div>
+    </div>
+
+</div>

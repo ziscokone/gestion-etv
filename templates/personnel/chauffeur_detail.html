@@ -1,0 +1,776 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load static %}
+
+{% block title %}Fiche — {{ chauffeur.nom_complet }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── En-tête fiche ───────────────────────────────────── */
+  .fiche-header {
+    background: linear-gradient(135deg, #2d4a7a 0%, var(--color-accent) 100%);
+    border-radius: 14px;
+    padding: 28px 32px;
+    color: #fff;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .fiche-header::after {
+    content: '\F4C4';
+    font-family: 'Bootstrap-Icons';
+    font-size: 9rem;
+    opacity: 0.06;
+    position: absolute;
+    right: 24px;
+    top: -10px;
+    line-height: 1;
+    pointer-events: none;
+  }
+  .fiche-header .avatar {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .fiche-header h4 { font-weight: 700; margin: 0 0 4px; }
+  .fiche-header .meta { font-size: 13px; opacity: 0.85; }
+  .status-badge {
+    padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  }
+  .status-actif   { background: #d1fae5; color: #065f46; }
+  .status-inactif { background: #fee2e2; color: #991b1b; }
+
+  /* ── Onglets ─────────────────────────────────────────── */
+  .nav-fiche { border-bottom: 2px solid #e5e7eb; margin-bottom: 24px; }
+  .nav-fiche .nav-link {
+    color: #374151 !important; font-weight: 600; font-size: 14px;
+    padding: 10px 20px; border: none; background: none !important;
+    border-bottom: 3px solid transparent; margin-bottom: -2px;
+    border-radius: 0;
+  }
+  .nav-fiche .nav-link.active { color: var(--color-accent) !important; border-bottom-color: var(--color-accent); }
+  .nav-fiche .nav-link:hover  { color: var(--color-accent) !important; }
+  .nav-fiche .nav-link i { margin-right: 6px; }
+
+  /* ── Infos perso ─────────────────────────────────────── */
+  .info-section { margin-bottom: 24px; }
+  .info-section h6 {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.8px; color: #9ca3af; margin-bottom: 12px;
+    padding-bottom: 6px; border-bottom: 1px solid #f0f0f0;
+  }
+  .info-row { display: flex; padding: 8px 0; border-bottom: 1px solid #f9fafb; font-size: 14px; }
+  .info-row .info-label { color: #6b7280; width: 180px; flex-shrink: 0; }
+  .info-row .info-value { color: #111827; font-weight: 500; }
+
+  /* ── KPI activité ────────────────────────────────────── */
+  .kpi-act {
+    background: #fff; border: none; border-radius: 13px;
+    border-top: 4px solid #e5e7eb; padding: 20px 22px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    transition: transform 0.2s, box-shadow 0.2s;
+    height: 100%; display: flex; align-items: center; gap: 16px;
+  }
+  .kpi-act:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.11); }
+  .kpi-act .kpi-ico {
+    width: 52px; height: 52px; border-radius: 12px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 1.4rem;
+  }
+  .kpi-act .kpi-val { font-size: 1.7rem; font-weight: 700; line-height: 1.1; }
+  .kpi-act .kpi-lbl { font-size: 12px; color: #6b7280; margin-top: 4px; }
+  .kpi-blue   { border-top-color: #1e3260; }
+  .kpi-blue   .kpi-ico { background: #eef1f8; color: #1e3260; }
+  .kpi-blue   .kpi-val { color: #1e3260; }
+  .kpi-green  { border-top-color: #27ae60; }
+  .kpi-green  .kpi-ico { background: #f0fdf4; color: #27ae60; }
+  .kpi-green  .kpi-val { color: #27ae60; }
+  .kpi-orange { border-top-color: #E67E22; }
+  .kpi-orange .kpi-ico { background: #fff7ed; color: #E67E22; }
+  .kpi-orange .kpi-val { color: #E67E22; }
+  .kpi-red    { border-top-color: #e74c3c; }
+  .kpi-red    .kpi-ico { background: #fef2f2; color: #e74c3c; }
+  .kpi-red    .kpi-val { color: #e74c3c; }
+
+  /* ── Filtres ─────────────────────────────────────────── */
+  .filter-zone {
+    background: #f8f9fc; border: 1px solid #e5e7eb;
+    border-radius: 10px; padding: 16px 20px; margin-bottom: 24px;
+  }
+  .filter-zone .form-label { font-size: 12px; font-weight: 600; color: #555; margin-bottom: 3px; }
+
+  /* ── Graphique ───────────────────────────────────────── */
+  .chart-card { border: none; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); margin-bottom: 24px; }
+  .chart-card .chart-header {
+    padding: 16px 20px; border-bottom: 1px solid #f0f0f0;
+    font-weight: 600; font-size: 14px; color: #2d4a7a;
+  }
+  .chart-container { position: relative; height: 240px; }
+
+  /* ── Tableau voyages ─────────────────────────────────── */
+  .voyages-card { border: none; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+  .voyages-card .voyages-header {
+    padding: 16px 20px; border-bottom: 1px solid #f0f0f0;
+    display: flex; justify-content: space-between; align-items: center;
+    font-weight: 600; font-size: 14px; color: #2d4a7a;
+  }
+  .table-voyages th { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+  .table-voyages td { font-size: 13px; vertical-align: middle; }
+
+  .statut-badge { border-radius: 12px; padding: 3px 10px; font-size: 11px; font-weight: 600; }
+  .statut-termine   { background: #d1fae5; color: #065f46; }
+  .statut-en_cours  { background: #dbeafe; color: #1e40af; }
+  .statut-programme { background: #fef3c7; color: #78350f; }
+  .statut-annule    { background: #fee2e2; color: #991b1b; }
+
+  .empty-act { text-align: center; padding: 48px 20px; color: #9ca3af; }
+  .empty-act i { font-size: 2.5rem; display: block; margin-bottom: 10px; }
+
+  /* Pagination — bleu nuit de l'application */
+  .pagination-nuit { gap: 6px; }
+  .pagination-nuit .page-item .page-link {
+      border: 1.5px solid var(--color-accent);
+      color: var(--color-accent);
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 12.5px;
+      padding: 6px 14px;
+      background: #fff;
+      transition: all 0.15s;
+  }
+  .pagination-nuit .page-item .page-link:hover {
+      background: var(--color-accent);
+      color: #fff;
+  }
+  .pagination-nuit .page-item.active .page-link {
+      background: var(--color-accent);
+      border-color: var(--color-accent);
+      color: #fff;
+      cursor: default;
+      font-weight: 700;
+  }
+  .pagination-nuit .page-item.active .page-link:hover {
+      background: var(--color-accent);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+  <!-- ── En-tête fiche ─────────────────────────────────────────── -->
+  <div class="fiche-header">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <div class="avatar">{{ chauffeur.nom_complet|slice:":1"|upper }}</div>
+      <div class="flex-grow-1">
+        <h4>{{ chauffeur.nom_complet }}</h4>
+        <div class="meta d-flex flex-wrap gap-3 mt-1">
+          <span><i class="bi bi-telephone me-1"></i>{{ chauffeur.telephone }}</span>
+          <span><i class="bi bi-card-text me-1"></i>Permis : {{ chauffeur.numero_permis }}</span>
+          {% if chauffeur.date_embauche %}
+          <span><i class="bi bi-calendar-check me-1"></i>Depuis le {{ chauffeur.date_embauche|date:"d/m/Y" }}</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="d-flex gap-2 align-items-center">
+        <span class="status-badge {% if chauffeur.actif %}status-actif{% else %}status-inactif{% endif %}">
+          {% if chauffeur.actif %}Actif{% else %}Inactif{% endif %}
+        </span>
+        <a href="{% url 'personnel:chauffeur_update' chauffeur.pk %}" class="btn btn-sm btn-light fw-semibold">
+          <i class="bi bi-pencil me-1"></i>Modifier
+        </a>
+        <a href="{% url 'personnel:chauffeur_list' %}" class="btn btn-sm btn-danger">
+          <i class="bi bi-arrow-left me-1"></i>Retour
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Onglets ───────────────────────────────────────────────── -->
+  <ul class="nav nav-fiche" id="ficheTabs">
+    <li class="nav-item">
+      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-infos">
+        <i class="bi bi-person-lines-fill"></i>Informations
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-activite">
+        <i class="bi bi-graph-up-arrow"></i>Activité voyages
+        {% if nb_total > 0 %}<span class="badge rounded-pill ms-1" style="background:var(--color-accent);font-size:10px">{{ nb_total }}</span>{% endif %}
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-dossier">
+        <i class="bi bi-folder2-open"></i>Dossier
+        {% if documents %}<span class="badge rounded-pill ms-1" style="background:var(--color-accent);font-size:10px">{{ documents|length }}</span>{% endif %}
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content">
+
+    <!-- ═══════════════════════════════ ONGLET INFOS ══ -->
+    <div class="tab-pane fade show active" id="tab-infos">
+      <div class="row g-4">
+
+        <!-- Colonne gauche -->
+        <div class="col-lg-6">
+          <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-4">
+
+              <div class="info-section">
+                <h6><i class="bi bi-person me-1"></i>Identité</h6>
+                <div class="info-row"><span class="info-label">Nom complet</span><span class="info-value">{{ chauffeur.nom_complet }}</span></div>
+                {% if chauffeur.numero_cni %}
+                <div class="info-row"><span class="info-label">N° CNI</span><span class="info-value">{{ chauffeur.numero_cni }}</span></div>
+                {% endif %}
+                {% if chauffeur.situation_matrimoniale %}
+                <div class="info-row"><span class="info-label">Situation</span><span class="info-value">{{ chauffeur.get_situation_matrimoniale_display }}</span></div>
+                {% endif %}
+                <div class="info-row"><span class="info-label">Enfants en charge</span><span class="info-value">{{ chauffeur.nombre_enfants }}</span></div>
+              </div>
+
+              <div class="info-section">
+                <h6><i class="bi bi-telephone me-1"></i>Coordonnées</h6>
+                <div class="info-row"><span class="info-label">Téléphone</span><span class="info-value">{{ chauffeur.telephone }}</span></div>
+                {% if chauffeur.telephone_2 %}
+                <div class="info-row"><span class="info-label">Téléphone 2</span><span class="info-value">{{ chauffeur.telephone_2 }}</span></div>
+                {% endif %}
+                {% if chauffeur.lieu_habitation %}
+                <div class="info-row"><span class="info-label">Lieu d'habitation</span><span class="info-value">{{ chauffeur.lieu_habitation }}</span></div>
+                {% endif %}
+              </div>
+
+              {% if chauffeur.personne_urgence %}
+              <div class="info-section">
+                <h6><i class="bi bi-heart-pulse me-1"></i>Contact d'urgence</h6>
+                <div class="info-row"><span class="info-label">Personne</span><span class="info-value">{{ chauffeur.personne_urgence }}</span></div>
+                <div class="info-row"><span class="info-label">Téléphone</span><span class="info-value">{{ chauffeur.telephone_urgence }}</span></div>
+              </div>
+              {% endif %}
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Colonne droite -->
+        <div class="col-lg-6">
+          <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body p-4">
+
+              <div class="info-section">
+                <h6><i class="bi bi-briefcase me-1"></i>Informations professionnelles</h6>
+                <div class="info-row"><span class="info-label">N° Permis</span><span class="info-value">{{ chauffeur.numero_permis }}</span></div>
+                {% if chauffeur.date_embauche %}
+                <div class="info-row"><span class="info-label">Date d'embauche</span><span class="info-value">{{ chauffeur.date_embauche|date:"d/m/Y" }}</span></div>
+                {% endif %}
+                {% if chauffeur.salaire %}
+                <div class="info-row"><span class="info-label">Salaire</span><span class="info-value">{{ chauffeur.salaire|floatformat:0|intcomma }} FCFA</span></div>
+                {% endif %}
+                <div class="info-row">
+                  <span class="info-label">Statut</span>
+                  <span class="info-value">
+                    <span class="status-badge {% if chauffeur.actif %}status-actif{% else %}status-inactif{% endif %}">
+                      {% if chauffeur.actif %}Actif{% else %}Inactif{% endif %}
+                    </span>
+                  </span>
+                </div>
+              </div>
+
+              {% if dernier_voyage %}
+              <div class="info-section">
+                <h6><i class="bi bi-bus-front me-1"></i>Dernier voyage</h6>
+                <div class="info-row"><span class="info-label">Date</span><span class="info-value">{{ dernier_voyage.date_depart|date:"d/m/Y" }}</span></div>
+                <div class="info-row"><span class="info-label">Ligne</span><span class="info-value">{{ dernier_voyage.ligne }}</span></div>
+                <div class="info-row"><span class="info-label">Gare départ</span><span class="info-value">{{ dernier_voyage.gare }}</span></div>
+              </div>
+              {% endif %}
+
+              <div class="info-section">
+                <h6><i class="bi bi-bar-chart me-1"></i>Bilan global</h6>
+                <div class="info-row"><span class="info-label">Total voyages</span><span class="info-value fw-bold" style="color:var(--color-accent)">{{ nb_total }}</span></div>
+                <div class="info-row"><span class="info-label">Ce mois</span><span class="info-value">{{ nb_ce_mois }}</span></div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════ ONGLET ACTIVITÉ ══ -->
+    <div class="tab-pane fade" id="tab-activite">
+
+      <!-- KPI globaux -->
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+          <div class="kpi-act kpi-blue">
+            <div class="kpi-ico"><i class="bi bi-bus-front"></i></div>
+            <div>
+              <div class="kpi-val">{{ nb_total }}</div>
+              <div class="kpi-lbl"><i class="bi bi-infinity me-1"></i>Total voyages (tous temps)</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="kpi-act kpi-green">
+            <div class="kpi-ico"><i class="bi bi-calendar-check"></i></div>
+            <div>
+              <div class="kpi-val">{{ nb_ce_mois }}</div>
+              <div class="kpi-lbl"><i class="bi bi-calendar me-1"></i>Voyages ce mois</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="kpi-act kpi-orange">
+            <div class="kpi-ico"><i class="bi bi-funnel"></i></div>
+            <div>
+              <div class="kpi-val">{{ nb_voyages_periode }}</div>
+              <div class="kpi-lbl"><i class="bi bi-calendar-range me-1"></i>Sur la période filtrée</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="kpi-act kpi-red">
+            <div class="kpi-ico"><i class="bi bi-x-circle"></i></div>
+            <div>
+              <div class="kpi-val">{{ nb_annules }}</div>
+              <div class="kpi-lbl"><i class="bi bi-slash-circle me-1"></i>Annulés (période)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Graphique 12 mois -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <i class="bi bi-bar-chart-line me-2"></i>Évolution des voyages — 12 derniers mois
+        </div>
+        <div class="card-body p-4">
+          <div class="chart-container">
+            <canvas id="activityChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filtre période -->
+      <div class="filter-zone">
+        <form method="get" class="row g-3 align-items-end">
+          <input type="hidden" name="tab" value="activite">
+          <div class="col-md-3">
+            <label class="form-label"><i class="bi bi-calendar-event me-1"></i>Date début</label>
+            <input type="date" name="date_debut" class="form-control form-control-sm" value="{{ date_debut }}">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label"><i class="bi bi-calendar-event-fill me-1"></i>Date fin</label>
+            <input type="date" name="date_fin" class="form-control form-control-sm" value="{{ date_fin }}">
+          </div>
+          <div class="col-md-2">
+            <button type="submit" class="btn btn-primary btn-sm w-100">
+              <i class="bi bi-search me-1"></i>Filtrer
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Tableau voyages -->
+      <div class="voyages-card">
+        <div class="voyages-header">
+          <span><i class="bi bi-table me-2"></i>Historique des voyages</span>
+          <span class="badge rounded-pill" style="background:#eef2ff;color:#4338ca;font-size:12px;font-weight:600">
+            {{ nb_voyages_periode }} voyage{{ nb_voyages_periode|pluralize }}
+          </span>
+        </div>
+        <div class="card-body p-0">
+          {% if voyages %}
+          <div class="table-responsive">
+            <table class="table table-hover table-voyages align-middle mb-0">
+              <thead>
+                <tr>
+                  <th class="ps-4">Date</th>
+                  <th>Heure</th>
+                  <th>Ligne</th>
+                  <th>Gare départ</th>
+                  <th>Véhicule</th>
+                  <th>Période</th>
+                  <th class="text-center">Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for voyage in voyages %}
+                <tr>
+                  <td class="ps-4 fw-semibold">{{ voyage.date_depart|date:"d/m/Y" }}</td>
+                  <td>{{ voyage.heure_depart|time:"H:i" }}</td>
+                  <td>{{ voyage.ligne }}</td>
+                  <td>{{ voyage.gare }}</td>
+                  <td>
+                    {% if voyage.vehicule %}{{ voyage.vehicule.display_immat }}
+                    {% else %}<span class="text-muted">—</span>{% endif %}
+                  </td>
+                  <td>
+                    <span class="text-muted">{{ voyage.get_periode_display }}</span>
+                  </td>
+                  <td class="text-center">
+                    <span class="statut-badge statut-{{ voyage.statut }}">
+                      {{ voyage.get_statut_display }}
+                    </span>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          {% if is_paginated %}
+          <nav class="d-flex justify-content-center py-3 border-top">
+            <ul class="pagination pagination-sm pagination-nuit mb-0">
+              {% if page_obj.has_previous %}
+                <li class="page-item">
+                  <a class="page-link" href="?tab=activite&page=1&date_debut={{ date_debut }}&date_fin={{ date_fin }}">Première</a>
+                </li>
+                <li class="page-item">
+                  <a class="page-link" href="?tab=activite&page={{ page_obj.previous_page_number }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}">Précédent</a>
+                </li>
+              {% endif %}
+              <li class="page-item active">
+                <span class="page-link">Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span>
+              </li>
+              {% if page_obj.has_next %}
+                <li class="page-item">
+                  <a class="page-link" href="?tab=activite&page={{ page_obj.next_page_number }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}">Suivant</a>
+                </li>
+                <li class="page-item">
+                  <a class="page-link" href="?tab=activite&page={{ page_obj.paginator.num_pages }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}">Dernière</a>
+                </li>
+              {% endif %}
+            </ul>
+          </nav>
+          {% endif %}
+
+          {% else %}
+          <div class="empty-act">
+            <i class="bi bi-bus-front text-muted"></i>
+            <p class="fw-semibold">Aucun voyage sur cette période</p>
+            <p class="text-muted small">Modifiez les dates et filtrez à nouveau.</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>{# fin tab-activite #}
+
+    <!-- ── Onglet Dossier ────────────────────────────────────────── -->
+    <div class="tab-pane fade" id="tab-dossier">
+      <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body p-4">
+
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h6 class="fw-bold mb-0"><i class="bi bi-folder2-open me-2 text-primary"></i>Dossier du chauffeur</h6>
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadDocModal">
+              <i class="bi bi-upload me-1"></i> Ajouter un document
+            </button>
+          </div>
+
+          {% if documents %}
+          <div class="table-responsive">
+            <table class="table table-hover align-middle" id="table-documents">
+              <thead class="table-light">
+                <tr>
+                  <th style="font-size:12px;text-transform:uppercase;letter-spacing:.4px">Type</th>
+                  <th style="font-size:12px;text-transform:uppercase;letter-spacing:.4px">Nom</th>
+                  <th style="font-size:12px;text-transform:uppercase;letter-spacing:.4px">Date d'ajout</th>
+                  <th style="font-size:12px;text-transform:uppercase;letter-spacing:.4px">Expiration</th>
+                  <th style="font-size:12px;text-transform:uppercase;letter-spacing:.4px">Ajouté par</th>
+                  <th style="font-size:12px;text-transform:uppercase;letter-spacing:.4px">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for doc in documents %}
+                <tr id="doc-row-{{ doc.id }}">
+                  <td>
+                    <span class="badge bg-secondary-subtle text-secondary-emphasis">
+                      <i class="bi bi-file-earmark me-1"></i>{{ doc.type_document.nom }}
+                    </span>
+                  </td>
+                  <td class="fw-semibold" style="font-size:13px">{{ doc.nom }}</td>
+                  <td style="font-size:13px">{{ doc.date_ajout|date:"d/m/Y" }}</td>
+                  <td style="font-size:13px">
+                    {% if doc.date_expiration %}
+                      {% if doc.est_expire %}
+                        <span class="badge bg-danger"><i class="bi bi-exclamation-triangle me-1"></i>{{ doc.date_expiration|date:"d/m/Y" }} — Expiré</span>
+                      {% elif doc.expire_bientot %}
+                        <span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>{{ doc.date_expiration|date:"d/m/Y" }} — Bientôt</span>
+                      {% else %}
+                        <span class="text-success">{{ doc.date_expiration|date:"d/m/Y" }}</span>
+                      {% endif %}
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+                  <td style="font-size:13px">{{ doc.ajoute_par.nom_complet|default:doc.ajoute_par.username|default:"—" }}</td>
+                  <td>
+                    <a href="{% url 'personnel:telecharger_document_chauffeur' doc.id %}"
+                       class="btn btn-sm btn-outline-primary me-1" title="Télécharger">
+                      <i class="bi bi-download"></i>
+                    </a>
+                    {% if request.user.is_superuser %}
+                    <button class="btn btn-sm btn-outline-danger btn-supprimer-doc"
+                            data-doc-id="{{ doc.id }}" data-doc-nom="{{ doc.nom }}" title="Supprimer">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <div class="text-center py-5" id="dossier-vide">
+            <i class="bi bi-folder2-open display-4 text-muted mb-3 d-block"></i>
+            <p class="text-muted">Aucun document enregistré pour ce chauffeur.</p>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadDocModal">
+              <i class="bi bi-upload me-1"></i> Ajouter le premier document
+            </button>
+          </div>
+          {% endif %}
+
+        </div>
+      </div>
+    </div>{# fin tab-dossier #}
+
+  </div>{# fin tab-content #}
+
+</div>
+
+<!-- ── Modal Upload Document ─────────────────────────────────────── -->
+<div class="modal fade" id="uploadDocModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-upload me-2"></i>Ajouter un document</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="upload-alert" class="alert d-none"></div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Type de document <span class="text-danger">*</span></label>
+          <select class="form-select" id="upload-type">
+            <option value="">-- Choisir --</option>
+            {% for t in types_document %}
+            <option value="{{ t.pk }}">{{ t.nom }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Nom du document</label>
+          <input type="text" class="form-control" id="upload-nom" placeholder="Ex: Permis catégorie D — 2024">
+          <div class="form-text">Laissez vide pour utiliser le nom du fichier.</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Fichier <span class="text-danger">*</span></label>
+          <input type="file" class="form-control" id="upload-fichier" accept=".pdf,.jpg,.jpeg,.png">
+          <div class="form-text">PDF, JPG ou PNG — max 10 Mo</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Date d'expiration</label>
+          <input type="date" class="form-control" id="upload-expiration">
+          <div class="form-text">Facultatif. Utile pour CNI, permis, etc.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-primary" id="btn-upload-confirmer">
+          <span id="upload-spinner" class="spinner-border spinner-border-sm d-none me-1"></span>
+          <i class="bi bi-upload me-1" id="upload-icon"></i> Enregistrer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Confirmation Suppression ────────────────────────────── -->
+<div class="modal fade" id="supprimerDocModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h6 class="modal-title"><i class="bi bi-trash me-2"></i>Supprimer le document</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-1">Voulez-vous supprimer :</p>
+        <p class="fw-bold" id="suppr-doc-nom"></p>
+        <p class="text-danger small">Cette action est irréversible.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-danger btn-sm" id="btn-suppr-confirmer">Supprimer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/chartjs/chart.umd.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  // Ouvrir l'onglet activité si demandé via paramètre
+  var urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('tab') === 'activite' || urlParams.get('date_debut')) {
+    var tabActivite = document.querySelector('[data-bs-target="#tab-activite"]');
+    if (tabActivite) { new bootstrap.Tab(tabActivite).show(); }
+  }
+  if (urlParams.get('tab') === 'dossier') {
+    var tabDossier = document.querySelector('[data-bs-target="#tab-dossier"]');
+    if (tabDossier) { new bootstrap.Tab(tabDossier).show(); }
+  }
+
+  // ── Upload document ──────────────────────────────────────────────
+  var chauffeurId = {{ chauffeur.id }};
+  var uploadModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('uploadDocModal'));
+
+  document.getElementById('btn-upload-confirmer').addEventListener('click', function () {
+    var type    = document.getElementById('upload-type').value;
+    var nom     = document.getElementById('upload-nom').value;
+    var fichier = document.getElementById('upload-fichier').files[0];
+    var expir   = document.getElementById('upload-expiration').value;
+    var alert   = document.getElementById('upload-alert');
+
+    alert.className = 'alert d-none';
+    if (!type) { alert.className = 'alert alert-warning'; alert.textContent = 'Veuillez choisir un type de document.'; return; }
+    if (!fichier) { alert.className = 'alert alert-warning'; alert.textContent = 'Veuillez sélectionner un fichier.'; return; }
+
+    var spinner = document.getElementById('upload-spinner');
+    var icon    = document.getElementById('upload-icon');
+    spinner.classList.remove('d-none');
+    icon.classList.add('d-none');
+    this.disabled = true;
+
+    var fd = new FormData();
+    fd.append('type_document', type);
+    fd.append('nom', nom);
+    fd.append('fichier', fichier);
+    if (expir) fd.append('date_expiration', expir);
+    fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    fetch('/personnel/chauffeurs/' + chauffeurId + '/documents/upload/', { method: 'POST', body: fd })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        spinner.classList.add('d-none');
+        icon.classList.remove('d-none');
+        document.getElementById('btn-upload-confirmer').disabled = false;
+        if (data.success) {
+          window.location.href = window.location.pathname + '?tab=dossier';
+        } else {
+          alert.className = 'alert alert-danger';
+          alert.textContent = data.error || 'Erreur lors de l\'upload.';
+        }
+      })
+      .catch(function(err) {
+        spinner.classList.add('d-none');
+        icon.classList.remove('d-none');
+        document.getElementById('btn-upload-confirmer').disabled = false;
+        alert.className = 'alert alert-danger';
+        alert.textContent = 'Erreur : ' + (err.message || 'Veuillez réessayer.');
+      });
+  });
+
+  // ── Suppression document ─────────────────────────────────────────
+  var docIdASupprimer = null;
+  var supprimerModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('supprimerDocModal'));
+
+  document.querySelectorAll('.btn-supprimer-doc').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      docIdASupprimer = this.dataset.docId;
+      document.getElementById('suppr-doc-nom').textContent = this.dataset.docNom;
+      supprimerModal.show();
+    });
+  });
+
+  document.getElementById('btn-suppr-confirmer').addEventListener('click', function() {
+    if (!docIdASupprimer) return;
+    this.disabled = true;
+    fetch('/personnel/documents/' + docIdASupprimer + '/supprimer/', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' }
+    })
+      .then(r => r.json())
+      .then(data => {
+        this.disabled = false;
+        if (data.success) {
+          supprimerModal.hide();
+          var row = document.getElementById('doc-row-' + docIdASupprimer);
+          if (row) row.remove();
+          // Afficher vide si plus aucun document
+          if (!document.querySelector('#table-documents tbody tr')) {
+            document.querySelector('#table-documents').closest('.table-responsive').innerHTML =
+              '<p class="text-muted text-center py-4">Aucun document enregistré.</p>';
+          }
+          docIdASupprimer = null;
+        } else {
+          supprimerModal.hide();
+          alert(data.error || 'Erreur lors de la suppression.');
+        }
+      });
+  });
+
+  // Graphique activité
+  var ctx = document.getElementById('activityChart');
+  if (!ctx) return;
+
+  var labels = {{ chart_labels_json|safe }};
+  var data   = {{ chart_data_json|safe }};
+  var maxVal = Math.max.apply(null, data) || 1;
+
+  var colors = data.map(function(v) {
+    if (v === 0)          return 'rgba(209,213,219,0.5)';
+    if (v === maxVal)     return 'rgba(16,185,129,0.85)';
+    return 'rgba(74,111,165,0.75)';
+  });
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Voyages',
+        data: data,
+        backgroundColor: colors,
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              var v = ctx.parsed.y;
+              return v + ' voyage' + (v > 1 ? 's' : '');
+            }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 1, font: { size: 11 } },
+          grid: { color: 'rgba(0,0,0,0.05)' }
+        }
+      }
+    }
+  });
+
+});
+</script>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Types de Colis{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card shadow-sm">
+        <div class="card-header text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="bi bi-tags me-2"></i>Types de Colis</h4>
+                <a href="{% url 'courrier:type_colis_create' %}" class="btn btn-success btn-sm">
+                    <i class="bi bi-plus-circle me-1"></i>Ajouter un type
+                </a>
+            </div>
+        </div>
+
+        <div class="card-body">
+            {% if types_colis %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Nom</th>
+                            <th class="text-end">Tarif indicatif</th>
+                            <th class="text-center">Statut</th>
+                            <th class="text-center">Colis</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for type in types_colis %}
+                        <tr>
+                            <td><strong>{{ type.nom }}</strong></td>
+                            <td class="text-end">{{ type.tarif_indicatif|floatformat:0|intcomma }} FCFA</td>
+                            <td class="text-center">
+                                {% if type.actif %}
+                                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Actif</span>
+                                {% else %}
+                                <span class="badge bg-secondary"><i class="bi bi-x-circle"></i> Inactif</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center"><span class="badge bg-info">{{ type.colis.count }}</span></td>
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{% url 'courrier:type_colis_update' type.pk %}" class="btn btn-outline-warning" title="Modifier">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    {% if type.colis.count == 0 %}
+                                    <a href="{% url 'courrier:type_colis_delete' type.pk %}" class="btn btn-outline-danger" title="Supprimer">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>Aucun type de colis trouvé.
+                <a href="{% url 'courrier:type_colis_create' %}" class="btn btn-primary btn-sm ms-2">
+                    <i class="bi bi-plus-circle me-1"></i>Créer un type
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="card-footer">
+            <a href="{% url 'courrier:colis_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Retour aux colis
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

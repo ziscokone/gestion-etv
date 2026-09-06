@@ -1,0 +1,204 @@
+{% load humanize %}
+
+<!-- ── Stats ─────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="rep-stat-card">
+            <i class="bi bi-currency-exchange text-primary" style="font-size:1.8rem;"></i>
+            <div class="rep-stat-val text-primary">{{ vehicule.get_cout_total_reparations|floatformat:0|intcomma }}</div>
+            <div class="rep-stat-lbl">Coût total (FCFA)</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="rep-stat-card">
+            <i class="bi bi-tools" style="font-size:1.8rem;color:var(--color-warning);"></i>
+            <div class="rep-stat-val" style="color:var(--color-warning);">{{ nb_tous }}</div>
+            <div class="rep-stat-lbl">Réparations totales</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="rep-stat-card">
+            <i class="bi bi-calendar-event" style="font-size:1.8rem;color:var(--color-success);"></i>
+            <div class="rep-stat-val" style="color:var(--color-success);font-size:1.1rem;">
+                {% if vehicule.get_derniere_reparation %}
+                    {{ vehicule.get_derniere_reparation.date_reparation|date:"d/m/Y" }}
+                {% else %}
+                    —
+                {% endif %}
+            </div>
+            <div class="rep-stat-lbl">Dernière réparation</div>
+        </div>
+    </div>
+</div>
+
+<!-- ── En-tête + bouton ajouter ─────────────────────────── -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h6 class="mb-0 fw-bold" style="color:#1e3260;">
+        <i class="bi bi-clock-history me-2"></i>Historique des réparations
+    </h6>
+    <a href="{% url 'vehicules:reparation_create' %}?vehicule={{ vehicule.pk }}"
+       class="btn btn-sm btn-primary fw-bold">
+        <i class="bi bi-plus-circle me-1"></i>Ajouter
+    </a>
+</div>
+
+{% if nb_tous > 0 %}
+
+<!-- ── Filtres pills ─────────────────────────────────────── -->
+<div class="rep-filter-bar">
+    <span class="text-muted fw-semibold" style="font-size:12px;">Filtrer :</span>
+    <button class="rep-pill {% if not statut_filtre %}active{% endif %}"
+            onclick="loadReparations('', 1)">
+        Tous <span class="badge bg-secondary rounded-pill ms-1" style="font-size:10px;">{{ nb_tous }}</span>
+    </button>
+    <button class="rep-pill p-term {% if statut_filtre == 'terminee' %}active{% endif %}"
+            onclick="loadReparations('terminee', 1)">
+        <i class="bi bi-check-circle"></i> Terminées
+        {% if nb_terminee %}<span class="badge bg-secondary rounded-pill ms-1" style="font-size:10px;">{{ nb_terminee }}</span>{% endif %}
+    </button>
+    <button class="rep-pill p-cours {% if statut_filtre == 'en_cours' %}active{% endif %}"
+            onclick="loadReparations('en_cours', 1)">
+        <i class="bi bi-hourglass-split"></i> En cours
+        {% if nb_en_cours %}<span class="badge bg-secondary rounded-pill ms-1" style="font-size:10px;">{{ nb_en_cours }}</span>{% endif %}
+    </button>
+    <button class="rep-pill p-attente {% if statut_filtre == 'en_attente' %}active{% endif %}"
+            onclick="loadReparations('en_attente', 1)">
+        <i class="bi bi-clock"></i> En attente
+        {% if nb_en_attente %}<span class="badge bg-secondary rounded-pill ms-1" style="font-size:10px;">{{ nb_en_attente }}</span>{% endif %}
+    </button>
+</div>
+
+<!-- ── Timeline ──────────────────────────────────────────── -->
+{% if reparations %}
+<div class="timeline" id="timelineRep">
+    {% for rep in reparations %}
+    <div class="rep-card {{ rep.statut }}" data-statut="{{ rep.statut }}" data-montant="{{ rep.montant }}">
+        <div class="tl-point {{ rep.statut }}">
+            {% if rep.statut == 'terminee' %}
+                <i class="bi bi-check-lg" style="font-size:9px;"></i>
+            {% elif rep.statut == 'en_cours' %}
+                <i class="bi bi-hourglass-split" style="font-size:9px;"></i>
+            {% else %}
+                <i class="bi bi-clock" style="font-size:9px;"></i>
+            {% endif %}
+        </div>
+
+        <div class="rep-card-body">
+            <div class="rep-main-row">
+                <div class="rep-left">
+                    <div class="rep-top-row">
+                        <span class="rep-date">
+                            <i class="bi bi-calendar3 me-1 text-muted"></i>{{ rep.date_reparation|date:"d/m/Y" }}
+                        </span>
+                        {% for ligne in rep.lignes.all %}
+                        <span class="rep-type-badge">{{ ligne.type_reparation.nom }}</span>
+                        {% endfor %}
+                        <span class="rep-statut {{ rep.statut }}">
+                            {% if rep.statut == 'terminee' %}
+                                <i class="bi bi-check-circle"></i> Terminée
+                            {% elif rep.statut == 'en_cours' %}
+                                <i class="bi bi-hourglass-split"></i> En cours
+                            {% else %}
+                                <i class="bi bi-clock"></i> En attente
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="rep-garage">
+                        <i class="bi bi-building me-1 text-muted"></i>{{ rep.garage_prestataire }}
+                    </div>
+                    {% for ligne in rep.lignes.all %}
+                    {% if ligne.description %}
+                    <div class="rep-desc">{{ ligne.description|truncatewords:12 }}</div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+
+                <div class="rep-right">
+                    <div class="rep-montant">{{ rep.montant_total|floatformat:0|intcomma }} FCFA</div>
+                    <div class="rep-actions">
+                        <a href="{% url 'vehicules:reparation_detail' rep.pk %}"
+                           class="btn-action-sm view" title="Voir détails">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        <a href="{% url 'vehicules:reparation_update' rep.pk %}"
+                           class="btn-action-sm edit" title="Modifier">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        {% if user.role == 'super_admin' %}
+                        <a href="{% url 'vehicules:reparation_delete' rep.pk %}"
+                           class="btn-action-sm del" title="Supprimer">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ── Total page ─────────────────────────────────────────── -->
+<div class="rep-total-bar">
+    <span><i class="bi bi-calculator me-2"></i>Total affiché (page {{ page_obj.number }})</span>
+    <span class="total-val">
+        {% with total=0 %}
+        {% for rep in reparations %}{% endfor %}
+        {{ vehicule.get_cout_total_reparations|floatformat:0|intcomma }} FCFA
+        {% endwith %}
+    </span>
+</div>
+
+<!-- ── Pagination ─────────────────────────────────────────── -->
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="d-flex justify-content-between align-items-center mt-3 px-1">
+    <div class="text-muted" style="font-size:12px;">
+        Page <strong>{{ page_obj.number }}</strong> sur <strong>{{ page_obj.paginator.num_pages }}</strong>
+        &nbsp;·&nbsp; {{ page_obj.paginator.count }} réparation{{ page_obj.paginator.count|pluralize }}
+    </div>
+    <div class="btn-group btn-group-sm">
+        {% if page_obj.has_previous %}
+        <button class="btn btn-outline-secondary"
+                onclick="loadReparations('{{ statut_filtre }}', {{ page_obj.previous_page_number }})">
+            <i class="bi bi-chevron-left"></i> Précédent
+        </button>
+        {% else %}
+        <button class="btn btn-outline-secondary" disabled>
+            <i class="bi bi-chevron-left"></i> Précédent
+        </button>
+        {% endif %}
+
+        {% if page_obj.has_next %}
+        <button class="btn btn-outline-primary"
+                onclick="loadReparations('{{ statut_filtre }}', {{ page_obj.next_page_number }})">
+            Suivant <i class="bi bi-chevron-right"></i>
+        </button>
+        {% else %}
+        <button class="btn btn-outline-primary" disabled>
+            Suivant <i class="bi bi-chevron-right"></i>
+        </button>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="rep-empty">
+    <i class="bi bi-funnel" style="font-size:2.5rem;display:block;margin-bottom:12px;opacity:0.4;"></i>
+    <p class="fw-semibold mb-2">Aucune réparation pour ce filtre</p>
+    <button class="btn btn-sm btn-outline-secondary" onclick="loadReparations('', 1)">
+        <i class="bi bi-x-circle me-1"></i>Effacer le filtre
+    </button>
+</div>
+{% endif %}
+
+{% else %}
+<div class="rep-empty">
+    <i class="bi bi-tools" style="font-size:2.5rem;display:block;margin-bottom:12px;opacity:0.4;"></i>
+    <p class="fw-semibold mb-2">Aucune réparation enregistrée</p>
+    <a href="{% url 'vehicules:reparation_create' %}?vehicule={{ vehicule.pk }}"
+       class="btn btn-sm btn-primary">
+        <i class="bi bi-plus-circle me-1"></i>Ajouter la première réparation
+    </a>
+</div>
+{% endif %}

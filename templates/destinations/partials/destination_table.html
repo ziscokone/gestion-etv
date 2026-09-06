@@ -1,0 +1,136 @@
+{% load custom_filters %}
+<div class="table-header">
+    <span><i class="bi bi-geo-alt me-2" style="color:var(--color-accent)"></i>Liste des destinations</span>
+    <span class="badge rounded-pill" style="background:#eef2ff;color:#4338ca;font-size:12px;font-weight:600">
+        {{ total_count }} destination{{ total_count|pluralize }}
+    </span>
+</div>
+
+{% if destinations %}
+<div class="table-responsive">
+    <table class="table d-table mb-0">
+        <thead>
+            <tr>
+                <th>Ligne</th>
+                <th>Gare de départ</th>
+                <th>Ville d'arrivée</th>
+                <th class="text-end">Montant</th>
+                <th>Statut</th>
+                <th>Créée le</th>
+                <th class="text-end pe-4">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for destination in destinations %}
+            <tr>
+                <td><span class="ligne-badge">{{ destination.ligne.nom }}</span></td>
+                <td style="color:#6b7280;font-size:12px;">{{ destination.gare.nom }}</td>
+                <td style="font-weight:600;">{{ destination.ville_arrivee }}</td>
+                <td class="text-end"><span class="montant-cell">{{ destination.montant|format_montant }} FCFA</span></td>
+                <td>
+                    {% if destination.active %}
+                        <span class="statut-actif"><i class="bi bi-check-circle"></i> Active</span>
+                    {% else %}
+                        <span class="statut-inactif"><i class="bi bi-x-circle"></i> Inactive</span>
+                    {% endif %}
+                </td>
+                <td style="color:#9ca3af;font-size:12px;">{{ destination.date_creation|date:"d/m/Y" }}</td>
+                <td class="text-end pe-4">
+                    <div class="d-flex gap-1 justify-content-end">
+                        <a href="{% url 'destinations:destination_update' destination.pk %}"
+                           class="btn-action edit" title="Modifier">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        {% if request.user.is_super_admin and destination.active %}
+                        <button type="button" class="btn-action del" title="Désactiver"
+                                data-bs-toggle="modal" data-bs-target="#deactivateModal{{ destination.pk }}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if request.user.is_super_admin %}
+{% for destination in destinations %}
+<div class="modal fade" id="deactivateModal{{ destination.pk }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h6 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Désactiver la destination</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">Voulez-vous désactiver :</p>
+                <p class="fw-bold mb-2">{{ destination.ligne.nom }} → {{ destination.ville_arrivee }}</p>
+                <p class="text-muted small mb-0">
+                    La destination ne sera plus proposée à la vente, mais elle et son historique de voyages
+                    resteront conservés en base. Vous pourrez la réactiver plus tard.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+                <form method="post" action="{% url 'destinations:destination_delete' destination.pk %}" class="mb-0">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger btn-sm">
+                        <i class="bi bi-slash-circle me-1"></i>Désactiver
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% if is_paginated %}
+<nav class="d-flex justify-content-center py-3 border-top">
+    <ul class="pagination pagination-sm pagination-nuit mb-0">
+        {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1{% if search_query %}&q={{ search_query|urlencode }}{% endif %}">Première</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}">Précédent</a>
+            </li>
+        {% endif %}
+        <li class="page-item active">
+            <span class="page-link">Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}">Suivant</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}">Dernière</a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-geo-alt text-muted"></i>
+    <p class="fw-semibold">
+        {% if search_query %}
+            Aucune destination trouvée pour "{{ search_query }}"
+        {% else %}
+            Aucune destination enregistrée
+        {% endif %}
+    </p>
+    {% if search_query %}
+    <a href="{% url 'destinations:destination_list' %}" class="btn btn-sm btn-outline-secondary mt-2">
+        <i class="bi bi-x me-1"></i>Réinitialiser
+    </a>
+    {% else %}
+    <a href="{% url 'destinations:destination_create' %}" class="btn btn-sm btn-primary mt-2">
+        <i class="bi bi-plus-circle me-1"></i>Créer la première destination
+    </a>
+    {% endif %}
+</div>
+{% endif %}

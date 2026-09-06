@@ -1,0 +1,17 @@
+Django>=5.2,<6.0
+python-dotenv>=1.0
+Pillow>=10.0
+python-dateutil>=2.8
+openpyxl>=3.1.0
+reportlab>=4.0.0
+
+# Sécurité
+django-axes>=8.0
+django-two-factor-auth>=1.15
+qrcode[pil]>=7.4
+django_otp>=1.4
+django-auditlog>=3.0
+django-ratelimit>=4.1
+
+# Cache (requis en prod pour CACHE_URL=redis://... — voir config/settings.py)
+redis>=5.0

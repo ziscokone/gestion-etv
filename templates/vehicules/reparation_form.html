@@ -1,0 +1,482 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if form.instance.pk %}Modifier{% else %}Nouvelle{% endif %} Réparation{% endblock %}
+
+{% block extra_css %}
+<style>
+.rep-page { background: #f4f6fb; min-height: 100vh; padding: 32px 0; }
+.rep-page-header {
+    background: #1e3260; border-radius: 12px; padding: 22px 32px; color: #fff;
+    margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+}
+.rep-page-header h4 { font-weight: 700; margin: 0; font-size: 1.15rem; }
+.rep-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.2);
+    border-radius: 20px; padding: 3px 11px; font-size: 11px; font-weight: 600;
+}
+.btn-back {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(255,255,255,.12); border: 1.5px solid rgba(255,255,255,.25);
+    color: #fff; border-radius: 8px; padding: 7px 16px; font-size: 13px; font-weight: 600;
+    text-decoration: none; transition: background .15s;
+}
+.btn-back:hover { background: rgba(255,255,255,.22); color: #fff; }
+.rep-card {
+    background: #fff; border-radius: 12px;
+    box-shadow: 0 2px 16px rgba(30,50,96,.08); overflow: hidden; border: 1px solid #e8ecf4;
+}
+.form-section { padding: 24px 32px; border-bottom: 1px solid #f0f3f9; }
+.form-section:last-of-type { border-bottom: none; }
+.section-title {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; font-weight: 700; color: #1e3260;
+    margin-bottom: 18px; padding-bottom: 10px; border-bottom: 2px solid #eef1f9;
+}
+.section-title i { font-size: 15px; color: var(--color-accent); }
+.field-label { font-size: 12px; font-weight: 600; color: #4b5563; margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+.field-label i { color: #9ca3af; font-size: 13px; }
+.req { color: #dc2626; margin-left: 1px; }
+.form-control, .form-select {
+    border: 1.5px solid #e2e8f0; border-radius: 7px; font-size: 13px;
+    padding: 9px 12px; color: #111827; transition: border-color .15s, box-shadow .15s; background: #fff;
+}
+.form-control:focus, .form-select:focus {
+    border-color: #1e3260; box-shadow: 0 0 0 3px rgba(30,50,96,.1); outline: none;
+}
+textarea.form-control { resize: vertical; min-height: 70px; }
+
+/* ── Lignes d'intervention ── */
+.lignes-container { display: flex; flex-direction: column; gap: 16px; }
+.ligne-intervention {
+    background: #f8fafc; border: 1.5px solid #e2e8f0;
+    border-radius: 10px; padding: 18px 20px; position: relative;
+    transition: border-color .2s;
+}
+.ligne-intervention:hover { border-color: #c7d2fe; }
+.ligne-numero {
+    position: absolute; top: -10px; left: 16px;
+    background: #1e3260; color: #fff; border-radius: 10px;
+    font-size: 10px; font-weight: 700; padding: 2px 10px; letter-spacing: .3px;
+}
+.btn-remove-ligne {
+    position: absolute; top: 10px; right: 12px;
+    background: #fef2f2; border: 1px solid #fecaca; color: #dc2626;
+    border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 600;
+    cursor: pointer; display: flex; align-items: center; gap: 3px;
+    transition: background .15s;
+}
+.btn-remove-ligne:hover { background: #fee2e2; }
+.btn-remove-ligne.hidden { display: none; }
+
+/* Section vidange/km conditionnelle */
+.extra-km-section {
+    background: #eff6ff; border-radius: 8px; padding: 14px 16px; margin-top: 12px;
+    border-left: 3px solid #3b82f6; display: none;
+}
+.extra-km-section.show { display: block; }
+.vidange-section-inner {
+    background: #f0f7ff; border-radius: 8px; padding: 14px 16px; margin-top: 10px;
+    border-left: 3px solid #60a5fa; display: none;
+}
+.vidange-section-inner.show { display: block; }
+
+.btn-add-ligne {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #eef2ff; border: 1.5px dashed #818cf8; color: #4338ca;
+    border-radius: 8px; padding: 9px 20px; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all .15s; width: 100%; justify-content: center;
+}
+.btn-add-ligne:hover { background: #e0e7ff; border-style: solid; }
+
+.form-footer {
+    padding: 20px 32px; background: #fafbfd; border-top: 1px solid #f0f3f9;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.btn-submit {
+    background: #1e3260; color: #fff; border: none; border-radius: 8px;
+    padding: 10px 28px; font-size: 13px; font-weight: 700;
+    display: inline-flex; align-items: center; gap: 7px; cursor: pointer; transition: background .15s;
+}
+.btn-submit:hover { background: #162649; }
+.btn-cancel-footer { color: #6b7280; font-size: 13px; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+.btn-cancel-footer:hover { color: #374151; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rep-page">
+<div class="container-fluid px-4" style="max-width:1100px;margin:auto;">
+
+    <!-- Header -->
+    <div class="rep-page-header">
+        <div>
+            <h4><i class="bi bi-tools me-2"></i>
+                {% if form.instance.pk %}Modifier l'entrée au garage{% else %}Nouvelle entrée au garage{% endif %}
+            </h4>
+            {% if form.instance.pk %}
+            <div class="d-flex gap-2 mt-2 flex-wrap">
+                <span class="rep-chip"><i class="bi bi-bus-front"></i>{{ form.instance.vehicule.display_immat }}</span>
+                <span class="rep-chip">
+                    {% if form.instance.statut == 'terminee' %}<i class="bi bi-check-circle"></i> Terminée
+                    {% elif form.instance.statut == 'en_cours' %}<i class="bi bi-hourglass-split"></i> En cours
+                    {% else %}<i class="bi bi-clock"></i> En attente{% endif %}
+                </span>
+            </div>
+            {% else %}
+            <div style="font-size:12px;opacity:.7;margin-top:3px;">Renseignez le garage et ajoutez les interventions effectuées</div>
+            {% endif %}
+        </div>
+        <a href="{% url 'vehicules:reparation_list' %}" class="btn-back">
+            <i class="bi bi-arrow-left"></i> Annuler
+        </a>
+    </div>
+
+    <!-- Formulaire -->
+    <div class="rep-card">
+        <form method="post" novalidate id="rep-form">
+            {% csrf_token %}
+            {{ formset.management_form }}
+
+            {% if form.non_field_errors %}
+            <div class="mx-4 mt-4">
+                <div class="alert alert-danger py-2 px-3" style="font-size:13px;">
+                    <i class="bi bi-exclamation-triangle me-2"></i>{{ form.non_field_errors }}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- ══ Section 1 : Identification ══ -->
+            <div class="form-section">
+                <div class="section-title"><i class="bi bi-card-list"></i> Informations générales</div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="field-label"><i class="bi bi-bus-front"></i>{{ form.vehicule.label }}<span class="req">*</span></div>
+                        {{ form.vehicule }}
+                        {% if form.vehicule.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ form.vehicule.errors }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-3">
+                        <div class="field-label"><i class="bi bi-calendar-event"></i>{{ form.date_reparation.label }}<span class="req">*</span></div>
+                        {{ form.date_reparation }}
+                        {% if form.date_reparation.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ form.date_reparation.errors }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-3">
+                        <div class="field-label"><i class="bi bi-building"></i>{{ form.garage_prestataire.label }}<span class="req">*</span></div>
+                        {{ form.garage_prestataire }}
+                        {% if form.garage_prestataire.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ form.garage_prestataire.errors }}</div>{% endif %}
+                    </div>
+                    {% if form.instance.pk %}
+                    <div class="col-md-2">
+                        <div class="field-label"><i class="bi bi-flag"></i>{{ form.statut.label }}<span class="req">*</span></div>
+                        {{ form.statut }}
+                        {% if form.statut.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ form.statut.errors }}</div>{% endif %}
+                    </div>
+                    {% endif %}
+                    <div class="col-12">
+                        <div class="field-label"><i class="bi bi-sticky"></i>{{ form.notes.label }} <span style="font-size:11px;color:#9ca3af;font-weight:400;">(optionnel)</span></div>
+                        {{ form.notes }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══ Section 2 : Lignes d'intervention ══ -->
+            <div class="form-section">
+                <div class="section-title"><i class="bi bi-list-check"></i> Interventions réalisées</div>
+
+                <div class="lignes-container" id="lignes-container">
+                    {% for ligne_form in formset %}
+                    <div class="ligne-intervention" id="ligne-{{ forloop.counter0 }}">
+                        <span class="ligne-numero">Intervention {{ forloop.counter }}</span>
+
+                        {% for hidden in ligne_form.hidden_fields %}{{ hidden }}{% endfor %}
+
+                        {% if ligne_form.instance.pk %}
+                        <!-- Champ DELETE -->
+                        <div style="display:none;">{{ ligne_form.DELETE }}</div>
+                        {% endif %}
+
+                        <button type="button" class="btn-remove-ligne {% if forloop.first and formset.total_form_count == 1 %}hidden{% endif %}"
+                                onclick="removeLigne(this)">
+                            <i class="bi bi-x-lg"></i> Supprimer
+                        </button>
+
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <div class="field-label"><i class="bi bi-wrench"></i>{{ ligne_form.type_reparation.label }}<span class="req">*</span></div>
+                                {{ ligne_form.type_reparation }}
+                                {% if ligne_form.type_reparation.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ ligne_form.type_reparation.errors }}</div>{% endif %}
+                            </div>
+                            <div class="col-md-3">
+                                <div class="field-label"><i class="bi bi-currency-exchange"></i>{{ ligne_form.montant.label }}<span class="req">*</span></div>
+                                {{ ligne_form.montant }}
+                                {% if ligne_form.montant.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ ligne_form.montant.errors }}</div>{% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <div class="field-label"><i class="bi bi-file-text"></i>{{ ligne_form.description.label }}<span class="req">*</span></div>
+                                {{ ligne_form.description }}
+                                {% if ligne_form.description.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ ligne_form.description.errors }}</div>{% endif %}
+                            </div>
+                            <div class="col-12">
+                                <div class="field-label"><i class="bi bi-box-seam"></i>{{ ligne_form.pieces_remplacees.label }} <span style="font-size:11px;color:#9ca3af;font-weight:400;">(optionnel)</span></div>
+                                {{ ligne_form.pieces_remplacees }}
+                            </div>
+                        </div>
+
+                        <!-- Section km (visible si type a un suivi km) -->
+                        <div class="extra-km-section" data-km-section>
+                            <div style="font-size:11px;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;">
+                                <i class="bi bi-speedometer2 me-1"></i>Suivi kilométrique
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="field-label"><i class="bi bi-speedometer2"></i>{{ ligne_form.kilometrage.label }}</div>
+                                    {{ ligne_form.kilometrage }}
+                                    {% if ligne_form.kilometrage.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ ligne_form.kilometrage.errors }}</div>{% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="field-label"><i class="bi bi-arrow-repeat"></i>{{ ligne_form.intervalle_km.label }}</div>
+                                    {{ ligne_form.intervalle_km }}
+                                    <div style="font-size:11px;color:#6b7280;margin-top:3px;">Prochain entretien dans X km</div>
+                                </div>
+                                <!-- Section vidange (visible si type is_vidange) -->
+                                <div class="col-md-4 vidange-fields" data-vidange-fields style="display:none;">
+                                    <div class="field-label"><i class="bi bi-droplet"></i>{{ ligne_form.huile_utilisee.label }}</div>
+                                    {{ ligne_form.huile_utilisee }}
+                                    {% if ligne_form.huile_utilisee.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ ligne_form.huile_utilisee.errors }}</div>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% if formset.non_form_errors %}
+                <div class="alert alert-danger mt-3 py-2 px-3" style="font-size:13px;">
+                    {{ formset.non_form_errors }}
+                </div>
+                {% endif %}
+
+                <!-- Bouton ajouter ligne -->
+                <button type="button" class="btn-add-ligne mt-3" id="btn-add-ligne">
+                    <i class="bi bi-plus-circle"></i> Ajouter une intervention
+                </button>
+            </div>
+
+            <!-- ══ Footer ══ -->
+            <div class="form-footer">
+                <a href="{% url 'vehicules:reparation_list' %}" class="btn-cancel-footer">
+                    <i class="bi bi-x-circle"></i> Annuler
+                </a>
+                <button type="submit" class="btn-submit">
+                    <i class="bi bi-check-circle-fill"></i>
+                    {% if form.instance.pk %}Enregistrer les modifications{% else %}Créer la réparation{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+
+</div>
+</div>
+
+<!-- Template HTML pour une nouvelle ligne (clonée en JS) -->
+<template id="ligne-template">
+<div class="ligne-intervention" id="ligne-__prefix__">
+    <span class="ligne-numero">Intervention __NUM__</span>
+    <button type="button" class="btn-remove-ligne" onclick="removeLigne(this)">
+        <i class="bi bi-x-lg"></i> Supprimer
+    </button>
+    <div class="row g-3">
+        <div class="col-md-3">
+            <div class="field-label"><i class="bi bi-wrench"></i>Type d'intervention<span class="req">*</span></div>
+            <select name="lignes-__prefix__-type_reparation" class="form-select ligne-type-select" required>
+                <option value="">— Choisir —</option>
+                {% for type in formset.forms.0.fields.type_reparation.queryset %}
+                <option value="{{ type.pk }}" data-is-vidange="{{ type.is_vidange|yesno:'true,false' }}" data-intervalle="{{ type.intervalle_km_defaut|default:'' }}">{{ type.nom }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <div class="field-label"><i class="bi bi-currency-exchange"></i>Montant (FCFA)<span class="req">*</span></div>
+            <input type="number" name="lignes-__prefix__-montant" class="form-control" placeholder="Ex: 250000" min="0" step="0.01" required>
+        </div>
+        <div class="col-md-6">
+            <div class="field-label"><i class="bi bi-file-text"></i>Description<span class="req">*</span></div>
+            <textarea name="lignes-__prefix__-description" class="form-control" rows="2" placeholder="Décrire l'intervention..." required></textarea>
+        </div>
+        <div class="col-12">
+            <div class="field-label"><i class="bi bi-box-seam"></i>Pièces remplacées <span style="font-size:11px;color:#9ca3af;font-weight:400;">(optionnel)</span></div>
+            <textarea name="lignes-__prefix__-pieces_remplacees" class="form-control" rows="2" placeholder="Ex: Embrayage, disques de frein..."></textarea>
+        </div>
+    </div>
+    <div class="extra-km-section" data-km-section>
+        <div style="font-size:11px;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;">
+            <i class="bi bi-speedometer2 me-1"></i>Suivi kilométrique
+        </div>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="field-label"><i class="bi bi-speedometer2"></i>Km au compteur</div>
+                <input type="number" name="lignes-__prefix__-kilometrage" class="form-control ligne-km-field" placeholder="Ex: 145000" min="0">
+            </div>
+            <div class="col-md-4">
+                <div class="field-label"><i class="bi bi-arrow-repeat"></i>Prochain dans (km)</div>
+                <input type="number" name="lignes-__prefix__-intervalle_km" class="form-control ligne-intervalle-field" placeholder="Ex: 10000" min="0">
+                <div style="font-size:11px;color:#6b7280;margin-top:3px;">Prochain entretien dans X km</div>
+            </div>
+            <div class="col-md-4 vidange-fields" data-vidange-fields style="display:none;">
+                <div class="field-label"><i class="bi bi-droplet"></i>Huile utilisée</div>
+                <input type="text" name="lignes-__prefix__-huile_utilisee" class="form-control ligne-huile-field" placeholder="Ex: Total Rubia 15W40">
+            </div>
+        </div>
+    </div>
+</div>
+</template>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const typesData = {{ types_reparation_json|safe }};
+    const vidangeIds = new Set({{ vidange_type_ids|default:"[]" }});
+    const kmIds = new Set({{ km_type_ids|default:"[]" }});
+
+    // Map id → données type
+    const typesMap = {};
+    typesData.forEach(t => typesMap[t.id] = t);
+
+    let totalForms = parseInt(document.getElementById('id_lignes-TOTAL_FORMS').value);
+
+    // ── Initialise tous les selects existants ──────────────────────
+    document.querySelectorAll('.ligne-type-select').forEach(sel => {
+        initTypeSelect(sel);
+        sel.addEventListener('change', () => initTypeSelect(sel));
+    });
+
+    function initTypeSelect(sel) {
+        const id = parseInt(sel.value);
+        const ligne = sel.closest('.ligne-intervention');
+        const kmSection = ligne.querySelector('[data-km-section]');
+        const vidangeFields = ligne.querySelector('[data-vidange-fields]');
+        const type = typesMap[id];
+
+        // Bloc km : visible si necessite_kilometrage=True
+        const hasKm = type && type.necessite_kilometrage;
+        // Champ huile : visible seulement si is_vidange=True
+        const isVidange = type && type.is_vidange;
+
+        // Pré-remplir et verrouiller l'intervalle si défini sur le type
+        const intervalleField = ligne.querySelector('.ligne-intervalle-field');
+        if (intervalleField) {
+            if (type && type.intervalle_km_defaut) {
+                intervalleField.value = type.intervalle_km_defaut;
+                intervalleField.readOnly = true;
+                intervalleField.style.background = '#f3f4f6';
+                intervalleField.style.cursor = 'not-allowed';
+                intervalleField.title = 'Défini par le type d\'intervention';
+            } else {
+                intervalleField.readOnly = false;
+                intervalleField.style.background = '';
+                intervalleField.style.cursor = '';
+                intervalleField.title = '';
+            }
+        }
+
+        if (kmSection) {
+            kmSection.classList.toggle('show', hasKm);
+        }
+        if (vidangeFields) {
+            vidangeFields.style.display = isVidange ? '' : 'none';
+        }
+    }
+
+    // ── Ajouter une ligne ──────────────────────────────────────────
+    document.getElementById('btn-add-ligne').addEventListener('click', function () {
+        const template = document.getElementById('ligne-template');
+        const container = document.getElementById('lignes-container');
+        const num = totalForms;
+
+        let html = template.innerHTML
+            .replace(/__prefix__/g, num)
+            .replace(/__NUM__/g, num + 1);
+
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        const newLigne = tmp.firstElementChild;
+        container.appendChild(newLigne);
+
+        totalForms++;
+        document.getElementById('id_lignes-TOTAL_FORMS').value = totalForms;
+
+        // Activer les événements sur la nouvelle ligne
+        const sel = newLigne.querySelector('.ligne-type-select');
+        if (sel) {
+            initTypeSelect(sel);
+            sel.addEventListener('change', () => initTypeSelect(sel));
+        }
+
+        // Pré-remplir le km si un véhicule est déjà sélectionné
+        const kmField = newLigne.querySelector('.ligne-km-field');
+        const vSelect = document.getElementById('id_vehicule');
+        if (kmField && vSelect && vSelect.value) {
+            fetch(`/vehicules/api/vehicule/${vSelect.value}/km/`)
+                .then(r => r.json())
+                .then(data => { if (data.success && !kmField.value) kmField.value = data.kilometrage_actuel; });
+        }
+
+        // Mettre à jour les numéros et le bouton suppression
+        updateLigneNumbers();
+    });
+
+    // ── Supprimer une ligne ────────────────────────────────────────
+    window.removeLigne = function(btn) {
+        const ligne = btn.closest('.ligne-intervention');
+        const deleteCheck = ligne.querySelector('input[type="checkbox"][name$="-DELETE"]');
+
+        if (deleteCheck) {
+            // Ligne existante : cocher DELETE et masquer
+            deleteCheck.checked = true;
+            ligne.style.display = 'none';
+        } else {
+            // Nouvelle ligne : retirer du DOM
+            ligne.remove();
+            totalForms--;
+            document.getElementById('id_lignes-TOTAL_FORMS').value = totalForms;
+        }
+        updateLigneNumbers();
+    };
+
+    function updateLigneNumbers() {
+        const visibles = document.querySelectorAll('.ligne-intervention:not([style*="display: none"])');
+        visibles.forEach((l, i) => {
+            const num = l.querySelector('.ligne-numero');
+            if (num) num.textContent = 'Intervention ' + (i + 1);
+            // Bouton suppression : masqué si seule ligne
+            const btn = l.querySelector('.btn-remove-ligne');
+            if (btn) btn.classList.toggle('hidden', visibles.length === 1);
+        });
+    }
+
+    updateLigneNumbers();
+
+    // ── Pré-remplissage km depuis le véhicule sélectionné ─────────
+    const vehiculeSelect = document.getElementById('id_vehicule');
+    if (vehiculeSelect) {
+        vehiculeSelect.addEventListener('change', function () {
+            const pk = this.value;
+            if (!pk) return;
+            fetch(`/vehicules/api/vehicule/${pk}/km/`)
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) return;
+                    document.querySelectorAll('.ligne-km-field').forEach(field => {
+                        if (!field.value) field.value = data.kilometrage_actuel;
+                    });
+                });
+        });
+
+        // Au chargement si un véhicule est déjà sélectionné (cas création avec ?vehicule=)
+        if (vehiculeSelect.value) vehiculeSelect.dispatchEvent(new Event('change'));
+    }
+})();
+</script>
+{% endblock %}

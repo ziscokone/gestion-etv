@@ -1,0 +1,2657 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+{% load static %}
+
+{% block title %}Point du Voyage - {{ voyage.ligne }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── Bandeau voyage ──────────────────────────────────── */
+  .voyage-banner {
+    background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
+    border-radius: 14px; padding: 20px 28px;
+    color: #fff; margin-bottom: 20px;
+    position: relative; overflow: hidden;
+  }
+  .voyage-banner::after {
+    content: '\F4C0'; font-family: 'Bootstrap-Icons';
+    font-size: 8rem; opacity: 0.06;
+    position: absolute; right: 20px; top: -10px; line-height: 1;
+  }
+  .voyage-banner .ligne-title { font-size: 20px; font-weight: 800; letter-spacing: 0.3px; }
+  .voyage-banner .meta-info   { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+  .voyage-banner .meta-info span { margin-right: 18px; }
+
+  .statut-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    border-radius: 20px; padding: 4px 14px; font-size: 12px; font-weight: 700;
+  }
+  .statut-programme { background: #dbeafe; color: #1e40af; }
+  .statut-en_cours  { background: #fef3c7; color: #92400e; }
+  .statut-termine   { background: #dcfce7; color: #166534; }
+  .statut-annule    { background: #fee2e2; color: #991b1b; }
+
+  .btn-terminer {
+    background: #fff; color: #059669; border: 2px solid rgba(255,255,255,0.5);
+    border-radius: 8px; font-weight: 700; font-size: 12px; padding: 5px 14px;
+    transition: all 0.15s;
+  }
+  .btn-terminer:hover { background: #dcfce7; color: #059669; }
+
+  /* ── Boutons action ──────────────────────────────────── */
+  .actions-bar {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    padding: 14px 0; margin-bottom: 18px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .btn-act-primary {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 16px; border-radius: 9px; font-size: 13px; font-weight: 600;
+    border: none; cursor: pointer; transition: all 0.15s; text-decoration: none;
+  }
+  .btn-act-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.12); }
+  .act-agents  { background: #fef3c7; color: #92400e; }
+  .act-agents:hover { background: #fde68a; color: #78350f; }
+  .act-depenses{ background: #fee2e2; color: #991b1b; }
+  .act-depenses:hover { background: #fecaca; color: #7f1d1d; }
+  .act-bagages { background: #dcfce7; color: #166534; }
+  .act-bagages:hover { background: #bbf7d0; color: #052e16; }
+  .act-vendre  { background: var(--color-accent); color: #fff; }
+  .act-vendre:hover { background: var(--color-accent-hover); color: #fff; }
+
+  .btn-act-secondary {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: 9px; font-size: 12px; font-weight: 600;
+    border: 1px solid #cbd5e1; background: #f1f5f9; color: #475569;
+    cursor: pointer; transition: all 0.15s; text-decoration: none;
+  }
+  .btn-act-secondary:hover { background: #e2e8f0; color: #1e293b; border-color: #94a3b8; }
+  .btn-act-retour {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: 9px; font-size: 12px; font-weight: 600;
+    background: #dc3545; color: #fff; border: none;
+    text-decoration: none; transition: all 0.15s; margin-left: auto;
+  }
+  .btn-act-retour:hover { background: #bb2d3b; color: #fff; box-shadow: 0 4px 10px rgba(220,53,69,0.35); }
+
+  /* ── KPI cards ───────────────────────────────────────── */
+  .kpi-card {
+    background: #fff; border: none; border-radius: 13px;
+    border-top: 4px solid #e5e7eb; padding: 20px 22px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    transition: transform 0.2s, box-shadow 0.2s;
+    height: 100%; display: flex; align-items: center; gap: 16px;
+  }
+  .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.11); }
+  .kpi-card .kpi-ico {
+    width: 52px; height: 52px; border-radius: 12px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 1.4rem;
+  }
+  .kpi-card .kpi-val { font-size: 1.7rem; font-weight: 700; line-height: 1.1; }
+  .kpi-card .kpi-lbl { font-size: 11px; color: #6b7280; margin-top: 4px; font-weight: 500; }
+  .kpi-green  { border-top-color: #27ae60; }
+  .kpi-green  .kpi-ico { background: #f0fdf4; color: #27ae60; }
+  .kpi-green  .kpi-val { color: #27ae60; }
+  .kpi-yellow { border-top-color: #E67E22; }
+  .kpi-yellow .kpi-ico { background: #fff7ed; color: #E67E22; }
+  .kpi-yellow .kpi-val { color: #E67E22; }
+  .kpi-blue   { border-top-color: #1e3260; }
+  .kpi-blue   .kpi-ico { background: #eef1f8; color: #1e3260; }
+  .kpi-blue   .kpi-val { color: #1e3260; }
+  .kpi-purple { border-top-color: #4338ca; }
+  .kpi-purple .kpi-ico { background: #eef2ff; color: #4338ca; }
+  .kpi-purple .kpi-val { color: #4338ca; }
+
+  /* ── Table passagers ─────────────────────────────────── */
+  .passagers-card {
+    border: none; border-radius: 13px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07); overflow: hidden;
+  }
+  .passagers-header {
+    padding: 14px 20px; border-bottom: 1px solid #f0f0f0;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 8px; background: #fff;
+  }
+  .passagers-header .title {
+    font-weight: 700; font-size: 14px; color: #1e3260;
+  }
+  .pmt-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    border-radius: 12px; padding: 3px 10px; font-size: 11px; font-weight: 600;
+  }
+  .pmt-cash   { background: #f1f5f9; color: #475569; }
+  .pmt-wave   { background: #e0fffe; color: #0e7490; }
+  .pmt-orange { background: #fff7ed; color: #c2410c; }
+  .pmt-mtn    { background: #fefce8; color: #854d0e; }
+  .pmt-moov   { background: #eff6ff; color: #1d4ed8; }
+
+  .pass-table th {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.4px; color: #6b7280;
+    padding: 10px 14px; background: #fafbfc;
+    border-bottom: 1px solid #f0f0f0; position: sticky; top: 0; z-index: 1;
+  }
+  .pass-table td { font-size: 13px; padding: 10px 14px; vertical-align: middle; }
+  .pass-table tbody tr { transition: background 0.1s; }
+  .pass-table tbody tr:hover { background: #f8f9fc; }
+  .pass-table tbody tr:nth-child(even) { background: #fafbfc; }
+  .pass-table tbody tr:nth-child(even):hover { background: #f0f4fb; }
+
+  .siege-badge {
+    background: #1e3260; color: #fff;
+    border-radius: 8px; padding: 3px 10px;
+    font-size: 12px; font-weight: 700; font-family: monospace;
+  }
+  .statut-paye      { background: #dcfce7; color: #166534; border-radius: 10px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
+  .statut-reserve   { background: #fef3c7; color: #92400e; border-radius: 10px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
+  .statut-reporte   { background: #dbeafe; color: #1e40af; border-radius: 10px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
+  .statut-rembourse { background: #fee2e2; color: #991b1b; border-radius: 10px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
+
+  .btn-rembourser {
+    width: 30px; height: 30px; border-radius: 7px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px; border: 1px solid #e5e7eb; background: #fff; color: #6b7280;
+    transition: all 0.15s; cursor: pointer;
+  }
+  .btn-rembourser:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+
+  .btn-print {
+    width: 30px; height: 30px; border-radius: 7px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px; border: 1px solid #e5e7eb; background: #fff; color: #6b7280;
+    transition: all 0.15s; cursor: pointer;
+  }
+  .btn-print:hover { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+  .btn-report {
+    width: 30px; height: 30px; border-radius: 7px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px; border: 1px solid #e5e7eb; background: #fff; color: #6b7280;
+    transition: all 0.15s; cursor: pointer;
+  }
+  .btn-report:hover { background: #fefce8; color: #ca8a04; border-color: #fde047; }
+
+  .pass-table tfoot td {
+    font-weight: 700; background: #f0f4fb;
+    border-top: 2px solid #dce5f5; padding: 11px 14px;
+  }
+
+  .empty-state { text-align: center; padding: 52px 20px; color: #9ca3af; }
+  .empty-state i { font-size: 2.5rem; display: block; margin-bottom: 10px; }
+
+  /* Pagination — bleu nuit de l'application (meme design que la liste des destinations) */
+  .pagination-nuit { gap: 6px; }
+  .pagination-nuit .page-item .page-link {
+      border: 1.5px solid var(--color-accent);
+      color: var(--color-accent);
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 12.5px;
+      padding: 6px 14px;
+      background: #fff;
+      transition: all 0.15s;
+  }
+  .pagination-nuit .page-item .page-link:hover {
+      background: var(--color-accent);
+      color: #fff;
+  }
+  .pagination-nuit .page-item.active .page-link {
+      background: var(--color-accent);
+      border-color: var(--color-accent);
+      color: #fff;
+      cursor: default;
+      font-weight: 700;
+  }
+  .pagination-nuit .page-item.active .page-link:hover {
+      background: var(--color-accent);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 px-4">
+
+  <!-- ── Bandeau voyage ───────────────────────────────────────── -->
+  <div class="voyage-banner">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+      <div>
+        <div class="ligne-title">
+          <i class="bi bi-signpost-2 me-2"></i>{{ voyage.ligne.nom }}
+        </div>
+        <div class="meta-info mt-2">
+          <span><i class="bi bi-calendar3 me-1"></i>{{ voyage.date_depart|date:"d/m/Y" }}</span>
+          <span><i class="bi bi-clock me-1"></i>{{ voyage.heure_depart|time:"H:i" }}</span>
+          <span>
+            <i class="bi bi-truck me-1"></i>
+            {% if voyage.vehicule %}{{ voyage.vehicule.display_immat }}{% else %}<em>Non assigné</em>{% endif %}
+          </span>
+          <span>
+            <i class="bi bi-geo-alt me-1"></i>{{ voyage.gare.nom }}
+          </span>
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span class="statut-pill statut-{{ voyage.statut }}">
+          {% if voyage.statut == 'programme' %}<i class="bi bi-clock"></i>
+          {% elif voyage.statut == 'en_cours' %}<i class="bi bi-play-circle"></i>
+          {% elif voyage.statut == 'termine' %}<i class="bi bi-check-circle"></i>
+          {% else %}<i class="bi bi-x-circle"></i>{% endif %}
+          {{ voyage.get_statut_display }}
+        </span>
+        {% if voyage.statut == 'programme' or voyage.statut == 'en_cours' %}
+        <button type="button" class="btn-terminer" id="terminerVoyageBtn">
+          <i class="bi bi-check-circle me-1"></i>Terminer
+        </button>
+        {% endif %}
+        <span style="background:rgba(255,255,255,0.18);border-radius:10px;padding:4px 12px;font-size:11px;font-weight:700">
+          Départ N°{{ voyage.numero_depart }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Barre d'actions ──────────────────────────────────────── -->
+  <div class="actions-bar">
+    <!-- Actions principales -->
+    <button type="button" class="btn-act-primary act-agents"
+            data-bs-toggle="modal" data-bs-target="#agentsModal">
+      <i class="bi bi-people-fill"></i>Agents du voyage
+    </button>
+    {% if voyage.statut != 'termine' %}
+    <button type="button" class="btn-act-primary act-depenses"
+            data-bs-toggle="modal" data-bs-target="#depensesModal">
+      <i class="bi bi-cash-coin"></i>Dépenses
+    </button>
+    {% endif %}
+    {% if voyage.statut != 'termine' %}
+    {% if user.is_super_admin or user.is_pdg or user.is_chef_gare or user.is_manager %}
+    <button type="button" class="btn-act-primary act-bagages"
+            data-bs-toggle="modal" data-bs-target="#bagagesModal">
+      <i class="bi bi-luggage"></i>Recette Bagages
+    </button>
+    {% endif %}
+    {% endif %}
+    {% if voyage.get_nb_places_disponibles > 0 and voyage.statut != 'termine' %}
+    <a href="{% url 'guichet:vente' voyage.public_id %}" class="btn-act-primary act-vendre">
+      <i class="bi bi-cart-plus"></i>Vendre des billets
+    </a>
+    {% endif %}
+
+    <!-- Actions secondaires -->
+    {% if voyage.statut == 'termine' %}
+    <a href="{% url 'voyages:voyage_bordereau' voyage.public_id %}" class="btn-act-secondary" target="_blank">
+      <i class="bi bi-file-earmark-text"></i>Bordereau
+    </a>
+    {% else %}
+    <button type="button" class="btn-act-secondary" style="opacity:0.6; cursor:not-allowed;"
+            data-bs-toggle="modal" data-bs-target="#bordereauBloqueModal">
+      <i class="bi bi-file-earmark-text"></i>Bordereau
+    </button>
+    {% endif %}
+    <a href="{% url 'voyages:voyage_liste_passagers' voyage.public_id %}" class="btn-act-secondary" target="_blank">
+      <i class="bi bi-list-ul"></i>Liste Passagers
+    </a>
+    <a href="{% url 'voyages:voyage_recap_destination' voyage.public_id %}" class="btn-act-secondary" target="_blank">
+      <i class="bi bi-geo-alt"></i>Recap Destination
+    </a>
+    {% if voyage.reassignations.exists %}
+    <a href="{% url 'voyages:voyage_print_reassignations' voyage.public_id %}" class="btn-act-secondary" target="_blank"
+       style="background:#e74c3c; color:white;">
+      <i class="bi bi-arrow-left-right"></i>Réassignations
+    </a>
+    {% endif %}
+
+    <!-- Retour -->
+    <a href="{% url 'voyages:voyage_list' %}" class="btn-act-retour">
+      <i class="bi bi-arrow-left"></i>Retour
+    </a>
+  </div>
+
+  <!-- ── KPI cards ────────────────────────────────────────────── -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-green">
+        <div class="kpi-ico"><i class="bi bi-check-circle"></i></div>
+        <div>
+          <div class="kpi-val">{{ nb_billets_payes }}</div>
+          <div class="kpi-lbl">Billets Payés</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-yellow">
+        <div class="kpi-ico"><i class="bi bi-bookmark"></i></div>
+        <div>
+          <div class="kpi-val">{{ nb_billets_reserves }}</div>
+          <div class="kpi-lbl">Réservations</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-blue">
+        <div class="kpi-ico"><i class="bi bi-people"></i></div>
+        <div>
+          <div class="kpi-val">
+            {{ billets.count }}{% if voyage.vehicule %}<span style="font-size:1rem;opacity:0.6">/{{ voyage.vehicule.modele.capacite }}</span>{% endif %}
+          </div>
+          <div class="kpi-lbl">Total Passagers</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi-card kpi-purple">
+        <div class="kpi-ico"><i class="bi bi-cash-stack"></i></div>
+        <div>
+          <div class="kpi-val" style="font-size:1.3rem">{{ montant_total|format_montant }}<small style="font-size:12px"> F</small></div>
+          <div class="kpi-lbl">Recette totale</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Liste des passagers ───────────────────────────────────── -->
+  <div class="passagers-card">
+    <div class="passagers-header">
+      <div class="title"><i class="bi bi-ticket-perforated me-2" style="color:var(--color-accent)"></i>Liste des Passagers</div>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        {% if paiements_cash > 0 %}<span class="pmt-badge pmt-cash"><i class="bi bi-cash"></i>Cash: {{ paiements_cash }}</span>{% endif %}
+        {% if paiements_wave > 0 %}<span class="pmt-badge pmt-wave"><i class="bi bi-phone"></i>Wave: {{ paiements_wave }}</span>{% endif %}
+        {% if paiements_orange > 0 %}<span class="pmt-badge pmt-orange"><i class="bi bi-phone"></i>Orange: {{ paiements_orange }}</span>{% endif %}
+        {% if paiements_mtn > 0 %}<span class="pmt-badge pmt-mtn"><i class="bi bi-phone"></i>MTN: {{ paiements_mtn }}</span>{% endif %}
+        {% if paiements_moov > 0 %}<span class="pmt-badge pmt-moov"><i class="bi bi-phone"></i>Moov: {{ paiements_moov }}</span>{% endif %}
+        <span style="background:#eef2ff;color:#4338ca;border-radius:12px;padding:3px 10px;font-size:11px;font-weight:700">
+          {{ nb_billets_payes }} Payés
+        </span>
+        <span style="background:#fef3c7;color:#92400e;border-radius:12px;padding:3px 10px;font-size:11px;font-weight:700">
+          {{ nb_billets_reserves }} Réservés
+        </span>
+      </div>
+    </div>
+
+    {% if billets %}
+    <div class="table-responsive">
+      <table class="table pass-table mb-0">
+        <thead>
+          <tr>
+            <th style="width:46px" class="text-center">N°</th>
+            <th>Passager</th>
+            <th>Téléphone</th>
+            <th class="text-center" style="width:70px">Siège</th>
+            <th>Destination</th>
+            <th class="text-end">Montant</th>
+            <th class="text-center" style="width:130px">Statut</th>
+            <th class="text-center" style="width:70px">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for billet in page_obj %}
+          <tr>
+            <td class="text-center text-muted" style="font-size:12px">{{ forloop.counter0|add:page_obj.start_index }}</td>
+            <td><strong>{{ billet.client_nom }}</strong></td>
+            <td><i class="bi bi-telephone me-1 text-muted"></i>{{ billet.client_telephone }}</td>
+            <td class="text-center">
+              <span class="siege-badge">{{ billet.numero_siege }}</span>
+            </td>
+            <td>
+              <i class="bi bi-geo-alt me-1 text-muted"></i>
+              {% if billet.destination %}{{ billet.destination.ville_arrivee }}
+              {% else %}{{ voyage.ligne.ville_arrivee }}{% endif %}
+            </td>
+            <td class="text-end fw-semibold">{{ billet.montant|format_montant }} F</td>
+            <td class="text-center">
+              {% if billet.statut == 'paye' %}
+                <span class="statut-paye">Payé</span>
+                <span class="pmt-badge mt-1
+                  {% if billet.moyen_paiement == 'cash' %}pmt-cash
+                  {% elif billet.moyen_paiement == 'wave' %}pmt-wave
+                  {% elif billet.moyen_paiement == 'orange_money' %}pmt-orange
+                  {% elif billet.moyen_paiement == 'mtn_money' %}pmt-mtn
+                  {% elif billet.moyen_paiement == 'moov_money' %}pmt-moov
+                  {% else %}pmt-cash{% endif %}" style="font-size:10px">
+                  {% if billet.moyen_paiement == 'cash' %}Cash
+                  {% elif billet.moyen_paiement == 'wave' %}Wave
+                  {% elif billet.moyen_paiement == 'orange_money' %}Orange
+                  {% elif billet.moyen_paiement == 'mtn_money' %}MTN
+                  {% elif billet.moyen_paiement == 'moov_money' %}Moov
+                  {% else %}Cash{% endif %}
+                </span>
+              {% elif billet.statut == 'reporte' %}
+                <span class="statut-reporte"><i class="bi bi-arrow-repeat me-1"></i>Reporté</span>
+              {% elif billet.statut == 'rembourse' %}
+                <span class="statut-rembourse"><i class="bi bi-cash-coin me-1"></i>Remboursé</span>
+              {% elif billet.statut == 'gratuit' %}
+                <span style="background:#dcfce7;color:#15803d;border-radius:8px;padding:3px 8px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;">
+                  <i class="bi bi-ticket-perforated-fill"></i>Gratuit
+                </span>
+              {% elif billet.statut == 'gratuit_en_attente' %}
+                <span style="background:#fef9c3;color:#854d0e;border-radius:8px;padding:3px 8px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;">
+                  <i class="bi bi-hourglass-split"></i>Gratuit (attente)
+                </span>
+              {% elif billet.statut == 'reserve' %}
+                <span class="statut-reserve"><i class="bi bi-bookmark me-1"></i>Réservé</span>
+              {% else %}
+                <span class="statut-reserve"><i class="bi bi-bookmark me-1"></i>Réservé</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              <div class="d-flex gap-1 justify-content-center">
+                {% if billet.statut != 'reserve' %}
+                <button type="button" class="btn-print btn-reprint"
+                        data-billet-id="{{ billet.public_id }}" title="Réimprimer (Duplicata)">
+                  <i class="bi bi-printer"></i>
+                </button>
+                {% endif %}
+                {% if billet.statut == 'paye' and voyage.statut != 'termine' %}
+                <button type="button" class="btn-report btn-reporter"
+                        data-billet-id="{{ billet.public_id }}"
+                        data-billet-numero="{{ billet.numero }}"
+                        data-client-nom="{{ billet.client_nom }}"
+                        data-client-telephone="{{ billet.client_telephone }}"
+                        data-siege="{{ billet.numero_siege }}"
+                        data-montant="{{ billet.montant }}"
+                        title="Reporter ce billet">
+                  <i class="bi bi-arrow-repeat"></i>
+                </button>
+                {% if billet.demande_remboursement and billet.demande_remboursement.statut == 'en_attente' %}
+                <span class="btn-rembourser" style="cursor:default;opacity:0.6;" title="Remboursement en attente d'approbation">
+                  <i class="bi bi-hourglass-split text-warning"></i>
+                </span>
+                {% else %}
+                <button type="button" class="btn-rembourser btn-demander-remboursement"
+                        data-billet-id="{{ billet.public_id }}"
+                        data-billet-numero="{{ billet.numero }}"
+                        data-client-nom="{{ billet.client_nom }}"
+                        data-montant="{{ billet.montant }}"
+                        title="Demander un remboursement">
+                  <i class="bi bi-cash-coin"></i>
+                </button>
+                {% endif %}
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="5" class="text-end fw-bold">TOTAL RECETTE :</td>
+            <td class="text-end fw-bold" style="color:var(--color-accent);font-size:15px">
+              {{ montant_total|format_montant }} FCFA
+            </td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    {% if is_paginated %}
+    <nav class="d-flex justify-content-center py-3 border-top">
+        <ul class="pagination pagination-sm pagination-nuit mb-0">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1">Première</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Précédent</a>
+                </li>
+            {% endif %}
+            <li class="page-item active">
+                <span class="page-link">Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span>
+            </li>
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Suivant</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Dernière</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+      <i class="bi bi-inbox text-muted"></i>
+      <p class="fw-semibold">Aucun billet vendu pour ce voyage</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- ── Section Demandes de tickets gratuits ────────────────────── -->
+{% if demandes_gratuit %}
+<div style="margin:28px 0 0;background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.07);overflow:hidden;">
+    <div style="background:linear-gradient(135deg,#0891b2,#0e7490);padding:16px 24px;display:flex;align-items:center;gap:12px;">
+        <i class="bi bi-ticket-perforated-fill" style="font-size:1.4rem;color:#fff;"></i>
+        <div style="color:#fff;">
+            <div style="font-size:15px;font-weight:700;line-height:1.2;">Demandes de Tickets Gratuits</div>
+            <div style="font-size:12px;opacity:.85;">{{ nb_demandes_gratuit }} demande{{ nb_demandes_gratuit|pluralize }} en attente d'approbation</div>
+        </div>
+        <span class="badge bg-warning text-dark ms-auto" style="font-size:13px;padding:6px 14px;border-radius:20px;">
+            {{ nb_demandes_gratuit }} en attente
+        </span>
+    </div>
+    <div class="table-responsive">
+        <table class="table mb-0" style="font-size:13px;">
+            <thead>
+                <tr style="background:#f0f9ff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#0e7490;">
+                    <th style="padding:10px 16px;">N° Ticket</th>
+                    <th style="padding:10px 16px;">Passager</th>
+                    <th style="padding:10px 16px;">Siège</th>
+                    <th style="padding:10px 16px;">Destination</th>
+                    <th style="padding:10px 16px;">Motif</th>
+                    <th style="padding:10px 16px;">Demandé par</th>
+                    <th style="padding:10px 16px;">Date</th>
+                    {% if request.user.is_super_admin or request.user.is_pdg or request.user.is_manager or request.user.is_chef_gare %}
+                    <th style="padding:10px 16px;text-align:center;">Actions</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for demande in demandes_gratuit %}
+                <tr style="border-bottom:1px solid #e0f2fe;" id="demande-gratuit-row-{{ demande.pk }}">
+                    <td style="padding:12px 16px;font-weight:700;color:#0e7490;">{{ demande.billet.numero }}</td>
+                    <td style="padding:12px 16px;">
+                        <div class="fw-semibold">{{ demande.billet.client_nom }}</div>
+                        <div style="font-size:11px;color:#6b7280;">{{ demande.billet.client_telephone }}</div>
+                    </td>
+                    <td style="padding:12px 16px;font-weight:600;">N° {{ demande.billet.numero_siege }}</td>
+                    <td style="padding:12px 16px;">
+                        {% if demande.billet.destination %}
+                            {{ demande.billet.destination.ville_arrivee }}
+                        {% else %}—{% endif %}
+                    </td>
+                    <td style="padding:12px 16px;max-width:200px;">
+                        {% if demande.motif %}
+                            <span style="color:#374151;font-size:12px;">{{ demande.motif }}</span>
+                        {% else %}
+                            <span style="color:#9ca3af;font-style:italic;font-size:12px;">Aucun motif</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding:12px 16px;font-size:12px;color:#6b7280;">{{ demande.demande_par.get_full_name|default:demande.demande_par.username }}</td>
+                    <td style="padding:12px 16px;font-size:12px;color:#6b7280;">{{ demande.date_demande|date:"d/m/Y H:i" }}</td>
+                    {% if request.user.is_super_admin or request.user.is_pdg or request.user.is_manager or request.user.is_chef_gare %}
+                    <td style="padding:12px 16px;text-align:center;">
+                        <div class="d-flex gap-2 justify-content-center">
+                            <button class="btn-traiter-gratuit"
+                                    data-demande-id="{{ demande.pk }}"
+                                    data-action="approuver"
+                                    style="background:#dcfce7;color:#15803d;border:1.5px solid #86efac;border-radius:7px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;">
+                                <i class="bi bi-check-lg me-1"></i>Approuver
+                            </button>
+                            <button class="btn-traiter-gratuit"
+                                    data-demande-id="{{ demande.pk }}"
+                                    data-action="rejeter"
+                                    style="background:#fee2e2;color:#dc2626;border:1.5px solid #fca5a5;border-radius:7px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;">
+                                <i class="bi bi-x-lg me-1"></i>Rejeter
+                            </button>
+                        </div>
+                        <div class="gratuit-msg d-none mt-1" style="font-size:11px;"></div>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Modal d'impression duplicata -->
+<div class="modal fade" id="duplicataModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-printer me-2"></i>Réimpression - DUPLICATA
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="duplicataContainer">
+                <!-- Le ticket duplicata sera inséré ici -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-primary" onclick="imprimerDuplicata()">
+                    <i class="bi bi-printer me-2"></i>Imprimer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Agents du voyage -->
+<div class="modal fade" id="agentsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">
+                    <i class="bi bi-people-fill me-2"></i>Sélection des Agents et du Véhicule
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="agentsForm">
+                    {% csrf_token %}
+
+                    <!-- Sélection du Chauffeur -->
+                    <div class="mb-3">
+                        <label for="chauffeur_id" class="form-label fw-bold">
+                            <i class="bi bi-person-badge me-1"></i>Chauffeur
+                        </label>
+                        <select class="form-select" id="chauffeur_id" name="chauffeur_id">
+                            <option value="">-- Sélectionner un chauffeur --</option>
+                            <!-- Options chargées dynamiquement via AJAX -->
+                        </select>
+                        <div class="form-text">Chauffeur assigné à ce voyage</div>
+                    </div>
+
+                    <!-- Sélection du Convoyeur -->
+                    <div class="mb-3">
+                        <label for="convoyeur_id" class="form-label fw-bold">
+                            <i class="bi bi-person-badge me-1"></i>Convoyeur
+                        </label>
+                        <select class="form-select" id="convoyeur_id" name="convoyeur_id">
+                            <option value="">-- Sélectionner un convoyeur --</option>
+                            <!-- Options chargées dynamiquement via AJAX -->
+                        </select>
+                        <div class="form-text">Convoyeur assigné à ce voyage</div>
+                    </div>
+
+                    <!-- Sélection du Véhicule -->
+                    <div class="mb-3">
+                        <label for="vehicule_id" class="form-label fw-bold">
+                            <i class="bi bi-truck me-1"></i>Véhicule
+                        </label>
+                        <select class="form-select" id="vehicule_id" name="vehicule_id">
+                            <option value="">-- Sélectionner un véhicule --</option>
+                            <!-- Options chargées dynamiquement via AJAX -->
+                        </select>
+                        <div class="form-text">
+                            Véhicule qui effectuera ce voyage.
+                            <span id="capacite_info" class="text-muted"></span>
+                        </div>
+                    </div>
+
+                    <!-- Affichage des agents actuels -->
+                    <div class="alert alert-info">
+                        <h6 class="alert-heading">Affectations actuelles :</h6>
+                        <p class="mb-1">
+                            <strong>Chauffeur :</strong>
+                            <span id="current_chauffeur">
+                                {% if voyage.chauffeur %}
+                                    {{ voyage.chauffeur.nom_complet }}
+                                {% else %}
+                                    <em class="text-muted">Non assigné</em>
+                                {% endif %}
+                            </span>
+                        </p>
+                        <p class="mb-1">
+                            <strong>Convoyeur :</strong>
+                            <span id="current_convoyeur">
+                                {% if voyage.convoyeur %}
+                                    {{ voyage.convoyeur.nom_complet }}
+                                {% else %}
+                                    <em class="text-muted">Non assigné</em>
+                                {% endif %}
+                            </span>
+                        </p>
+                        <p class="mb-0">
+                            <strong>Véhicule :</strong>
+                            <span id="current_vehicule">
+                                {% if voyage.vehicule %}
+                                    {{ voyage.vehicule.display_immat }} ({{ voyage.vehicule.modele.nom }} - {{ voyage.vehicule.capacite }} places)
+                                {% else %}
+                                    <em class="text-muted">Non assigné</em>
+                                {% endif %}
+                            </span>
+                        </p>
+                    </div>
+
+                    <!-- Message de retour -->
+                    <div id="agentsMessage" class="alert d-none"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-warning" id="saveAgentsBtn">
+                    <i class="bi bi-save me-2"></i>Enregistrer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Bordereau bloqué -->
+<div class="modal fade" id="bordereauBloqueModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Impression impossible
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <i class="bi bi-lock-fill text-warning" style="font-size:2.5rem;"></i>
+                <p class="mt-3 mb-1 fw-bold">Le voyage n'est pas encore terminé.</p>
+                <p class="text-muted small">Le bordereau ne peut être imprimé qu'après avoir marqué le voyage comme <strong>Terminé</strong>.</p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Confirmation Réassignation -->
+<div class="modal fade" id="reassignationModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-arrow-left-right me-2"></i>Réassignation automatique de sièges
+                </h5>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    Le véhicule sélectionné a une capacité inférieure. Les passagers suivants
+                    seront <strong>automatiquement déplacés</strong> vers des sièges libres.
+                </div>
+                <table class="table table-bordered table-sm">
+                    <thead class="table-danger">
+                        <tr>
+                            <th>Passager</th>
+                            <th>Téléphone</th>
+                            <th class="text-center">Ancien siège</th>
+                            <th class="text-center"></th>
+                            <th class="text-center">Nouveau siège</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reassignationTableBody"></tbody>
+                </table>
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-printer me-2"></i>
+                    Après confirmation, la liste s'imprimera automatiquement pour que vous puissiez
+                    identifier ces passagers.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancelReassignationBtn">
+                    <i class="bi bi-x me-1"></i>Annuler
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmReassignationBtn">
+                    <i class="bi bi-check-lg me-1"></i>Confirmer et enregistrer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Dépenses du voyage -->
+<div class="modal fade" id="depensesModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-cash-coin me-2"></i>Dépenses du Voyage
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Formulaire de saisie des dépenses -->
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Saisir les dépenses</h6>
+                    </div>
+                    <div class="card-body">
+                        <form id="depensesForm">
+                            {% csrf_token %}
+                            <div id="depensesInputs">
+                                <!-- Les lignes de saisie seront ajoutées dynamiquement ici -->
+                            </div>
+                            <div id="addLineButtonContainer">
+                                <button type="button" class="btn btn-sm btn-primary" id="addDepenseLine">
+                                    <i class="bi bi-plus-circle me-1"></i>Ajouter une ligne
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Liste des dépenses existantes -->
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>Dépenses enregistrées</h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="depensesList" class="table-responsive">
+                            <!-- Liste générée dynamiquement -->
+                        </div>
+                        <div class="mt-3 p-3 bg-light rounded">
+                            <h5 class="mb-0">
+                                <strong>TOTAL DÉPENSES : </strong>
+                                <span id="totalDepenses" class="text-danger">0 FCFA</span>
+                            </h5>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Message de retour -->
+                <div id="depensesMessage" class="alert d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-danger" id="saveDepensesBtn">
+                    <i class="bi bi-save me-2"></i>Enregistrer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Création de Réparation depuis Dépense -->
+<div class="modal fade" id="creerReparationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">
+                    <i class="bi bi-tools me-2"></i>Créer une Fiche de Réparation
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="creerReparationForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="reparation_depense_id" name="depense_id">
+
+                    <!-- Véhicule -->
+                    <div class="mb-3">
+                        <label for="reparation_vehicule_id" class="form-label fw-bold">
+                            <i class="bi bi-truck me-1"></i>Véhicule *
+                        </label>
+                        <select class="form-select" id="reparation_vehicule_id" name="vehicule_id" required>
+                            <option value="">-- Sélectionner un véhicule --</option>
+                        </select>
+                    </div>
+
+                    <!-- Date de réparation -->
+                    <div class="mb-3">
+                        <label for="reparation_date" class="form-label fw-bold">
+                            <i class="bi bi-calendar3 me-1"></i>Date de réparation *
+                        </label>
+                        <input type="date" class="form-control" id="reparation_date" name="date_reparation" required>
+                    </div>
+
+                    <!-- Type de réparation -->
+                    <div class="mb-3">
+                        <label for="reparation_type_id" class="form-label fw-bold">
+                            <i class="bi bi-wrench me-1"></i>Type de réparation *
+                        </label>
+                        <select class="form-select" id="reparation_type_id" name="type_reparation_id" required>
+                            <option value="">-- Sélectionner un type --</option>
+                        </select>
+                    </div>
+
+                    <!-- Montant (readonly pour le guichetier) -->
+                    <div class="mb-3">
+                        <label for="reparation_montant" class="form-label fw-bold">
+                            <i class="bi bi-cash-stack me-1"></i>Montant (FCFA) *
+                        </label>
+                        <input type="number" class="form-control" id="reparation_montant" name="montant" readonly>
+                        <div class="form-text text-muted">
+                            <i class="bi bi-lock-fill me-1"></i>Montant copié depuis la dépense (modifiable uniquement par le Manager)
+                        </div>
+                    </div>
+
+                    <!-- Garage/Prestataire -->
+                    <div class="mb-3">
+                        <label for="reparation_garage" class="form-label fw-bold">
+                            <i class="bi bi-shop me-1"></i>Garage/Prestataire *
+                        </label>
+                        <input type="text" class="form-control" id="reparation_garage" name="garage_prestataire" placeholder="Nom du garage ou prestataire" required>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="mb-3">
+                        <label for="reparation_description" class="form-label fw-bold">
+                            <i class="bi bi-chat-left-text me-1"></i>Description
+                        </label>
+                        <textarea class="form-control" id="reparation_description" name="description" rows="3" placeholder="Description du problème"></textarea>
+                        <div class="form-text">Description copiée depuis la dépense (modifiable)</div>
+                    </div>
+
+                    <!-- Info sur les champs réservés au Manager -->
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Note :</strong> Les détails techniques (kilométrage, pièces remplacées) seront complétés par le Manager.
+                        La réparation sera créée avec le statut "En attente".
+                    </div>
+
+                    <!-- Message de retour -->
+                    <div id="creerReparationMessage" class="alert d-none"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-warning" id="saveReparationBtn">
+                    <i class="bi bi-tools me-2"></i>Créer la Réparation
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Recette Bagages -->
+<div class="modal fade" id="bagagesModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-luggage me-2"></i>Recette Bagages
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Formulaire de saisie -->
+                <form id="bagagesForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="montant_bagages" class="form-label fw-bold">
+                            <i class="bi bi-cash-stack me-2"></i>Montant Total des Bagages (FCFA)
+                        </label>
+                        <input
+                            type="number"
+                            class="form-control form-control-lg"
+                            id="montant_bagages"
+                            name="montant_bagages"
+                            min="0"
+                            step="1"
+                            placeholder="Entrez le montant total"
+                            required
+                        >
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Montant actuel : </strong>
+                        <span id="currentBagages" class="fw-bold">0 FCFA</span>
+                    </div>
+                </form>
+
+                <!-- Message de retour -->
+                <div id="bagagesMessage" class="alert d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-success" id="saveBagagesBtn">
+                    <i class="bi bi-save me-2"></i>Enregistrer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmation pour terminer le départ -->
+<div class="modal fade" id="terminerVoyageModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-check-circle me-2"></i>Terminer le départ
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2"><strong>Ligne :</strong> {{ voyage.ligne.nom }} &nbsp;|&nbsp; <strong>Date :</strong> {{ voyage.date_depart|date:"d/m/Y" }} à {{ voyage.heure_depart|time:"H:i" }}</p>
+
+                <!-- Checklist avant terminaison -->
+                <div class="border rounded p-3 mb-3" style="background:#f8f9fa;">
+                    <p class="fw-bold mb-2" style="font-size:13px;color:#374151;">Vérifiez avant de terminer :</p>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge bg-success">{{ nb_billets_payes }}</span>
+                        <span style="font-size:13px;">billet(s) payé(s)</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mb-2 {% if nb_billets_reserves > 0 %}text-warning fw-semibold{% endif %}">
+                        {% if nb_billets_reserves > 0 %}<i class="bi bi-exclamation-triangle-fill text-warning"></i>{% endif %}
+                        <span class="badge {% if nb_billets_reserves > 0 %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ nb_billets_reserves }}</span>
+                        <span style="font-size:13px;">réservation(s) non payée(s) encore en attente</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 {% if nb_remboursements_en_attente > 0 %}text-danger fw-semibold{% endif %}">
+                        {% if nb_remboursements_en_attente > 0 %}<i class="bi bi-exclamation-triangle-fill text-danger"></i>{% endif %}
+                        <span class="badge {% if nb_remboursements_en_attente > 0 %}bg-danger{% else %}bg-secondary{% endif %}">{{ nb_remboursements_en_attente }}</span>
+                        <span style="font-size:13px;">demande(s) de remboursement en attente</span>
+                    </div>
+                </div>
+
+                <div class="alert alert-danger mb-2 py-2">
+                    <i class="bi bi-lock-fill me-2"></i>
+                    <strong>Après avoir terminé ce voyage :</strong>
+                    <ul class="mb-0 mt-1 ps-3" style="font-size:12px;">
+                        <li>Aucun remboursement ne sera plus possible</li>
+                        <li>Aucun report de billet ne sera plus possible</li>
+                    </ul>
+                </div>
+
+                <!-- Message de retour -->
+                <div id="terminerVoyageMessage" class="alert d-none mt-2"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-success" id="confirmTerminerBtn">
+                    <i class="bi bi-check-circle me-2"></i>Oui, terminer le voyage
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Reporter un billet -->
+<div class="modal fade" id="reporterBilletModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">
+                    <i class="bi bi-arrow-repeat me-2"></i>Reporter le Billet
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="reporterBilletForm">
+                    {% csrf_token %}
+
+                    <!-- Informations du billet actuel -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <strong>Informations du billet</strong>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p class="mb-1"><strong>Numéro :</strong> <span id="report_billet_numero"></span></p>
+                                    <p class="mb-1"><strong>Client :</strong> <span id="report_client_nom"></span></p>
+                                    <p class="mb-1"><strong>Téléphone :</strong> <span id="report_client_telephone"></span></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p class="mb-1"><strong>Siège actuel :</strong> <span id="report_siege_actuel"></span></p>
+                                    <p class="mb-1"><strong>Montant payé :</strong> <span id="report_montant"></span> FCFA</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sélection du nouveau voyage -->
+                    <div class="mb-3">
+                        <label for="nouveau_voyage_select" class="form-label fw-bold">
+                            <i class="bi bi-calendar3 me-1"></i>Nouveau voyage
+                        </label>
+                        <select class="form-select" id="nouveau_voyage_select" name="nouveau_voyage_id" required>
+                            <option value="">-- Sélectionner un voyage --</option>
+                        </select>
+                        <div class="form-text">Choisissez le voyage vers lequel reporter ce billet</div>
+                    </div>
+
+                    <!-- Disposition des sièges -->
+                    <div id="disposition_container" style="display: none;">
+                        <label class="form-label fw-bold">
+                            <i class="bi bi-grid-3x3 me-1"></i>Sélectionnez le nouveau siège
+                        </label>
+                        <div id="disposition_sieges" class="border rounded p-3 mb-3" style="max-height: 400px; overflow-y: auto;">
+                            <!-- La disposition sera chargée dynamiquement -->
+                        </div>
+                        <input type="hidden" id="nouveau_siege_input" name="nouveau_siege" required>
+                        <div class="form-text mb-3">
+                            Places disponibles : <span id="places_disponibles_count">-</span>
+                        </div>
+                    </div>
+
+                    <!-- Motif du report -->
+                    <div class="mb-3">
+                        <label for="motif_report" class="form-label fw-bold">
+                            <i class="bi bi-chat-left-text me-1"></i>Motif du report
+                        </label>
+                        <textarea class="form-control" id="motif_report" name="motif" rows="3" required placeholder="Ex: Trop de bagages, Raison familiale, etc."></textarea>
+                        <div class="form-text">Veuillez préciser la raison du report</div>
+                    </div>
+
+                    <!-- Message de retour -->
+                    <div id="reporterBilletMessage" class="alert d-none"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-warning" id="confirmReportBtn">
+                    <i class="bi bi-arrow-repeat me-2"></i>Confirmer le Report
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Demande de Remboursement -->
+<div class="modal fade" id="rembourserBilletModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-cash-coin me-2"></i>Demande de Remboursement
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="border rounded p-3 mb-3" style="background:#f8f9fa;">
+                    <p class="mb-1"><strong>Billet :</strong> <span id="remb_billet_numero"></span></p>
+                    <p class="mb-1"><strong>Client :</strong> <span id="remb_client_nom"></span></p>
+                    <p class="mb-0"><strong>Montant :</strong> <span id="remb_montant"></span> FCFA</p>
+                </div>
+                <div class="mb-3">
+                    <label for="remb_motif" class="form-label fw-bold">
+                        <i class="bi bi-chat-left-text me-1"></i>Motif du remboursement *
+                    </label>
+                    <textarea class="form-control" id="remb_motif" rows="3" required
+                              placeholder="Ex: Client empêché de voyager, Urgence familiale..."></textarea>
+                </div>
+                <div class="alert alert-info small mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    La demande sera transmise à votre chef de gare pour approbation.
+                </div>
+                <div id="rembourserMessage" class="alert d-none mt-2"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger" id="confirmRembourserBtn">
+                    <i class="bi bi-send me-2"></i>Envoyer la demande
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/print-ticket.js' %}"></script>
+<script>
+let dernierDuplicataPublicId = null;
+
+function imprimerDuplicata() {
+    if (!dernierDuplicataPublicId) return;
+    imprimerBillets([dernierDuplicataPublicId], '{{ csrf_token }}', { duplicata: true });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const duplicataModal = new bootstrap.Modal(document.getElementById('duplicataModal'));
+    const duplicataContainer = document.getElementById('duplicataContainer');
+    const agentsModal = new bootstrap.Modal(document.getElementById('agentsModal'));
+    const voyageId = "{{ voyage.public_id }}";
+
+    // Fonction pour afficher le ticket duplicata
+    function displayDuplicata(billet) {
+        dernierDuplicataPublicId = billet.public_id;
+        let html = `
+            <div class="ticket-preview ticket-duplicata mb-3">
+                <div class="duplicata-watermark">DUPLICATA</div>
+                <div class="ticket-content">
+                    <div class="ticket-header-row">
+                        <div class="ticket-logo">
+                            ${billet.compagnie_logo
+                                ? `<img src="${billet.compagnie_logo}" alt="Logo" class="ticket-logo-img">`
+                                : `<div class="ticket-logo-placeholder"><i class="bi bi-bus-front"></i></div>`
+                            }
+                        </div>
+                        <div class="ticket-gare-info">
+                            <strong class="ticket-compagnie-nom">${billet.compagnie_nom || 'COMPAGNIE DE TRANSPORT'}</strong>
+                            ${billet.gare_telephone ? `<div class="ticket-gare-tel">Tel: ${billet.gare_telephone}</div>` : ''}
+                            ${billet.gare_adresse ? `<div class="ticket-gare-adresse">${billet.gare_adresse}</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="ticket-body">
+                        <div class="ticket-row"><span>N° Ticket:</span><strong>${billet.numero}</strong></div>
+                        <div class="ticket-row"><span>N° Depart:</span><strong>${billet.numero_depart || 'N/A'}</strong></div>
+                        <div class="ticket-row"><span>Client:</span><span>${billet.client_nom}</span></div>
+                        <div class="ticket-row"><span>Siege:</span><strong class="ticket-siege">${billet.numero_siege}</strong></div>
+                        <hr>
+                        <div class="ticket-row"><span>Ligne:</span><span>${billet.ligne}</span></div>
+                        <div class="ticket-row"><span>Destination:</span><strong>${billet.destination || 'N/A'}</strong></div>
+                        <div class="ticket-row"><span>Date:</span><span>${billet.date_depart}</span></div>
+                        <div class="ticket-row"><span>Heure:</span><span>${billet.heure_depart}</span></div>
+                        <hr>
+                        <div class="ticket-row ticket-montant">
+                            <span>Montant:</span>
+                            ${(billet.statut === 'gratuit' || billet.statut === 'gratuit_en_attente')
+                                ? `<strong style="background:#16a34a;color:#fff;padding:2px 10px;border-radius:6px;font-size:13px;letter-spacing:1px;">GRATUIT</strong>`
+                                : `<strong>${Number(billet.montant).toLocaleString('fr-FR')} FCFA</strong>`
+                            }
+                        </div>
+                        <div class="ticket-row"><span>Paiement:</span><strong>${billet.moyen_paiement_display || 'Cash'}</strong></div>
+                    </div>
+        `;
+
+        // Message bas de ticket
+        const msgHtml = billet.message_bas_ticket
+            ? `<div class="ticket-message-bas">${billet.message_bas_ticket}</div>`
+            : '';
+
+        // Ajouter la souche sur le duplicata si activé
+        if (billet.utiliser_souche) {
+            // Message AVANT la ligne de découpe (reste sur la partie client)
+            if (msgHtml) html += msgHtml;
+            html += `
+                    <!-- LIGNE DE DÉCOUPE -->
+                    <div class="ticket-separator-cut">✂ - - - - - - - - - - - - - - - - - - - - - - ✂</div>
+
+                    <!-- SOUCHE COMPAGNIE -->
+                    <div class="ticket-souche">
+                        <div class="souche-watermark">SOUCHE</div>
+                        <div class="souche-header">SOUCHE</div>
+                        <div class="ticket-row">
+                            <span>N° Depart:</span>
+                            <strong>${billet.numero_depart || 'N/A'}</strong>
+                        </div>
+                        <div class="ticket-row">
+                            <span>Siege:</span>
+                            <strong class="ticket-siege">${billet.numero_siege}</strong>
+                        </div>
+                        <div class="ticket-row">
+                            <span>Ligne:</span>
+                            <span>${billet.ligne}</span>
+                        </div>
+                        <div class="ticket-row">
+                            <span>Date:</span>
+                            <span>${billet.date_depart}</span>
+                        </div>
+                        <div class="ticket-row">
+                            <span>Heure:</span>
+                            <span>${billet.heure_depart}</span>
+                        </div>
+                    </div>
+            `;
+        } else {
+            // Sans souche : message tout en bas
+            if (msgHtml) html += msgHtml;
+        }
+
+        html += `
+                </div>
+            </div>
+        `;
+
+        duplicataContainer.innerHTML = html;
+    }
+
+    // Gestionnaire de clic sur les boutons de réimpression
+    document.querySelectorAll('.btn-reprint').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const billetId = this.dataset.billetId;
+
+            // Afficher un indicateur de chargement
+            this.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+            this.disabled = true;
+
+            fetch(`/api/billet/${billetId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayDuplicata(data.billet);
+                        duplicataModal.show();
+                    } else {
+                        alert(data.error || 'Erreur lors de la récupération du billet');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    alert('Erreur de connexion');
+                })
+                .finally(() => {
+                    this.innerHTML = '<i class="bi bi-printer"></i>';
+                    this.disabled = false;
+                });
+        });
+    });
+
+    // ========== GESTION DES AGENTS DU VOYAGE ==========
+
+    // Charger les listes des chauffeurs et convoyeurs actifs lors de l'ouverture du modal
+    document.getElementById('agentsModal').addEventListener('show.bs.modal', function() {
+        loadAgents();
+    });
+
+    // Fonction pour charger les listes des agents actifs
+    function loadAgents() {
+        fetch(`/voyages/${voyageId}/agents/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Remplir la liste des chauffeurs
+                    const chauffeurSelect = document.getElementById('chauffeur_id');
+                    chauffeurSelect.innerHTML = '<option value="">-- Sélectionner un chauffeur --</option>';
+                    data.chauffeurs.forEach(chauffeur => {
+                        const option = document.createElement('option');
+                        option.value = chauffeur.id;
+                        option.textContent = chauffeur.nom_complet;
+                        if (data.voyage.chauffeur_id === chauffeur.id) {
+                            option.selected = true;
+                        }
+                        chauffeurSelect.appendChild(option);
+                    });
+
+                    // Remplir la liste des convoyeurs
+                    const convoyeurSelect = document.getElementById('convoyeur_id');
+                    convoyeurSelect.innerHTML = '<option value="">-- Sélectionner un convoyeur --</option>';
+                    data.convoyeurs.forEach(convoyeur => {
+                        const option = document.createElement('option');
+                        option.value = convoyeur.id;
+                        option.textContent = convoyeur.nom_complet;
+                        if (data.voyage.convoyeur_id === convoyeur.id) {
+                            option.selected = true;
+                        }
+                        convoyeurSelect.appendChild(option);
+                    });
+
+                    // Remplir la liste des véhicules
+                    const vehiculeSelect = document.getElementById('vehicule_id');
+                    vehiculeSelect.innerHTML = '<option value="">-- Sélectionner un véhicule --</option>';
+
+                    if (data.vehicules && data.vehicules.length > 0) {
+                        window._vehiculesData = data.vehicules;
+                        data.vehicules.forEach(vehicule => {
+                            const option = document.createElement('option');
+                            option.value = vehicule.id;
+                            option.dataset.capacite = vehicule.capacite;
+                            option.dataset.needsReassignment = vehicule.needs_reassignment ? 'true' : 'false';
+                            const badge = vehicule.needs_reassignment ? ' ⚠ réassignation' : '';
+                            option.textContent = `${vehicule.immatriculation} - ${vehicule.modele_nom} (${vehicule.capacite} places)${badge}`;
+                            if (data.voyage.vehicule_id === vehicule.id) {
+                                option.selected = true;
+                            }
+                            vehiculeSelect.appendChild(option);
+                        });
+
+                        if (data.nb_billets > 0) {
+                            document.getElementById('capacite_info').textContent =
+                                `(${data.nb_billets} billet(s) vendu(s) — siège max : ${data.max_siege})`;
+                        }
+                    } else {
+                        vehiculeSelect.innerHTML = '<option value="">Aucun véhicule disponible</option>';
+                        vehiculeSelect.disabled = true;
+                    }
+                } else {
+                    showAgentsMessage('Erreur lors du chargement des agents', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                showAgentsMessage('Erreur de connexion', 'danger');
+            });
+    }
+
+    // Stockage temporaire des données pour la sauvegarde
+    let pendingSaveData = null;
+
+    // Vérification au changement de véhicule : signaler si réassignation nécessaire
+    document.getElementById('vehicule_id').addEventListener('change', function() {
+        const selected = this.options[this.selectedIndex];
+        const capaciteInfo = document.getElementById('capacite_info');
+        if (selected && selected.dataset.needsReassignment === 'true') {
+            capaciteInfo.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Des sièges seront réassignés automatiquement.</span>';
+        } else {
+            capaciteInfo.textContent = selected && selected.dataset.capacite
+                ? `(${selected.dataset.capacite} places)`
+                : '';
+        }
+    });
+
+    function doSaveAgents(chauffeurId, convoyeurId, vehiculeId, saveBtn) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch(`/voyages/${voyageId}/agents/save/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify({
+                chauffeur_id: chauffeurId || null,
+                convoyeur_id: convoyeurId || null,
+                vehicule_id: vehiculeId || null
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('current_chauffeur').innerHTML =
+                    data.chauffeur_nom || '<em class="text-muted">Non assigné</em>';
+                document.getElementById('current_convoyeur').innerHTML =
+                    data.convoyeur_nom || '<em class="text-muted">Non assigné</em>';
+                document.getElementById('current_vehicule').innerHTML =
+                    data.vehicule_immatriculation
+                        ? `${data.vehicule_immatriculation} <span class="text-success">(mis à jour)</span>`
+                        : '<em class="text-muted">Non assigné</em>';
+
+                // Si des réassignations ont eu lieu → ouvrir la page d'impression
+                if (data.reassignations && data.reassignations.length > 0) {
+                    bootstrap.Modal.getInstance(document.getElementById('agentsModal')).hide();
+                    window.open(`/voyages/${voyageId}/reassignations/imprimer/`, '_blank');
+                    setTimeout(() => window.location.reload(), 800);
+                } else {
+                    showAgentsMessage('Agents enregistrés avec succès !', 'success');
+                    setTimeout(() => window.location.reload(), 1000);
+                }
+            } else {
+                showAgentsMessage(data.error || 'Erreur lors de l\'enregistrement', 'danger');
+            }
+        })
+        .catch(() => showAgentsMessage('Erreur de connexion', 'danger'))
+        .finally(() => {
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="bi bi-save me-2"></i>Enregistrer';
+            }
+        });
+    }
+
+    // Fonction pour enregistrer les agents sélectionnés
+    document.getElementById('saveAgentsBtn').addEventListener('click', function() {
+        const saveBtn = this;
+        const chauffeurId = document.getElementById('chauffeur_id').value;
+        const convoyeurId = document.getElementById('convoyeur_id').value;
+        const vehiculeId = document.getElementById('vehicule_id').value;
+
+        // Vérifier si le véhicule sélectionné nécessite une réassignation
+        const vehiculeSelect = document.getElementById('vehicule_id');
+        const selectedOption = vehiculeSelect.options[vehiculeSelect.selectedIndex];
+        const needsReassignment = selectedOption && selectedOption.dataset.needsReassignment === 'true';
+
+        if (needsReassignment && vehiculeId) {
+            // Charger la prévisualisation des réassignations depuis les données déjà disponibles
+            const vehiculeData = window._vehiculesData ? window._vehiculesData.find(v => v.id == vehiculeId) : null;
+            pendingSaveData = { chauffeurId, convoyeurId, vehiculeId };
+
+            // Construire le tableau de prévisualisation (données chargées depuis serveur)
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Vérification...';
+
+            // Appel save direct — la réassignation est faite côté serveur et retournée
+            fetch(`/voyages/${voyageId}/agents/save/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({
+                    chauffeur_id: chauffeurId || null,
+                    convoyeur_id: convoyeurId || null,
+                    vehicule_id: vehiculeId || null,
+                    preview_only: true
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="bi bi-save me-2"></i>Enregistrer';
+                if (data.success && data.reassignations && data.reassignations.length > 0) {
+                    // Remplir la modale de confirmation
+                    const tbody = document.getElementById('reassignationTableBody');
+                    tbody.innerHTML = '';
+                    data.reassignations.forEach(r => {
+                        tbody.innerHTML += `
+                            <tr>
+                                <td><strong>${r.client_nom}</strong></td>
+                                <td>${r.client_telephone}</td>
+                                <td class="text-center text-danger fw-bold" style="font-size:1.1rem;text-decoration:line-through;">${r.ancien_siege}</td>
+                                <td class="text-center text-muted">→</td>
+                                <td class="text-center text-success fw-bold" style="font-size:1.3rem;">${r.nouveau_siege}</td>
+                            </tr>`;
+                    });
+                    bootstrap.Modal.getInstance(document.getElementById('agentsModal')).hide();
+                    new bootstrap.Modal(document.getElementById('reassignationModal')).show();
+                } else if (data.success) {
+                    // Pas de réassignation nécessaire finalement
+                    doSaveAgents(chauffeurId, convoyeurId, vehiculeId, null);
+                } else {
+                    showAgentsMessage(data.error || 'Erreur', 'danger');
+                }
+            })
+            .catch(() => {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="bi bi-save me-2"></i>Enregistrer';
+                showAgentsMessage('Erreur de connexion', 'danger');
+            });
+        } else {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enregistrement...';
+            doSaveAgents(chauffeurId, convoyeurId, vehiculeId, saveBtn);
+        }
+    });
+
+    // Bouton annuler la réassignation
+    document.getElementById('cancelReassignationBtn').addEventListener('click', function() {
+        bootstrap.Modal.getInstance(document.getElementById('reassignationModal')).hide();
+        new bootstrap.Modal(document.getElementById('agentsModal')).show();
+    });
+
+    // Bouton confirmer la réassignation
+    document.getElementById('confirmReassignationBtn').addEventListener('click', function() {
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enregistrement...';
+        if (pendingSaveData) {
+            doSaveAgents(pendingSaveData.chauffeurId, pendingSaveData.convoyeurId, pendingSaveData.vehiculeId, null);
+        }
+    });
+
+    // Fonction pour afficher un message dans le modal
+    function showAgentsMessage(message, type) {
+        const messageDiv = document.getElementById('agentsMessage');
+        messageDiv.className = `alert alert-${type}`;
+        messageDiv.textContent = message;
+        messageDiv.classList.remove('d-none');
+
+        // Masquer le message après 3 secondes
+        setTimeout(() => {
+            messageDiv.classList.add('d-none');
+        }, 3000);
+    }
+
+    // ========== GESTION DES DÉPENSES DU VOYAGE ==========
+
+    let typesDepenses = [];
+    let depensesExistantes = [];
+    let ligneCounter = 0;
+    let typesReparations = [];
+    let vehiculesActifs = [];
+    let vehiculeVoyageId = null;
+
+    // Charger les données lors de l'ouverture du modal
+    document.getElementById('depensesModal').addEventListener('show.bs.modal', function() {
+        loadDepenses();
+    });
+
+    // Fonction pour charger les types de dépenses et les dépenses existantes
+    function loadDepenses() {
+        fetch(`/voyages/${voyageId}/depenses/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    typesDepenses = data.types_depenses;
+                    depensesExistantes = data.depenses;
+                    typesReparations = data.types_reparations || [];
+                    vehiculesActifs = data.vehicules_actifs || [];
+                    vehiculeVoyageId = data.vehicule_voyage_id || null;
+
+                    // Générer les champs de saisie
+                    generateDepensesInputs();
+
+                    // Afficher la liste des dépenses existantes
+                    displayDepensesList();
+
+                    // Afficher le total
+                    updateTotal(data.total_depenses);
+                } else {
+                    showDepensesMessage('Erreur lors du chargement des dépenses', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                showDepensesMessage('Erreur de connexion', 'danger');
+            });
+    }
+
+    // Fonction pour générer les champs de saisie (au départ vide)
+    function generateDepensesInputs() {
+        const container = document.getElementById('depensesInputs');
+        container.innerHTML = '';
+        ligneCounter = 0;
+        // Ne rien ajouter au départ - l'utilisateur doit cliquer sur "Ajouter une ligne"
+    }
+
+    // Construire les options du select véhicule pour réparation inline
+    function buildVehiculeOptions() {
+        let opts = '<option value="">-- Sélectionner un véhicule --</option>';
+        vehiculesActifs.forEach(v => {
+            const sel = vehiculeVoyageId && v.id === vehiculeVoyageId ? ' selected' : '';
+            opts += `<option value="${v.id}"${sel}>${v.immatriculation}${v.modele ? ' - ' + v.modele : ''}</option>`;
+        });
+        return opts;
+    }
+
+    // Construire les options du select type réparation
+    function buildTypeRepOptions() {
+        let opts = '<option value="">-- Sélectionner --</option>';
+        typesReparations.forEach(t => {
+            opts += `<option value="${t.id}">${t.nom}</option>`;
+        });
+        return opts;
+    }
+
+    // Détecter si un type de dépense est "réparation"
+    function isReparationType(typeId) {
+        const type = typesDepenses.find(t => t.id == typeId);
+        if (!type) return false;
+        return type.code === 'reparation' ||
+               type.nom.toLowerCase().includes('réparation') ||
+               type.nom.toLowerCase().includes('reparation');
+    }
+
+    // Fonction pour ajouter une nouvelle ligne de saisie
+    function addDepenseInput() {
+        if (typesDepenses.length === 0) {
+            showDepensesMessage('Aucun type de dépense disponible', 'warning');
+            return;
+        }
+
+        const container = document.getElementById('depensesInputs');
+        ligneCounter++;
+
+        const today = new Date().toISOString().split('T')[0];
+
+        const div = document.createElement('div');
+        div.className = 'depense-input-row mb-3';
+        div.dataset.ligneId = ligneCounter;
+
+        // Créer le dropdown des types
+        let typesOptions = '<option value="">-- Sélectionner --</option>';
+        typesDepenses.forEach(type => {
+            typesOptions += `<option value="${type.id}" data-description-obligatoire="${type.description_obligatoire}">${type.nom}</option>`;
+        });
+
+        div.innerHTML = `
+            <div class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small mb-1">Type *</label>
+                    <select class="form-select form-select-sm depense-type-select">
+                        ${typesOptions}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-1">Montant (FCFA) *</label>
+                    <input type="number"
+                           class="form-control form-control-sm depense-montant"
+                           placeholder="Montant"
+                           min="0"
+                           step="1">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small mb-1">Description</label>
+                    <input type="text"
+                           class="form-control form-control-sm depense-description"
+                           placeholder="Description">
+                </div>
+                <div class="col-md-2 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger btn-remove-ligne" title="Retirer cette ligne">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <!-- Panneau inline réparation (caché par défaut) -->
+            <div class="rep-inline-panel d-none mt-2">
+                <div class="border border-warning rounded p-3" style="background:#fefce8;">
+                    <div class="d-flex align-items-center mb-2 gap-2">
+                        <i class="bi bi-tools text-warning"></i>
+                        <strong style="font-size:12px;color:#92400e;">Réparation — sera créée automatiquement en attente</strong>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label small mb-1">Véhicule *</label>
+                            <select class="form-select form-select-sm rep-vehicule">
+                                ${buildVehiculeOptions()}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small mb-1">Type de réparation *</label>
+                            <select class="form-select form-select-sm rep-type-reparation">
+                                ${buildTypeRepOptions()}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small mb-1">Date *</label>
+                            <input type="date" class="form-control form-control-sm rep-date" value="${today}">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small mb-1">Garage / Prestataire *</label>
+                            <input type="text" class="form-control form-control-sm rep-garage"
+                                   placeholder="Nom du garage ou prestataire">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        container.appendChild(div);
+
+        // Gestionnaire pour la suppression de ligne
+        div.querySelector('.btn-remove-ligne').addEventListener('click', function() {
+            div.remove();
+        });
+
+        // Gestionnaire pour afficher/masquer le panneau réparation selon le type choisi
+        div.querySelector('.depense-type-select').addEventListener('change', function() {
+            const panel = div.querySelector('.rep-inline-panel');
+            if (isReparationType(this.value)) {
+                panel.classList.remove('d-none');
+            } else {
+                panel.classList.add('d-none');
+            }
+        });
+    }
+
+    // Bouton "Ajouter une ligne"
+    document.getElementById('addDepenseLine').addEventListener('click', function() {
+        addDepenseInput();
+    });
+
+    // Fonction pour afficher la liste des dépenses existantes
+    function displayDepensesList() {
+        const container = document.getElementById('depensesList');
+
+        if (depensesExistantes.length === 0) {
+            container.innerHTML = '<p class="text-muted text-center py-3">Aucune dépense enregistrée pour ce voyage.</p>';
+            return;
+        }
+
+        let html = `
+            <table class="table table-sm table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Type</th>
+                        <th class="text-end">Montant</th>
+                        <th>Description</th>
+                        <th>Saisi par</th>
+                        <th>Date</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        depensesExistantes.forEach(depense => {
+            // Déterminer l'action à afficher
+            let actionHtml = '-';
+            // Vérifier si c'est une réparation (par code ou par nom)
+            const isReparation = depense.type_depense_code === 'reparation' ||
+                                 depense.type_depense_nom.toLowerCase().includes('réparation') ||
+                                 depense.type_depense_nom.toLowerCase().includes('reparation');
+
+            if (isReparation) {
+                if (depense.reparation_id) {
+                    // Réparation déjà créée
+                    actionHtml = `
+                        <span class="badge bg-success" title="Réparation créée">
+                            <i class="bi bi-check-circle me-1"></i>Réparation créée
+                        </span>
+                    `;
+                } else if (depense.peut_creer_reparation) {
+                    // Peut créer une réparation
+                    actionHtml = `
+                        <button type="button" class="btn btn-sm btn-warning btn-creer-reparation"
+                                data-depense-id="${depense.id}"
+                                data-montant="${depense.montant}"
+                                data-description="${depense.description || ''}"
+                                title="Créer une fiche de réparation">
+                            <i class="bi bi-tools me-1"></i>Créer Réparation
+                        </button>
+                    `;
+                } else {
+                    // Véhicule manquant
+                    actionHtml = `
+                        <span class="badge bg-secondary" title="Véhicule non assigné au voyage">
+                            <i class="bi bi-exclamation-triangle me-1"></i>Véhicule requis
+                        </span>
+                    `;
+                }
+            }
+
+            html += `
+                <tr>
+                    <td><strong>${depense.type_depense_nom}</strong></td>
+                    <td class="text-end"><span class="badge bg-danger">${Number(depense.montant).toLocaleString('fr-FR')} FCFA</span></td>
+                    <td>${depense.description || '<em class="text-muted">-</em>'}</td>
+                    <td><small>${depense.guichetier}</small></td>
+                    <td><small>${depense.date_creation}</small></td>
+                    <td class="text-center">${actionHtml}</td>
+                </tr>
+            `;
+        });
+
+        html += `
+                </tbody>
+            </table>
+        `;
+
+        container.innerHTML = html;
+    }
+
+    // Fonction pour mettre à jour le total des dépenses
+    function updateTotal(total) {
+        document.getElementById('totalDepenses').textContent = Number(total).toLocaleString('fr-FR') + ' FCFA';
+    }
+
+    // Fonction pour enregistrer les dépenses
+    document.getElementById('saveDepensesBtn').addEventListener('click', function() {
+        const saveBtn = this;
+
+        // Récupérer toutes les lignes de dépenses
+        const rows = document.querySelectorAll('.depense-input-row');
+        const depenses = [];
+
+        let hasError = false;
+
+        rows.forEach(row => {
+            const typeSelect = row.querySelector('.depense-type-select');
+            const typeId = typeSelect.value;
+            const montant = row.querySelector('.depense-montant').value;
+            const description = row.querySelector('.depense-description').value.trim();
+
+            // Ignorer les lignes complètement vides
+            if (!typeId && !montant) {
+                return;
+            }
+
+            // Vérifier que le type est sélectionné
+            if (!typeId) {
+                showDepensesMessage('Veuillez sélectionner un type de dépense pour toutes les lignes', 'danger');
+                hasError = true;
+                return;
+            }
+
+            // Vérifier que le montant est renseigné et valide
+            if (!montant || parseFloat(montant) <= 0) {
+                showDepensesMessage('Veuillez saisir un montant valide pour toutes les lignes', 'danger');
+                hasError = true;
+                return;
+            }
+
+            // Trouver le type de dépense
+            const type = typesDepenses.find(t => t.id == typeId);
+
+            // Vérifier si la description est obligatoire
+            if (type && type.description_obligatoire && !description) {
+                showDepensesMessage(`La description est obligatoire pour "${type.nom}"`, 'danger');
+                hasError = true;
+                return;
+            }
+
+            // Collecter les données réparation inline si le panneau est visible
+            let reparationData = null;
+            const repPanel = row.querySelector('.rep-inline-panel');
+            if (repPanel && !repPanel.classList.contains('d-none')) {
+                const repVehiculeId = repPanel.querySelector('.rep-vehicule').value;
+                const repTypeId = repPanel.querySelector('.rep-type-reparation').value;
+                const repDate = repPanel.querySelector('.rep-date').value;
+                const repGarage = repPanel.querySelector('.rep-garage').value.trim();
+
+                if (!repVehiculeId) {
+                    showDepensesMessage('Veuillez sélectionner un véhicule pour la réparation', 'danger');
+                    hasError = true;
+                    return;
+                }
+                if (!repTypeId) {
+                    showDepensesMessage('Veuillez sélectionner un type de réparation', 'danger');
+                    hasError = true;
+                    return;
+                }
+                if (!repGarage) {
+                    showDepensesMessage('Veuillez saisir le garage/prestataire pour la réparation', 'danger');
+                    hasError = true;
+                    return;
+                }
+
+                reparationData = {
+                    vehicule_id: parseInt(repVehiculeId),
+                    type_reparation_id: parseInt(repTypeId),
+                    date_reparation: repDate,
+                    garage_prestataire: repGarage,
+                };
+            }
+
+            depenses.push({
+                type_depense_id: parseInt(typeId),
+                montant: parseFloat(montant),
+                description: description,
+                reparation: reparationData,
+            });
+        });
+
+        if (hasError) {
+            return;
+        }
+
+        if (depenses.length === 0) {
+            showDepensesMessage('Aucune dépense à enregistrer', 'warning');
+            return;
+        }
+
+        // Désactiver le bouton pendant l'enregistrement
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enregistrement...';
+
+        // Récupérer le token CSRF
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        // Envoyer la requête AJAX
+        fetch(`/voyages/${voyageId}/depenses/add/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                depenses: depenses
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showDepensesMessage(data.message, 'success');
+
+                // Recharger les données
+                setTimeout(() => {
+                    loadDepenses();
+                }, 500);
+            } else {
+                showDepensesMessage(data.error || 'Erreur lors de l\'enregistrement', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showDepensesMessage('Erreur de connexion', 'danger');
+        })
+        .finally(() => {
+            // Réactiver le bouton
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="bi bi-save me-2"></i>Enregistrer';
+        });
+    });
+
+    // Fonction pour afficher un message dans le modal
+    function showDepensesMessage(message, type) {
+        const messageDiv = document.getElementById('depensesMessage');
+        messageDiv.className = `alert alert-${type}`;
+        messageDiv.textContent = message;
+        messageDiv.classList.remove('d-none');
+
+        // Masquer le message après 5 secondes
+        setTimeout(() => {
+            messageDiv.classList.add('d-none');
+        }, 5000);
+    }
+
+    // ==================== GESTION RECETTE BAGAGES ====================
+
+    // Charger la recette bagages à l'ouverture du modal
+    document.getElementById('bagagesModal').addEventListener('show.bs.modal', function() {
+        loadBagages();
+    });
+
+    function loadBagages() {
+        fetch(`/voyages/${voyageId}/bagages/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('montant_bagages').value = data.recette_bagages;
+                    document.getElementById('currentBagages').textContent =
+                        `${Number(data.recette_bagages).toLocaleString('fr-FR')} FCFA`;
+                } else {
+                    showBagagesMessage(data.error || 'Erreur lors du chargement', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                showBagagesMessage('Erreur de connexion au serveur', 'danger');
+            });
+    }
+
+    // Enregistrer la recette bagages
+    document.getElementById('saveBagagesBtn').addEventListener('click', function() {
+        const montant = document.getElementById('montant_bagages').value;
+
+        // Validation
+        if (!montant || montant < 0) {
+            showBagagesMessage('Veuillez entrer un montant valide', 'warning');
+            return;
+        }
+
+        // Désactiver le bouton pendant l'enregistrement
+        const saveBtn = this;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enregistrement...';
+
+        // Envoyer au serveur
+        fetch(`/voyages/${voyageId}/bagages/save/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                montant: montant
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showBagagesMessage(data.message, 'success');
+                document.getElementById('currentBagages').textContent =
+                    `${Number(data.recette_bagages).toLocaleString('fr-FR')} FCFA`;
+
+                // Fermer le modal après 1 seconde
+                setTimeout(() => {
+                    bootstrap.Modal.getInstance(document.getElementById('bagagesModal')).hide();
+                    // Recharger la page pour mettre à jour les totaux
+                    location.reload();
+                }, 1000);
+            } else {
+                showBagagesMessage(data.error || 'Erreur lors de l\'enregistrement', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showBagagesMessage('Erreur de connexion au serveur', 'danger');
+        })
+        .finally(() => {
+            // Réactiver le bouton
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="bi bi-save me-2"></i>Enregistrer';
+        });
+    });
+
+    // Fonction pour afficher un message dans le modal bagages
+    function showBagagesMessage(message, type) {
+        const messageDiv = document.getElementById('bagagesMessage');
+        messageDiv.className = `alert alert-${type}`;
+        messageDiv.textContent = message;
+        messageDiv.classList.remove('d-none');
+
+        // Masquer le message après 5 secondes
+        setTimeout(() => {
+            messageDiv.classList.add('d-none');
+        }, 5000);
+    }
+
+    // ==================== GESTION DE LA TERMINAISON DU VOYAGE ====================
+
+    const terminerVoyageBtn = document.getElementById('terminerVoyageBtn');
+    const terminerVoyageModal = document.getElementById('terminerVoyageModal');
+    const confirmTerminerBtn = document.getElementById('confirmTerminerBtn');
+
+    if (terminerVoyageBtn && terminerVoyageModal) {
+        const modal = new bootstrap.Modal(terminerVoyageModal);
+
+        // Ouvrir le modal de confirmation au clic sur le bouton
+        terminerVoyageBtn.addEventListener('click', function() {
+            modal.show();
+        });
+
+        // Confirmer la terminaison
+        confirmTerminerBtn.addEventListener('click', function() {
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Traitement...';
+
+            // Envoyer la requête AJAX
+            fetch(`/voyages/${voyageId}/terminer/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showTerminerMessage(data.message, 'success');
+                    // Recharger la page après 1.5 secondes pour mettre à jour le statut
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showTerminerMessage(data.error || 'Erreur lors de la terminaison du départ', 'danger');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Confirmer';
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                showTerminerMessage('Erreur de connexion au serveur', 'danger');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Confirmer';
+            });
+        });
+
+        // Fonction pour afficher un message dans le modal
+        function showTerminerMessage(message, type) {
+            const messageDiv = document.getElementById('terminerVoyageMessage');
+            messageDiv.className = `alert alert-${type} mt-3`;
+            messageDiv.textContent = message;
+            messageDiv.classList.remove('d-none');
+        }
+    }
+
+    // ========== GESTION DU REPORT DE BILLETS ==========
+
+    const reporterBilletModal = new bootstrap.Modal(document.getElementById('reporterBilletModal'));
+    let currentBilletId = null;
+    let siegeSelectionne = null;
+
+    // Gérer le clic sur le bouton "Reporter"
+    document.querySelectorAll('.btn-reporter').forEach(btn => {
+        btn.addEventListener('click', function() {
+            currentBilletId = this.dataset.billetId;
+            const billetNumero = this.dataset.billetNumero;
+            const clientNom = this.dataset.clientNom;
+            const clientTelephone = this.dataset.clientTelephone;
+            const siege = this.dataset.siege;
+            const montant = this.dataset.montant;
+
+            // Remplir les informations du billet
+            document.getElementById('report_billet_numero').textContent = billetNumero;
+            document.getElementById('report_client_nom').textContent = clientNom;
+            document.getElementById('report_client_telephone').textContent = clientTelephone;
+            document.getElementById('report_siege_actuel').textContent = siege;
+            document.getElementById('report_montant').textContent = montant;
+
+            // Réinitialiser le formulaire
+            document.getElementById('nouveau_voyage_select').innerHTML = '<option value="">-- Chargement... --</option>';
+            document.getElementById('disposition_container').style.display = 'none';
+            document.getElementById('motif_report').value = '';
+            siegeSelectionne = null;
+            document.getElementById('reporterBilletMessage').classList.add('d-none');
+
+            // Charger les voyages disponibles
+            fetch(`/voyages/billets/${currentBilletId}/report/voyages/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const select = document.getElementById('nouveau_voyage_select');
+                        select.innerHTML = '<option value="">-- Sélectionner un voyage --</option>';
+
+                        // Grouper les voyages par date
+                        for (const [groupe, voyages] of Object.entries(data.voyages)) {
+                            const optgroup = document.createElement('optgroup');
+                            optgroup.label = groupe;
+
+                            voyages.forEach(voyage => {
+                                const option = document.createElement('option');
+                                option.value = voyage.id;
+                                option.textContent = `${voyage.heure_depart} - ${voyage.periode} (Départ ${voyage.numero_depart}) - ${voyage.places_libres}/${voyage.capacite} places libres`;
+                                optgroup.appendChild(option);
+                            });
+
+                            select.appendChild(optgroup);
+                        }
+                    } else {
+                        showReportMessage(data.error || 'Erreur lors du chargement des voyages', 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    showReportMessage('Erreur de connexion', 'danger');
+                });
+
+            reporterBilletModal.show();
+        });
+    });
+
+    // Gérer le changement de voyage sélectionné
+    document.getElementById('nouveau_voyage_select').addEventListener('change', function() {
+        const voyageId = this.value;
+        siegeSelectionne = null;
+        document.getElementById('nouveau_siege_input').value = '';
+
+        if (!voyageId) {
+            document.getElementById('disposition_container').style.display = 'none';
+            return;
+        }
+
+        // Charger la disposition du voyage sélectionné
+        fetch(`/voyages/voyages/${voyageId}/disposition/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    afficherDisposition(data.disposition);
+                    document.getElementById('places_disponibles_count').textContent = data.places_libres;
+                    document.getElementById('disposition_container').style.display = 'block';
+                } else {
+                    showReportMessage(data.error || 'Erreur lors du chargement de la disposition', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                showReportMessage('Erreur de connexion', 'danger');
+            });
+    });
+
+    // Fonction pour afficher la disposition des sièges
+    function afficherDisposition(disposition) {
+        const container = document.getElementById('disposition_sieges');
+        container.innerHTML = '';
+
+        if (!disposition || !disposition.rangees) {
+            container.innerHTML = '<p class="text-muted">Aucune disposition disponible</p>';
+            return;
+        }
+
+        disposition.rangees.forEach(rangee => {
+            const rangeeDiv = document.createElement('div');
+            rangeeDiv.className = 'd-flex justify-content-center align-items-center mb-2';
+
+            rangee.sieges.forEach(siege => {
+                if (siege === null) {
+                    // Allée
+                    const alleeDiv = document.createElement('div');
+                    alleeDiv.className = 'mx-2';
+                    alleeDiv.style.width = '30px';
+                    rangeeDiv.appendChild(alleeDiv);
+                } else {
+                    // Siège
+                    const siegeBtn = document.createElement('button');
+                    siegeBtn.type = 'button';
+                    siegeBtn.className = 'btn btn-sm m-1';
+                    siegeBtn.style.width = '50px';
+                    siegeBtn.style.height = '40px';
+
+                    if (typeof siege === 'object') {
+                        siegeBtn.textContent = siege.numero;
+                        if (siege.statut === 'disponible') {
+                            siegeBtn.classList.add('btn-outline-success');
+                            siegeBtn.addEventListener('click', function() {
+                                selectionnerSiege(siege.numero);
+                            });
+                        } else {
+                            siegeBtn.classList.add('btn-secondary');
+                            siegeBtn.disabled = true;
+                        }
+                    } else {
+                        siegeBtn.textContent = siege;
+                        siegeBtn.classList.add('btn-outline-success');
+                        siegeBtn.addEventListener('click', function() {
+                            selectionnerSiege(siege);
+                        });
+                    }
+
+                    rangeeDiv.appendChild(siegeBtn);
+                }
+            });
+
+            container.appendChild(rangeeDiv);
+        });
+    }
+
+    // Fonction pour sélectionner un siège
+    function selectionnerSiege(numeroSiege) {
+        // Désélectionner tous les sièges
+        document.querySelectorAll('#disposition_sieges .btn').forEach(btn => {
+            btn.classList.remove('btn-warning');
+            btn.classList.add('btn-outline-success');
+        });
+
+        // Sélectionner le siège cliqué
+        event.target.classList.remove('btn-outline-success');
+        event.target.classList.add('btn-warning');
+
+        siegeSelectionne = numeroSiege;
+        document.getElementById('nouveau_siege_input').value = numeroSiege;
+    }
+
+    // Confirmer le report
+    document.getElementById('confirmReportBtn').addEventListener('click', function() {
+        const nouveauVoyageId = document.getElementById('nouveau_voyage_select').value;
+        const motif = document.getElementById('motif_report').value;
+
+        // Validation
+        if (!nouveauVoyageId) {
+            showReportMessage('Veuillez sélectionner un voyage', 'warning');
+            return;
+        }
+
+        if (!siegeSelectionne) {
+            showReportMessage('Veuillez sélectionner un siège', 'warning');
+            return;
+        }
+
+        if (!motif.trim()) {
+            showReportMessage('Veuillez saisir le motif du report', 'warning');
+            return;
+        }
+
+        // Désactiver le bouton
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Traitement...';
+
+        // Envoyer la requête
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch(`/voyages/billets/${currentBilletId}/report/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                nouveau_voyage_id: nouveauVoyageId,
+                nouveau_siege: siegeSelectionne,
+                motif: motif
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showReportMessage(data.message, 'success');
+
+                // Recharger la page après 2 secondes
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                showReportMessage(data.error || 'Erreur lors du report', 'danger');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i>Confirmer le Report';
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showReportMessage('Erreur de connexion', 'danger');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i>Confirmer le Report';
+        });
+    });
+
+    // Fonction pour afficher un message dans le modal de report
+    function showReportMessage(message, type) {
+        const messageDiv = document.getElementById('reporterBilletMessage');
+        messageDiv.className = `alert alert-${type}`;
+        messageDiv.textContent = message;
+        messageDiv.classList.remove('d-none');
+
+        // Masquer le message après 5 secondes sauf pour les succès
+        if (type !== 'success') {
+            setTimeout(() => {
+                messageDiv.classList.add('d-none');
+            }, 5000);
+        }
+    }
+
+    // ========== GESTION DE LA CRÉATION DE RÉPARATION DEPUIS DÉPENSE ==========
+
+    const creerReparationModal = new bootstrap.Modal(document.getElementById('creerReparationModal'));
+    let currentDepenseIdForReparation = null;
+
+    // Charger les véhicules actifs pour le dropdown
+    function chargerVehiculesReparation() {
+        fetch(`/voyages/${voyageId}/agents/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const vehiculeSelect = document.getElementById('reparation_vehicule_id');
+                    vehiculeSelect.innerHTML = '<option value="">-- Sélectionner un véhicule --</option>';
+
+                    if (data.vehicules && data.vehicules.length > 0) {
+                        data.vehicules.forEach(vehicule => {
+                            const option = document.createElement('option');
+                            option.value = vehicule.id;
+                            option.textContent = `${vehicule.immatriculation} - ${vehicule.modele_nom}`;
+                            if (data.voyage.vehicule_id === vehicule.id) {
+                                option.selected = true;
+                            }
+                            vehiculeSelect.appendChild(option);
+                        });
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+            });
+    }
+
+    // Charger les types de réparation actifs
+    function chargerTypesReparation() {
+        // Charger depuis l'API des types de réparation
+        fetch('/vehicules/api/types-reparation/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const typeSelect = document.getElementById('reparation_type_id');
+                    typeSelect.innerHTML = '<option value="">-- Sélectionner un type --</option>';
+
+                    data.types.forEach(type => {
+                        const option = document.createElement('option');
+                        option.value = type.id;
+                        option.textContent = type.nom;
+                        typeSelect.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                // Fallback : types par défaut
+                const typeSelect = document.getElementById('reparation_type_id');
+                typeSelect.innerHTML = `
+                    <option value="">-- Sélectionner un type --</option>
+                    <option value="1">Freinage</option>
+                    <option value="2">Moteur</option>
+                    <option value="3">Électrique</option>
+                    <option value="4">Carrosserie</option>
+                    <option value="5">Pneumatique</option>
+                    <option value="6">Autre</option>
+                `;
+            });
+    }
+
+    // Gérer le clic sur le bouton "Créer Réparation"
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.btn-creer-reparation')) {
+            const btn = e.target.closest('.btn-creer-reparation');
+            currentDepenseIdForReparation = btn.dataset.depenseId;
+            const montant = btn.dataset.montant;
+            const description = btn.dataset.description;
+
+            // Remplir le formulaire
+            document.getElementById('reparation_depense_id').value = currentDepenseIdForReparation;
+            document.getElementById('reparation_montant').value = montant;
+            document.getElementById('reparation_description').value = description;
+            document.getElementById('reparation_date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('reparation_garage').value = '';
+
+            // Charger les dropdowns
+            chargerVehiculesReparation();
+            chargerTypesReparation();
+
+            // Masquer le message
+            document.getElementById('creerReparationMessage').classList.add('d-none');
+
+            // Ouvrir le modal
+            creerReparationModal.show();
+        }
+    });
+
+    // Enregistrer la réparation
+    document.getElementById('saveReparationBtn').addEventListener('click', function() {
+        const saveBtn = this;
+        const depenseId = document.getElementById('reparation_depense_id').value;
+
+        // Validation
+        const vehiculeId = document.getElementById('reparation_vehicule_id').value;
+        const dateReparation = document.getElementById('reparation_date').value;
+        const typeReparationId = document.getElementById('reparation_type_id').value;
+        const garage = document.getElementById('reparation_garage').value.trim();
+
+        if (!vehiculeId) {
+            showReparationMessage('Veuillez sélectionner un véhicule', 'warning');
+            return;
+        }
+
+        if (!dateReparation) {
+            showReparationMessage('Veuillez saisir la date de réparation', 'warning');
+            return;
+        }
+
+        if (!typeReparationId) {
+            showReparationMessage('Veuillez sélectionner un type de réparation', 'warning');
+            return;
+        }
+
+        if (!garage) {
+            showReparationMessage('Veuillez saisir le garage/prestataire', 'warning');
+            return;
+        }
+
+        // Désactiver le bouton
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Création...';
+
+        // Récupérer le token CSRF
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        // Envoyer la requête AJAX
+        fetch(`/voyages/depenses/${depenseId}/creer-reparation/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                vehicule_id: vehiculeId,
+                date_reparation: dateReparation,
+                type_reparation_id: typeReparationId,
+                garage_prestataire: garage,
+                description: document.getElementById('reparation_description').value.trim()
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showReparationMessage(data.message, 'success');
+
+                // Recharger la liste des dépenses après 1 seconde
+                setTimeout(() => {
+                    loadDepenses();
+                    creerReparationModal.hide();
+                }, 1000);
+            } else {
+                showReparationMessage(data.error || 'Erreur lors de la création', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showReparationMessage('Erreur de connexion au serveur', 'danger');
+        })
+        .finally(() => {
+            // Réactiver le bouton
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="bi bi-tools me-2"></i>Créer la Réparation';
+        });
+    });
+
+    // Fonction pour afficher un message dans le modal de réparation
+    function showReparationMessage(message, type) {
+        const messageDiv = document.getElementById('creerReparationMessage');
+        messageDiv.className = `alert alert-${type}`;
+        messageDiv.textContent = message;
+        messageDiv.classList.remove('d-none');
+
+        if (type !== 'success') {
+            setTimeout(() => {
+                messageDiv.classList.add('d-none');
+            }, 5000);
+        }
+    }
+
+    // ========== GESTION DES REMBOURSEMENTS ==========
+
+    const rembourserModal = new bootstrap.Modal(document.getElementById('rembourserBilletModal'));
+    let currentRembourseBilletId = null;
+
+    document.querySelectorAll('.btn-demander-remboursement').forEach(btn => {
+        btn.addEventListener('click', function() {
+            currentRembourseBilletId = this.dataset.billetId;
+            document.getElementById('remb_billet_numero').textContent = this.dataset.billetNumero;
+            document.getElementById('remb_client_nom').textContent = this.dataset.clientNom;
+            document.getElementById('remb_montant').textContent = Number(this.dataset.montant).toLocaleString('fr-FR');
+            document.getElementById('remb_motif').value = '';
+            document.getElementById('rembourserMessage').classList.add('d-none');
+            rembourserModal.show();
+        });
+    });
+
+    document.getElementById('confirmRembourserBtn').addEventListener('click', function() {
+        const motif = document.getElementById('remb_motif').value.trim();
+        if (!motif) {
+            showRembourserMessage('Le motif est obligatoire', 'warning');
+            return;
+        }
+
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Envoi...';
+
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch(`/voyages/billets/${currentRembourseBilletId}/remboursement/demander/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify({ motif })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showRembourserMessage(data.message, 'success');
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showRembourserMessage(data.error || 'Erreur', 'danger');
+            }
+        })
+        .catch(() => showRembourserMessage('Erreur de connexion', 'danger'))
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-send me-2"></i>Envoyer la demande';
+        });
+    });
+
+    function showRembourserMessage(message, type) {
+        const div = document.getElementById('rembourserMessage');
+        div.className = `alert alert-${type}`;
+        div.textContent = message;
+        div.classList.remove('d-none');
+        if (type !== 'success') {
+            setTimeout(() => div.classList.add('d-none'), 5000);
+        }
+    }
+});
+
+// ── Traitement demandes gratuit ───────────────────────────────────
+document.querySelectorAll('.btn-traiter-gratuit').forEach(btn => {
+    btn.addEventListener('click', function () {
+        const demandeId = this.dataset.demandeId;
+        const action = this.dataset.action;
+        const row = document.getElementById(`demande-gratuit-row-${demandeId}`);
+        const msgDiv = row ? row.querySelector('.gratuit-msg') : null;
+
+        if (!confirm(action === 'approuver' ? 'Approuver ce ticket gratuit ?' : 'Rejeter cette demande ?')) return;
+
+        this.disabled = true;
+        fetch(`/voyages/ticket-gratuit/${demandeId}/traiter/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: JSON.stringify({ action: action })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                if (row) {
+                    row.style.opacity = '.4';
+                    row.style.transition = 'opacity .4s';
+                    if (msgDiv) {
+                        msgDiv.textContent = action === 'approuver' ? '✓ Approuvé' : '✗ Rejeté';
+                        msgDiv.style.color = action === 'approuver' ? '#16a34a' : '#dc2626';
+                        msgDiv.classList.remove('d-none');
+                    }
+                    setTimeout(() => row.remove(), 1200);
+                }
+            } else {
+                alert(data.error || 'Erreur');
+                this.disabled = false;
+            }
+        })
+        .catch(() => { alert('Erreur réseau'); this.disabled = false; });
+    });
+});
+</script>
+{% endblock %}

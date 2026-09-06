@@ -1,0 +1,88 @@
+{% if erreur_recherche %}
+<div class="alert alert-warning"><i class="bi bi-exclamation-circle me-2"></i>{{ erreur_recherche }}</div>
+{% endif %}
+
+{% if colis %}
+<div class="card shadow-sm">
+    <div class="card-header"><i class="bi bi-box-seam-fill me-2"></i>{{ colis.code_colis }}</div>
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <h6 class="text-muted text-uppercase small fw-bold">Destinataire</h6>
+                <p>{{ colis.destinataire_nom }}<br><span class="text-muted">{{ colis.destinataire_telephone }}</span></p>
+            </div>
+            <div class="col-md-6">
+                <h6 class="text-muted text-uppercase small fw-bold">Expéditeur</h6>
+                <p>{{ colis.expediteur_nom }}<br><span class="text-muted">{{ colis.expediteur_telephone }}</span></p>
+            </div>
+        </div>
+        <p><strong>{{ colis.type_colis.nom }}</strong>
+            {% if colis.statut == 'receptionne' %}
+                — arrivé le {{ colis.date_arrivee|date:"d/m/Y H:i" }}, réceptionné le {{ colis.date_reception|date:"d/m/Y H:i" }}
+            {% elif colis.statut == 'arrive' %}
+                — arrivé le {{ colis.date_arrivee|date:"d/m/Y H:i" }}, pas encore réceptionné par la gare
+            {% else %}
+                — en transit, pas encore arrivé
+            {% endif %}
+        </p>
+        <div class="alert alert-secondary small">
+            <i class="bi bi-check-circle me-1"></i>Port déjà payé par l'expéditeur à l'enregistrement.
+        </div>
+
+        {% if colis.statut == 'receptionne' %}
+        <form method="post" action="{% url 'courrier:retrait' %}">
+            {% csrf_token %}
+            <input type="hidden" name="colis_id" value="{{ colis.public_id }}">
+            <span id="retraitDestinataireInfo" hidden data-nom="{{ colis.destinataire_nom }}" data-tel="{{ colis.destinataire_telephone }}"></span>
+
+            <div class="mb-3">
+                <label class="form-label d-block">Qui se présente pour retirer ce colis ? *</label>
+                <div class="btn-group" role="group">
+                    <input type="radio" class="btn-check" name="qui_retire" id="quiRetireDestinataire" checked>
+                    <label class="btn btn-outline-primary btn-sm" for="quiRetireDestinataire">Le destinataire lui-même</label>
+                    <input type="radio" class="btn-check" name="qui_retire" id="quiRetireAutre">
+                    <label class="btn btn-outline-primary btn-sm" for="quiRetireAutre">Une autre personne</label>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">{{ form.code_retrait.label }} *</label>
+                    {{ form.code_retrait }}
+                    {% if form.code_retrait.errors %}<div class="invalid-feedback d-block">{{ form.code_retrait.errors }}</div>{% endif %}
+                </div>
+                <div class="col-md-6 mb-3 position-relative">
+                    <label class="form-label">{{ form.retirant_telephone.label }} *</label>
+                    {{ form.retirant_telephone }}
+                    <div id="retirantSuggestions" class="list-group position-absolute w-100 shadow-sm" style="z-index:1000; display:none;"></div>
+                    {% if form.retirant_telephone.errors %}<div class="invalid-feedback d-block">{{ form.retirant_telephone.errors }}</div>{% endif %}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">{{ form.retirant_nom.label }} *</label>
+                    {{ form.retirant_nom }}
+                    {% if form.retirant_nom.errors %}<div class="invalid-feedback d-block">{{ form.retirant_nom.errors }}</div>{% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">{{ form.piece_identite.label }} *</label>
+                    {{ form.piece_identite }}
+                    <div class="form-text">Mémorisé pour ce numéro — ressortira automatiquement au prochain retrait.</div>
+                    {% if form.piece_identite.errors %}<div class="invalid-feedback d-block">{{ form.piece_identite.errors }}</div>{% endif %}
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-1"></i>Confirmer le retrait</button>
+        </form>
+        {% elif colis.statut == 'arrive' %}
+        <div class="alert alert-warning small mb-0">
+            <i class="bi bi-hourglass-split me-1"></i>Ce colis est arrivé mais pas encore réceptionné par la gare — passez d'abord par l'écran <a href="{% url 'courrier:reception_liste' %}">Réception</a>.
+        </div>
+        {% else %}
+        <div class="alert alert-warning small mb-0">
+            <i class="bi bi-truck me-1"></i>Ce colis est en route — repassez une fois qu'il sera arrivé et réceptionné par la gare.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}

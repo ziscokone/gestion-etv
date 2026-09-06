@@ -1,0 +1,45 @@
+{% if convoyeurs %}
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Nom complet</th>
+                <th>Téléphone</th>
+                <th>Statut</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for convoyeur in convoyeurs %}
+            <tr>
+                <td><strong>{{ convoyeur.nom_complet }}</strong></td>
+                <td>{{ convoyeur.telephone }}</td>
+                <td>
+                    {% if convoyeur.actif %}
+                        <span class="badge bg-success">Actif</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Inactif</span>
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    <a href="{% url 'personnel:convoyeur_update' convoyeur.pk %}" class="btn btn-sm btn-outline-primary" title="Modifier"><i class="bi bi-pencil"></i></a>
+                    <a href="{% url 'personnel:convoyeur_delete' convoyeur.pk %}" class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center py-5">
+    <i class="bi bi-person-lines-fill" style="font-size: 3rem; color: var(--color-text-muted);"></i>
+    <p class="mt-3 text-muted">
+        {% if search_query %}
+            Aucun convoyeur trouvé pour "{{ search_query }}".
+        {% else %}
+            Aucun convoyeur enregistré.
+        {% endif %}
+    </p>
+    <a href="{% url 'personnel:convoyeur_create' %}" class="btn btn-primary mt-2">Ajouter un convoyeur</a>
+</div>
+{% endif %}

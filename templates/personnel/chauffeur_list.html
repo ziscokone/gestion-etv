@@ -1,0 +1,275 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Chauffeurs{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── En-tête ─────────────────────────────────────────── */
+  .page-header {
+    background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
+    border-radius: 14px;
+    padding: 26px 32px;
+    color: #fff;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .page-header::after {
+    pointer-events: none;
+    content: '\F4C4';
+    font-family: 'Bootstrap-Icons';
+    font-size: 9rem;
+    opacity: 0.06;
+    position: absolute;
+    right: 24px;
+    top: -10px;
+    line-height: 1;
+  }
+  .page-header h4 { font-weight: 700; margin: 0; }
+  .page-header .btn-new {
+    background: #fff;
+    color: var(--color-accent);
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 8px 18px;
+    transition: transform 0.15s, box-shadow 0.15s;
+    white-space: nowrap;
+  }
+  .page-header .btn-new:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    color: var(--color-accent);
+  }
+
+  /* ── Compteurs dans l'en-tête ────────────────────────── */
+  .header-stat {
+    background: rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 8px 16px;
+    text-align: center;
+    min-width: 80px;
+  }
+  .header-stat .hs-val { font-size: 1.4rem; font-weight: 700; line-height: 1; }
+  .header-stat .hs-lbl { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+
+  /* ── Filtre ──────────────────────────────────────────── */
+  .filter-zone {
+    background: #f8f9fc;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 22px;
+  }
+  .statut-pill {
+    border: 2px solid #d0d7e6;
+    border-radius: 20px;
+    padding: 5px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    background: #fff;
+    color: #555;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+  .statut-pill:hover    { border-color: var(--color-accent); color: var(--color-accent); }
+  .statut-pill.active   { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
+
+  /* ── Table ───────────────────────────────────────────── */
+  .chauffeurs-card {
+    border: none;
+    border-radius: 13px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    overflow: hidden;
+  }
+  .chauffeurs-card .table-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid #f0f0f0;
+    font-weight: 600;
+    font-size: 14px;
+    color: #1e3260;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+  }
+
+  .ch-table th {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+    padding: 11px 16px;
+    background: #fafbfc;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .ch-table td { padding: 13px 16px; vertical-align: middle; font-size: 13px; }
+  .ch-table tbody tr { transition: background 0.12s; }
+  .ch-table tbody tr:hover { background: #f8f9fc; }
+  .ch-table tbody tr:last-child td { border-bottom: none; }
+
+  /* Avatar */
+  .ch-avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1e3260, var(--color-accent));
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .ch-avatar.inactif { background: linear-gradient(135deg, #6b7280, #9ca3af); }
+  .ch-name  { font-weight: 700; color: #111827; font-size: 14px; }
+  .ch-sub   { font-size: 11px; color: #9ca3af; margin-top: 1px; }
+
+  /* Badges statut */
+  .badge-actif   { background: #dcfce7; color: #166534; border-radius: 12px; padding: 3px 10px; font-size: 11px; font-weight: 600; }
+  .badge-inactif { background: #f1f5f9; color: #64748b; border-radius: 12px; padding: 3px 10px; font-size: 11px; font-weight: 600; }
+
+  /* Voyages count */
+  .voyages-count {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-weight: 600; color: var(--color-accent); font-size: 13px;
+  }
+  .voyages-count.zero { color: #9ca3af; font-weight: 400; }
+
+  /* Boutons action */
+  .btn-action {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #6b7280;
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+  .btn-action:hover       { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+  .btn-action.view:hover  { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+  .btn-action.edit:hover  { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+  .btn-action.del:hover   { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+
+  /* État vide */
+  .empty-state { text-align: center; padding: 56px 20px; color: #9ca3af; }
+  .empty-state i { font-size: 3rem; display: block; margin-bottom: 12px; }
+
+  /* Pagination — bleu nuit de l'application */
+  .pagination-nuit { gap: 6px; }
+  .pagination-nuit .page-item .page-link {
+      border: 1.5px solid var(--color-accent);
+      color: var(--color-accent);
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 12.5px;
+      padding: 6px 14px;
+      background: #fff;
+      transition: all 0.15s;
+  }
+  .pagination-nuit .page-item .page-link:hover {
+      background: var(--color-accent);
+      color: #fff;
+  }
+  .pagination-nuit .page-item.active .page-link {
+      background: var(--color-accent);
+      border-color: var(--color-accent);
+      color: #fff;
+      cursor: default;
+      font-weight: 700;
+  }
+  .pagination-nuit .page-item.active .page-link:hover {
+      background: var(--color-accent);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-4">
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show mb-3">
+        {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- ── En-tête ──────────────────────────────────────────────── -->
+  <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div>
+      <h4><i class="bi bi-person-badge me-2"></i>Chauffeurs</h4>
+      <div class="d-flex gap-3 mt-3 flex-wrap">
+        <div class="header-stat">
+          <div class="hs-val">{{ nb_total }}</div>
+          <div class="hs-lbl">Total</div>
+        </div>
+        <div class="header-stat">
+          <div class="hs-val">{{ nb_actifs }}</div>
+          <div class="hs-lbl">Actifs</div>
+        </div>
+        <div class="header-stat">
+          <div class="hs-val">{{ nb_inactifs }}</div>
+          <div class="hs-lbl">Inactifs</div>
+        </div>
+      </div>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+      {% if request.user.is_superuser %}
+      <a href="{% url 'personnel:type_document_list' %}" class="btn btn-info fw-semibold" title="Gérer les types de document">
+        <i class="bi bi-tags me-1"></i>Types de document
+      </a>
+      {% endif %}
+      <a href="{% url 'personnel:chauffeur_create' %}" class="btn btn-success fw-semibold">
+        <i class="bi bi-plus-circle me-1"></i>Nouveau Chauffeur
+      </a>
+    </div>
+  </div>
+
+  <!-- ── Filtres ───────────────────────────────────────────────── -->
+  <div class="filter-zone">
+    <form method="get" data-live-filter="{% url 'personnel:chauffeur_list_ajax' %}" data-target="chauffeurTableContainer" class="row g-3 align-items-center">
+      <div class="col-md-6">
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+          <input type="text" name="q" class="form-control"
+                 placeholder="Rechercher par nom, téléphone ou permis..."
+                 value="{{ search_query }}">
+          {% if search_query %}
+          <a href="?statut={{ statut_filtre }}" class="btn btn-outline-secondary">
+            <i class="bi bi-x"></i>
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-auto d-flex gap-2 flex-wrap align-items-center">
+        <span class="text-muted fw-semibold" style="font-size:12px">Statut :</span>
+        <a href="?q={{ search_query }}&statut=tous" data-name="statut" data-value="tous"
+           class="statut-pill js-filter-pill {% if statut_filtre == 'tous' %}active{% endif %}">Tous</a>
+        <a href="?q={{ search_query }}&statut=actifs" data-name="statut" data-value="actifs"
+           class="statut-pill js-filter-pill {% if statut_filtre == 'actifs' %}active{% endif %}">Actifs</a>
+        <a href="?q={{ search_query }}&statut=inactifs" data-name="statut" data-value="inactifs"
+           class="statut-pill js-filter-pill {% if statut_filtre == 'inactifs' %}active{% endif %}">Inactifs</a>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="bi bi-search me-1"></i>Rechercher
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ── Table ─────────────────────────────────────────────────── -->
+  <div class="chauffeurs-card" id="chauffeurTableContainer">
+    {% include 'personnel/partials/chauffeur_table.html' %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/live-filter.js' %}"></script>
+{% endblock %}

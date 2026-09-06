@@ -1,0 +1,84 @@
+    <div class="table-header">
+        <span><i class="bi bi-collection me-2" style="color:var(--color-accent)"></i>Liste des modèles</span>
+        <span class="badge rounded-pill" style="background:#eef2ff;color:#4338ca;font-size:12px;font-weight:600">
+            {{ modeles|length }} résultat{{ modeles|length|pluralize }}
+        </span>
+    </div>
+
+    {% if modeles %}
+    <div class="table-responsive">
+        <table class="table m-table mb-0">
+            <thead>
+                <tr>
+                    <th>Marque / Modèle</th>
+                    <th>Capacité</th>
+                    <th>Véhicules assignés</th>
+                    <th>Enregistré le</th>
+                    <th class="text-end pe-4">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for modele in modeles %}
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="m-icon">
+                                {{ modele.marque|slice:":2"|upper }}
+                            </div>
+                            <div>
+                                <div class="m-marque">{{ modele.marque }}</div>
+                                <div class="m-sub">{{ modele.nom }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge-capacite">
+                            <i class="bi bi-people"></i>{{ modele.capacite }} places
+                        </span>
+                    </td>
+                    <td>
+                        {% if modele.nb_vehicules > 0 %}
+                            <span class="badge-veh">
+                                <i class="bi bi-bus-front me-1"></i>{{ modele.nb_vehicules }} véhicule{{ modele.nb_vehicules|pluralize }}
+                            </span>
+                        {% else %}
+                            <span class="badge-veh-zero">Aucun</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted" style="font-size:12px;">
+                        {{ modele.date_creation|date:"d/m/Y" }}
+                    </td>
+                    <td class="text-end pe-4">
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'vehicules:modele_update' modele.pk %}"
+                               class="btn-action edit" title="Modifier">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'vehicules:modele_delete' modele.pk %}"
+                               class="btn-action del" title="Supprimer">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% else %}
+    <div class="empty-state">
+        <i class="bi bi-collection text-muted"></i>
+        {% if search_query %}
+            <p class="fw-semibold">Aucun résultat pour "{{ search_query }}"</p>
+            <a href="{% url 'vehicules:modele_list' %}" class="btn btn-sm btn-outline-secondary mt-2">
+                <i class="bi bi-x me-1"></i>Réinitialiser
+            </a>
+        {% else %}
+            <p class="fw-semibold">Aucun modèle enregistré</p>
+            <a href="{% url 'vehicules:modele_create' %}" class="btn btn-primary btn-sm mt-2">
+                <i class="bi bi-plus-circle me-1"></i>Créer le premier modèle
+            </a>
+        {% endif %}
+    </div>
+    {% endif %}

@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestion des Gares - Gestion Billetterie{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            <i class="bi bi-building me-2 text-accent"></i>
+            Gestion des Gares
+        </h2>
+        {% if user.has_global_access %}
+        <a href="{% url 'gares:gare_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-2"></i>Nouvelle gare
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="card-body p-0">
+            {% if gares %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Nom</th>
+                            <th>Ville</th>
+                            <th>Téléphone</th>
+                            <th>Chef de gare</th>
+                            <th>Statut</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for gare in gares %}
+                        <tr>
+                            <td><code>{{ gare.code }}</code></td>
+                            <td><strong>{{ gare.nom }}</strong></td>
+                            <td>{{ gare.ville }}</td>
+                            <td>{{ gare.telephone|default:"-" }}</td>
+                            <td>
+                                {% with chef=gare.get_chef_gare %}
+                                    {% if chef %}
+                                        {{ chef.nom_complet }}
+                                    {% else %}
+                                        <span class="text-muted">Non assigné</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                            <td>
+                                {% if gare.active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <a href="{% url 'gares:gare_update' gare.pk %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                {% if user.is_super_admin and gare.active %}
+                                <button type="button" class="btn btn-sm btn-outline-danger" title="Désactiver"
+                                        data-bs-toggle="modal" data-bs-target="#deactivateGareModal{{ gare.pk }}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if user.is_super_admin %}
+            {% for gare in gares %}
+            <div class="modal fade" id="deactivateGareModal{{ gare.pk }}" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered modal-sm">
+                    <div class="modal-content">
+                        <div class="modal-header bg-danger text-white">
+                            <h6 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Désactiver la gare</h6>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="mb-2">Voulez-vous désactiver :</p>
+                            <p class="fw-bold mb-2">{{ gare.nom }} ({{ gare.code }})</p>
+                            <p class="text-muted small mb-0">
+                                La gare ne sera plus proposée pour les nouveaux voyages/lignes, mais elle et son
+                                historique (voyages, billets) resteront conservés en base. Vous pourrez la
+                                réactiver plus tard.
+                            </p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+                            <form method="post" action="{% url 'gares:gare_delete' gare.pk %}" class="mb-0">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="bi bi-slash-circle me-1"></i>Désactiver
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% else %}
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-building display-4"></i>
+                <p class="mt-3">Aucune gare enregistrée</p>
+                {% if user.has_global_access %}
+                <a href="{% url 'gares:gare_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-lg me-2"></i>Créer une gare
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

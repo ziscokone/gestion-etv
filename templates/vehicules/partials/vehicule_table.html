@@ -1,0 +1,153 @@
+    <div class="table-header">
+        <span><i class="bi bi-bus-front me-2" style="color:var(--color-accent)"></i>Liste des véhicules</span>
+        <span class="badge rounded-pill" style="background:#eef2ff;color:#4338ca;font-size:12px;font-weight:600">
+            {{ nb_resultats_filtres }} résultat{{ nb_resultats_filtres|pluralize }}
+        </span>
+    </div>
+
+    {% if vehicules %}
+    <div class="table-responsive">
+        <table class="table v-table mb-0">
+            <thead>
+                <tr>
+                    <th>Véhicule</th>
+                    <th>Modèle</th>
+                    <th>Capacité</th>
+                    <th>Réparations</th>
+                    <th>Statut</th>
+                    <th>Enregistré le</th>
+                    <th class="text-end pe-4">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for vehicule in vehicules %}
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="v-icon {% if not vehicule.actif %}inactif{% endif %}">
+                                <i class="bi bi-bus-front"></i>
+                            </div>
+                            <div>
+                                <div class="v-immat">{{ vehicule.display_immat }}</div>
+                                <div class="v-sub">{{ vehicule.modele.marque }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ vehicule.modele.nom }}</td>
+                    <td>
+                        <span style="font-weight:600">{{ vehicule.modele.capacite }}</span>
+                        <span class="text-muted" style="font-size:11px"> places</span>
+                    </td>
+                    <td>
+                        {% with nb=vehicule.reparations.count %}
+                            {% if vehicule.est_en_reparation %}
+                                <span class="badge-rep"><i class="bi bi-tools me-1"></i>En cours</span>
+                            {% elif nb > 0 %}
+                                <span class="text-muted" style="font-size:12px">{{ nb }} réparation{{ nb|pluralize }}</span>
+                            {% else %}
+                                <span class="text-muted" style="font-size:12px">—</span>
+                            {% endif %}
+                        {% endwith %}
+                    </td>
+                    <td>
+                        {% if vehicule.actif %}
+                            <span class="badge-actif"><i class="bi bi-check-circle me-1"></i>Actif</span>
+                        {% else %}
+                            <span class="badge-inactif"><i class="bi bi-pause-circle me-1"></i>Inactif</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted" style="font-size:12px">{{ vehicule.date_creation|date:"d/m/Y" }}</td>
+                    <td class="text-end pe-4">
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'vehicules:vehicule_update' vehicule.pk %}"
+                               class="btn-action edit" title="Modifier">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            {% if request.user.is_super_admin and vehicule.actif %}
+                            <button type="button" class="btn-action del" title="Désactiver"
+                                    data-bs-toggle="modal" data-bs-target="#deactivateVehiculeModal{{ vehicule.pk }}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if request.user.is_super_admin %}
+    {% for vehicule in vehicules %}
+    <div class="modal fade" id="deactivateVehiculeModal{{ vehicule.pk }}" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h6 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Désactiver le véhicule</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">Voulez-vous désactiver :</p>
+                    <p class="fw-bold mb-2">{{ vehicule.display_immat }} ({{ vehicule.modele.nom }})</p>
+                    <p class="text-muted small mb-0">
+                        Le véhicule ne pourra plus être assigné à de nouveaux voyages, mais il et son historique
+                        (voyages, réparations) resteront conservés en base. Vous pourrez le réactiver plus tard.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+                    <form method="post" action="{% url 'vehicules:vehicule_delete' vehicule.pk %}" class="mb-0">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-sm">
+                            <i class="bi bi-slash-circle me-1"></i>Désactiver
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if is_paginated %}
+    <nav class="d-flex justify-content-center py-3 border-top">
+        <ul class="pagination pagination-sm pagination-nuit mb-0">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1&q={{ search_query }}&statut={{ statut_filtre }}">Première</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ search_query }}&statut={{ statut_filtre }}">Précédent</a>
+                </li>
+            {% endif %}
+            <li class="page-item active">
+                <span class="page-link">Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span>
+            </li>
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ search_query }}&statut={{ statut_filtre }}">Suivant</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&q={{ search_query }}&statut={{ statut_filtre }}">Dernière</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <i class="bi bi-bus-front text-muted"></i>
+        {% if search_query or statut_filtre != 'tous' %}
+            <p class="fw-semibold">Aucun résultat pour ce filtre</p>
+            <a href="{% url 'vehicules:vehicule_list' %}" class="btn btn-sm btn-outline-secondary mt-2">
+                <i class="bi bi-x me-1"></i>Réinitialiser les filtres
+            </a>
+        {% else %}
+            <p class="fw-semibold">Aucun véhicule enregistré</p>
+            <a href="{% url 'vehicules:vehicule_create' %}" class="btn btn-primary btn-sm mt-2">
+                <i class="bi bi-plus-circle me-1"></i>Créer le premier véhicule
+            </a>
+        {% endif %}
+    </div>
+    {% endif %}

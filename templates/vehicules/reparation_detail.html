@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Détails Réparation - {{ reparation.vehicule.display_immat }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.rep-header {
+    background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
+    border-radius: 14px 14px 0 0; padding: 22px 28px; color: #fff; position: relative; overflow: hidden;
+}
+.rep-header::after {
+    content: '\F4D4'; font-family: 'Bootstrap-Icons'; font-size: 8rem; opacity: 0.06;
+    position: absolute; right: 20px; top: -8px; line-height: 1; pointer-events: none;
+}
+.rep-header h4 { font-weight: 700; margin: 0; font-size: 1.25rem; }
+.rep-chip { background: rgba(255,255,255,0.18); border-radius: 8px; padding: 4px 12px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
+.statut-badge-lg { border-radius: 20px; padding: 5px 14px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; }
+.statut-badge-lg.terminee   { background: #dcfce7; color: #166534; }
+.statut-badge-lg.en_cours   { background: #fef3c7; color: #92400e; }
+.statut-badge-lg.en_attente { background: #dbeafe; color: #1e40af; }
+.info-block { background: #f8f9fc; border-radius: 10px; padding: 16px 18px; border: 1px solid #e5e7eb; height: 100%; }
+.info-block .ib-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af; margin-bottom: 6px; }
+.info-block .ib-val { font-size: 14px; font-weight: 600; color: #111827; }
+.montant-block { background: linear-gradient(135deg, #1e3260, var(--color-accent)); border-radius: 10px; padding: 16px 18px; color: #fff; text-align: center; }
+.montant-block .mb-label { font-size: 11px; opacity: 0.8; margin-bottom: 4px; }
+.montant-block .mb-val { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+
+/* Tableau des interventions */
+.lignes-table { width: 100%; font-size: 13px; border-collapse: collapse; }
+.lignes-table th { background: #f8f9fc; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #6b7280; padding: 10px 14px; border-bottom: 2px solid #e5e7eb; }
+.lignes-table td { padding: 12px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+.lignes-table tr:last-child td { border-bottom: none; }
+.type-badge { background: #eef2ff; color: #3730a3; border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
+.km-badge { background: #f0fdf4; color: #166534; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+.vidange-badge { background: #eff6ff; color: #1d4ed8; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
+.desc-block { border-radius: 10px; padding: 16px 18px; border-left: 4px solid; }
+.desc-block.terminee   { background: #f0fdf4; border-color: var(--color-success); }
+.desc-block.en_cours   { background: #fefce8; border-color: var(--color-warning); }
+.desc-block.en_attente { background: #eff6ff; border-color: #3b82f6; }
+.desc-block .db-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; margin-bottom: 8px; }
+.desc-block .db-val { font-size: 13px; color: #374151; line-height: 1.6; }
+.btn-action-lg { display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; padding: 7px 16px; font-size: 13px; font-weight: 600; border: 1px solid #e5e7eb; background: #fff; color: #6b7280; transition: all 0.15s; text-decoration: none; }
+.btn-action-lg:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.1); }
+.btn-action-lg.edit:hover { background: #fefce8; color: #92400e; border-color: #fde68a; }
+.btn-action-lg.del:hover  { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+.meta-dates { font-size: 11px; color: #9ca3af; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-sm" style="border:none;border-radius:14px;overflow:hidden;">
+
+                <!-- Header -->
+                <div class="rep-header">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                        <div>
+                            <h4><i class="bi bi-tools me-2"></i>{{ reparation.vehicule.display_immat }}</h4>
+                            <div class="d-flex gap-2 mt-2 flex-wrap align-items-center">
+                                <span class="rep-chip"><i class="bi bi-collection"></i>{{ reparation.vehicule.modele }}</span>
+                                <span class="rep-chip"><i class="bi bi-calendar3"></i>{{ reparation.date_reparation|date:"d/m/Y" }}</span>
+                                <span class="rep-chip"><i class="bi bi-building"></i>{{ reparation.garage_prestataire }}</span>
+                                <span class="statut-badge-lg {{ reparation.statut }}">
+                                    {% if reparation.statut == 'terminee' %}<i class="bi bi-check-circle"></i> Terminée
+                                    {% elif reparation.statut == 'en_cours' %}<i class="bi bi-hourglass-split"></i> En cours
+                                    {% else %}<i class="bi bi-clock"></i> En attente{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        <a href="{% url 'vehicules:reparation_list' %}" class="btn btn-sm"
+                           style="background:rgba(255,255,255,0.2);color:#fff;border:1.5px solid rgba(255,255,255,0.4);font-weight:600;">
+                            <i class="bi bi-arrow-left me-1"></i>Retour
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Corps -->
+                <div class="card-body p-4">
+
+                    <!-- Montant total + nb interventions -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <div class="montant-block">
+                                <div class="mb-label"><i class="bi bi-currency-exchange me-1"></i>Montant total</div>
+                                <div class="mb-val">{{ reparation.montant_total|floatformat:0|intcomma }}</div>
+                                <div style="font-size:12px;opacity:0.8;margin-top:2px;">FCFA</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-block">
+                                <div class="ib-label"><i class="bi bi-list-check me-1"></i>Interventions</div>
+                                <div class="ib-val">{{ reparation.lignes.count }} ligne{% if reparation.lignes.count > 1 %}s{% endif %}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-block">
+                                <div class="ib-label"><i class="bi bi-speedometer2 me-1"></i>Km véhicule</div>
+                                <div class="ib-val">{{ reparation.vehicule.kilometrage_actuel|intcomma }} km</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-block">
+                                <div class="ib-label"><i class="bi bi-calendar3 me-1"></i>Date</div>
+                                <div class="ib-val">{{ reparation.date_reparation|date:"d/m/Y" }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tableau des lignes d'intervention -->
+                    <div style="font-size:13px;font-weight:700;color:#1e3260;margin-bottom:12px;">
+                        <i class="bi bi-list-check me-2"></i>Détail des interventions
+                    </div>
+                    <div class="table-responsive mb-4">
+                        <table class="lignes-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                    <th>Km compteur</th>
+                                    <th>Prochain</th>
+                                    <th>Pièces</th>
+                                    <th style="text-align:right;">Montant</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ligne in reparation.lignes.all %}
+                                <tr>
+                                    <td style="font-weight:700;color:#6b7280;width:32px;">{{ forloop.counter }}</td>
+                                    <td>
+                                        <span class="type-badge">{{ ligne.type_reparation.nom }}</span>
+                                        {% if ligne.type_reparation.is_vidange %}
+                                        <div class="mt-1">
+                                            <span class="vidange-badge"><i class="bi bi-droplet-fill me-1"></i>{{ ligne.huile_utilisee|default:"Huile N/R" }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if ligne.creee_depuis_guichet %}
+                                        <div class="mt-1"><span style="font-size:10px;background:#fefce8;color:#92400e;padding:1px 6px;border-radius:4px;">Guichet</span></div>
+                                        {% endif %}
+                                    </td>
+                                    <td style="color:#374151;max-width:260px;">{{ ligne.description }}</td>
+                                    <td>
+                                        {% if ligne.kilometrage %}
+                                        <span class="km-badge"><i class="bi bi-speedometer2"></i>{{ ligne.kilometrage|intcomma }} km</span>
+                                        {% else %}<span class="text-muted">—</span>{% endif %}
+                                    </td>
+                                    <td>
+                                        {% if ligne.km_prochaine %}
+                                        <span class="km-badge"><i class="bi bi-arrow-right"></i>{{ ligne.km_prochaine|intcomma }} km</span>
+                                        {% else %}<span class="text-muted">—</span>{% endif %}
+                                    </td>
+                                    <td style="font-size:12px;color:#6b7280;max-width:180px;">
+                                        {% if ligne.pieces_remplacees %}{{ ligne.pieces_remplacees }}{% else %}<span class="text-muted">—</span>{% endif %}
+                                    </td>
+                                    <td style="text-align:right;font-weight:700;color:#1e3260;white-space:nowrap;">
+                                        {{ ligne.montant|floatformat:0|intcomma }} F
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr style="background:#f8f9fc;">
+                                    <td colspan="6" style="padding:10px 14px;font-weight:700;color:#374151;font-size:12px;text-align:right;">
+                                        <i class="bi bi-calculator me-1"></i>Total
+                                    </td>
+                                    <td style="padding:10px 14px;text-align:right;font-weight:800;color:#1e3260;font-size:14px;white-space:nowrap;">
+                                        {{ reparation.montant_total|floatformat:0|intcomma }} F
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <!-- Notes générales -->
+                    {% if reparation.notes %}
+                    <div class="desc-block {{ reparation.statut }} mb-4">
+                        <div class="db-label"><i class="bi bi-sticky me-1"></i>Notes générales</div>
+                        <div class="db-val">{{ reparation.notes }}</div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Méta dates -->
+                    <div class="meta-dates mb-4">
+                        <i class="bi bi-clock-history me-1"></i>Créé le {{ reparation.date_creation|date:"d/m/Y à H:i" }}
+                        {% if reparation.date_modification %}
+                        &nbsp;·&nbsp;<i class="bi bi-pencil me-1"></i>Modifié le {{ reparation.date_modification|date:"d/m/Y à H:i" }}
+                        {% endif %}
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-flex justify-content-end gap-2 flex-wrap">
+                        {% if reparation.statut != 'terminee' %}
+
+                        <form method="post" action="{% url 'vehicules:reparation_terminer' reparation.pk %}" id="form-terminer">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-action-lg"
+                                    style="background:#dcfce7;color:#166534;border-color:#86efac;font-weight:700;"
+                                    onclick="return confirm('Confirmer : marquer cette réparation comme terminée ?')">
+                                <i class="bi bi-check-circle-fill"></i> Terminer
+                            </button>
+                        </form>
+
+                        <a href="{% url 'vehicules:reparation_update' reparation.pk %}" class="btn-action-lg edit">
+                            <i class="bi bi-pencil"></i> Modifier
+                        </a>
+                        {% if user.role == 'super_admin' %}
+                        <a href="{% url 'vehicules:reparation_delete' reparation.pk %}" class="btn-action-lg del">
+                            <i class="bi bi-trash"></i> Supprimer
+                        </a>
+                        {% endif %}
+
+                        {% else %}
+                        <span style="font-size:13px;color:#166534;font-weight:600;display:flex;align-items:center;gap:5px;">
+                            <i class="bi bi-check-circle-fill"></i> Réparation terminée
+                        </span>
+                        {% endif %}
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

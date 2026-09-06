@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if form.instance.pk %}Modifier{% else %}Nouveau{% endif %} Type de Réparation{% endblock %}
+
+{% block extra_css %}
+<style>
+.km-options { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px dashed #bae6fd; }
+.km-options.show { display: block; }
+.vidange-option { display: none; margin-top: 10px; }
+.vidange-option.show { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-tags me-2"></i>
+                        {% if form.instance.pk %}Modifier le type de réparation{% else %}Nouveau type de réparation{% endif %}
+                    </h4>
+                </div>
+
+                <div class="card-body">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                        {% endif %}
+
+                        <!-- Nom -->
+                        <div class="mb-3">
+                            <label for="{{ form.nom.id_for_label }}" class="form-label fw-bold">
+                                <i class="bi bi-tag me-1"></i>{{ form.nom.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.nom }}
+                            {% if form.nom.errors %}<div class="invalid-feedback d-block">{{ form.nom.errors }}</div>{% endif %}
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">
+                                <i class="bi bi-file-text me-1"></i>{{ form.description.label }}
+                            </label>
+                            {{ form.description }}
+                        </div>
+
+                        <!-- Nécessite kilométrage + sous-options -->
+                        <div class="mb-3">
+                            <div class="p-3" style="background:#eff6ff;border-radius:10px;border:1.5px solid #bfdbfe;">
+
+                                <!-- Checkbox principale -->
+                                <div class="form-check">
+                                    {{ form.necessite_kilometrage }}
+                                    <label class="form-check-label fw-bold" for="{{ form.necessite_kilometrage.id_for_label }}">
+                                        <i class="bi bi-speedometer2 me-1 text-primary"></i>{{ form.necessite_kilometrage.label }}
+                                    </label>
+                                </div>
+                                <small class="text-muted d-block mt-1">
+                                    {{ form.necessite_kilometrage.help_text }}
+                                </small>
+                                {% if form.necessite_kilometrage.errors %}
+                                <div class="invalid-feedback d-block">{{ form.necessite_kilometrage.errors }}</div>
+                                {% endif %}
+
+                                <!-- Sous-options (visibles si necessite_kilometrage coché) -->
+                                <div class="km-options {% if form.instance.necessite_kilometrage %}show{% endif %}" id="km-options">
+
+                                    <!-- Intervalle km par défaut -->
+                                    <div class="mb-3">
+                                        <label for="{{ form.intervalle_km_defaut.id_for_label }}" class="form-label fw-semibold" style="font-size:13px;">
+                                            <i class="bi bi-arrow-repeat me-1"></i>{{ form.intervalle_km_defaut.label }}
+                                        </label>
+                                        {{ form.intervalle_km_defaut }}
+                                        <div class="form-text">{{ form.intervalle_km_defaut.help_text }}</div>
+                                        {% if form.intervalle_km_defaut.errors %}<div class="invalid-feedback d-block">{{ form.intervalle_km_defaut.errors }}</div>{% endif %}
+                                    </div>
+
+                                    <!-- Vidange (sous-option) -->
+                                    <div class="vidange-option {% if form.instance.is_vidange %}show{% endif %}" id="vidange-option-wrapper">
+                                        <div style="background:#dbeafe;border-radius:8px;padding:10px 14px;">
+                                            <div class="form-check">
+                                                {{ form.is_vidange }}
+                                                <label class="form-check-label fw-semibold" for="{{ form.is_vidange.id_for_label }}" style="font-size:13px;">
+                                                    <i class="bi bi-droplet-fill me-1 text-primary"></i>{{ form.is_vidange.label }}
+                                                </label>
+                                            </div>
+                                            <small class="text-muted d-block mt-1">{{ form.is_vidange.help_text }}</small>
+                                            {% if form.is_vidange.errors %}<div class="invalid-feedback d-block">{{ form.is_vidange.errors }}</div>{% endif %}
+                                        </div>
+                                    </div>
+
+                                    <!-- Bouton pour afficher l'option vidange -->
+                                    <div id="btn-show-vidange" style="margin-top:8px;{% if form.instance.is_vidange %}display:none;{% endif %}">
+                                        <button type="button" class="btn btn-sm btn-outline-primary"
+                                                style="font-size:12px;"
+                                                onclick="showVidangeOption()">
+                                            <i class="bi bi-droplet me-1"></i>C'est aussi une vidange d'huile ?
+                                        </button>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Actif -->
+                        <div class="mb-3">
+                            <div class="form-check">
+                                {{ form.actif }}
+                                <label class="form-check-label" for="{{ form.actif.id_for_label }}">{{ form.actif.label }}</label>
+                            </div>
+                            <small class="text-muted">Les types inactifs ne seront pas proposés lors d'une réparation.</small>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'vehicules:type_reparation_list' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-1"></i> Annuler
+                            </a>
+                            <button type="submit" class="btn btn-success fw-bold">
+                                <i class="bi bi-check-circle me-1"></i>
+                                {% if form.instance.pk %}Modifier{% else %}Enregistrer{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const chkKm = document.getElementById('id_necessite_kilometrage');
+    const chkVidange = document.getElementById('id_is_vidange');
+    const kmOptions = document.getElementById('km-options');
+    const vidangeWrapper = document.getElementById('vidange-option-wrapper');
+    const btnShowVidange = document.getElementById('btn-show-vidange');
+
+    chkKm.addEventListener('change', function () {
+        kmOptions.classList.toggle('show', this.checked);
+        if (!this.checked) {
+            // Décocher vidange si on décoche km
+            chkVidange.checked = false;
+            vidangeWrapper.classList.remove('show');
+            btnShowVidange.style.display = '';
+        }
+    });
+
+    window.showVidangeOption = function () {
+        vidangeWrapper.classList.add('show');
+        btnShowVidange.style.display = 'none';
+        chkVidange.checked = true;
+    };
+
+    // Si vidange coché par défaut, masquer le bouton
+    if (chkVidange.checked) {
+        vidangeWrapper.classList.add('show');
+        btnShowVidange.style.display = 'none';
+    }
+})();
+</script>
+{% endblock %}

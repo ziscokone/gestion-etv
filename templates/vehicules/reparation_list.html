@@ -1,0 +1,320 @@
+{% extends 'base.html' %}
+{% load humanize static %}
+
+{% block title %}Gestion des Réparations{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Header ─────────────────────────────────────────────── */
+.page-header {
+    background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
+    border-radius: 14px;
+    padding: 26px 32px;
+    color: #fff;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+}
+.page-header::after {
+    content: '\F4D4';
+    font-family: 'Bootstrap-Icons';
+    font-size: 9rem;
+    opacity: 0.06;
+    position: absolute;
+    right: 24px;
+    top: -10px;
+    line-height: 1;
+    pointer-events: none;
+}
+.page-header h4 { font-weight: 700; margin: 0; }
+
+.header-stat {
+    background: rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 8px 16px;
+    text-align: center;
+    min-width: 90px;
+}
+.header-stat .hs-val { font-size: 1.4rem; font-weight: 700; line-height: 1; }
+.header-stat .hs-lbl { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+
+.btn-header {
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 8px 18px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: all 0.15s;
+    white-space: nowrap;
+    position: relative;
+    z-index: 1;
+}
+/* Ajouter une réparation — orange */
+.btn-header.primary { background: #E67E22; color: #fff; border: none; }
+.btn-header.primary:hover { background: #cf6d1a; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(230,126,34,0.4); color: #fff; }
+/* Voir le rapport — vert */
+.btn-header.outline { background: #27ae60; color: #fff; border: none; }
+.btn-header.outline:hover { background: #219a52; color: #fff; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(39,174,96,0.4); }
+
+/* ── Filtres ─────────────────────────────────────────────── */
+.filter-zone {
+    background: #f8f9fc;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 22px;
+}
+.filter-zone .form-label { font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.4px; }
+
+.cout-chip {
+    background: linear-gradient(135deg, #1e3260, var(--color-accent));
+    color: #fff;
+    border-radius: 10px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ── Table ──────────────────────────────────────────────── */
+.rep-card {
+    border: none;
+    border-radius: 13px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    overflow: hidden;
+}
+.rep-card .table-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid #f0f0f0;
+    font-weight: 600;
+    font-size: 14px;
+    color: #1e3260;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+}
+
+.r-table th {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+    padding: 11px 16px;
+    background: #fafbfc;
+    border-bottom: 1px solid #f0f0f0;
+}
+.r-table td { padding: 12px 16px; vertical-align: middle; font-size: 13px; }
+.r-table tbody tr { transition: background 0.12s; }
+.r-table tbody tr:hover { background: #f8f9fc; }
+.r-table tbody tr:last-child td { border-bottom: none; }
+
+/* Avatar véhicule */
+.v-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #1e3260, var(--color-accent));
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+    flex-shrink: 0;
+}
+.v-immat { font-weight: 700; color: #111827; font-size: 13px; }
+.v-sub   { font-size: 11px; color: #9ca3af; }
+
+/* Badge type réparation */
+.type-badge {
+    border-radius: 12px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #eef2ff;
+    color: #3730a3;
+    display: inline-block;
+}
+
+/* Montant coloré selon seuil */
+.montant-haut  { color: #dc2626; font-weight: 800; }
+.montant-moyen { color: var(--color-warning); font-weight: 800; }
+.montant-bas   { color: var(--color-accent); font-weight: 700; }
+
+/* Badges statut */
+.rep-statut {
+    display: inline-flex; align-items: center; gap: 4px;
+    border-radius: 12px; padding: 3px 10px;
+    font-size: 11px; font-weight: 600;
+}
+.rep-statut.terminee   { background: #dcfce7; color: #166534; }
+.rep-statut.en_cours   { background: #fef3c7; color: #92400e; }
+.rep-statut.en_attente { background: #dbeafe; color: #1e40af; }
+
+/* Boutons action */
+.btn-action {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    border: 1px solid #e5e7eb;
+    background: #fff; color: #6b7280;
+    transition: all 0.15s; text-decoration: none;
+}
+.btn-action:hover         { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+.btn-action.view:hover    { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+.btn-action.edit:hover    { background: #fefce8; color: #92400e; border-color: #fde68a; }
+.btn-action.del:hover     { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+.btn-action.start         { color: #27ae60; border-color: #bbf7d0; background: #f0fdf4; }
+.btn-action.start:hover   { background: #dcfce7; color: #166534; border-color: #86efac; box-shadow: 0 2px 6px rgba(39,174,96,0.2); }
+.btn-action.finish        { color: #1e3260; border-color: #c7d2fe; background: #eef1f8; }
+.btn-action.finish:hover  { background: #dbeafe; color: #1e40af; border-color: #93c5fd; box-shadow: 0 2px 6px rgba(30,50,96,0.2); }
+
+/* ── Pagination ─────────────────────────────────────────── */
+.pagination-zone {
+    padding: 14px 20px;
+    border-top: 1px solid #f0f0f0;
+    background: #fafbfc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.pagination-info { font-size: 12px; color: #6b7280; }
+
+.c-pagination { display: flex; gap: 4px; align-items: center; margin: 0; padding: 0; list-style: none; }
+.c-pagination .page-btn {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600;
+    border: 1px solid #e5e7eb;
+    background: #fff; color: #374151;
+    text-decoration: none;
+    transition: all 0.15s;
+}
+.c-pagination .page-btn:hover    { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+.c-pagination .page-btn.active   { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
+.c-pagination .page-btn.dots     { border: none; background: transparent; cursor: default; color: #9ca3af; }
+.c-pagination .page-btn.disabled { opacity: 0.4; pointer-events: none; }
+
+/* État vide */
+.empty-state { text-align: center; padding: 56px 20px; color: #9ca3af; }
+.empty-state i { font-size: 3rem; display: block; margin-bottom: 12px; }
+</style>
+{% endblock %}
+
+{% comment %}
+Macro pour générer les paramètres de pagination en conservant les filtres.
+{% endcomment %}
+
+{% block content %}
+<div class="container-fluid py-4 px-4">
+
+    <!-- ── Header ──────────────────────────────────────────────── -->
+    <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h4><i class="bi bi-tools me-2"></i>Réparations</h4>
+            <div class="d-flex gap-3 mt-3 flex-wrap">
+                <div class="header-stat">
+                    <div class="hs-val">{{ nb_total }}</div>
+                    <div class="hs-lbl">Total</div>
+                </div>
+                <div class="header-stat">
+                    <div class="hs-val">{{ nb_attente }}</div>
+                    <div class="hs-lbl">En attente</div>
+                </div>
+                <div class="header-stat">
+                    <div class="hs-val">{{ nb_en_cours }}</div>
+                    <div class="hs-lbl">En cours</div>
+                </div>
+                <div class="header-stat">
+                    <div class="hs-val">{{ nb_termines }}</div>
+                    <div class="hs-lbl">Terminées</div>
+                </div>
+            </div>
+        </div>
+        <div class="d-flex flex-row gap-2 align-items-center flex-wrap">
+            <a href="{% url 'vehicules:rapport_reparations' %}" class="btn-header outline">
+                <i class="bi bi-bar-chart-fill"></i>Voir le rapport
+            </a>
+            <a href="{% url 'vehicules:reparation_create' %}" class="btn-header primary">
+                <i class="bi bi-plus-circle-fill"></i>Ajouter une réparation
+            </a>
+        </div>
+    </div>
+
+    <!-- ── Filtres ───────────────────────────────────────────────── -->
+    <div class="filter-zone">
+        <form method="get" data-live-filter="{% url 'vehicules:reparation_list_ajax' %}" data-target="reparationTableContainer">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Véhicule</label>
+                    <select name="vehicule" class="form-select form-select-sm">
+                        <option value="">Tous les véhicules</option>
+                        {% for vehicule in vehicules %}
+                            <option value="{{ vehicule.pk }}" {% if vehicule_filtre == vehicule.pk|stringformat:"s" %}selected{% endif %}>
+                                {{ vehicule.display_immat }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Type</label>
+                    <select name="type" class="form-select form-select-sm">
+                        <option value="">Tous types</option>
+                        {% for type in types_reparation %}
+                            <option value="{{ type.pk }}" {% if type_filtre == type.pk|stringformat:"s" %}selected{% endif %}>{{ type.nom }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Statut</label>
+                    <select name="statut" class="form-select form-select-sm">
+                        <option value="">Tous statuts</option>
+                        {% for code, label in statuts %}
+                            <option value="{{ code }}" {% if statut_filtre == code %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Date début</label>
+                    <input type="date" name="date_debut" class="form-control form-control-sm" value="{{ date_debut_filtre }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Date fin</label>
+                    <input type="date" name="date_fin" class="form-control form-control-sm" value="{{ date_fin_filtre }}">
+                </div>
+                <div class="col-md-1">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </div>
+
+            {% if cout_total_periode > 0 %}
+            <div class="mt-3">
+                <span class="cout-chip">
+                    <i class="bi bi-calculator"></i>
+                    Coût total : {{ cout_total_periode|floatformat:0|intcomma }} FCFA
+                </span>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- ── Table ──────────────────────────────────────────────────── -->
+    <div class="rep-card" id="reparationTableContainer">
+        {% include 'vehicules/partials/reparation_table.html' %}
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/live-filter.js' %}"></script>
+{% endblock %}

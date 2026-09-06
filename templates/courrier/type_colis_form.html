@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if form.instance.pk %}Modifier{% else %}Nouveau{% endif %} Type de Colis{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-tags me-2"></i>
+                        {% if form.instance.pk %}Modifier le type de colis{% else %}Nouveau type de colis{% endif %}
+                    </h4>
+                </div>
+
+                <div class="card-body">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label for="{{ form.nom.id_for_label }}" class="form-label fw-bold">
+                                <i class="bi bi-tag me-1"></i>{{ form.nom.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.nom }}
+                            {% if form.nom.errors %}<div class="invalid-feedback d-block">{{ form.nom.errors }}</div>{% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.tarif_indicatif.id_for_label }}" class="form-label fw-bold">
+                                <i class="bi bi-cash me-1"></i>{{ form.tarif_indicatif.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.tarif_indicatif }}
+                            <div class="form-text">{{ form.tarif_indicatif.help_text }}</div>
+                            {% if form.tarif_indicatif.errors %}<div class="invalid-feedback d-block">{{ form.tarif_indicatif.errors }}</div>{% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.ordre.id_for_label }}" class="form-label">{{ form.ordre.label }}</label>
+                            {{ form.ordre }}
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                {{ form.actif }}
+                                <label class="form-check-label" for="{{ form.actif.id_for_label }}">{{ form.actif.label }}</label>
+                            </div>
+                            <small class="text-muted">Les types inactifs ne seront pas proposés lors de l'enregistrement d'un colis.</small>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'courrier:type_colis_list' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-1"></i> Annuler
+                            </a>
+                            <button type="submit" class="btn btn-success fw-bold">
+                                <i class="bi bi-check-circle me-1"></i>
+                                {% if form.instance.pk %}Modifier{% else %}Enregistrer{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

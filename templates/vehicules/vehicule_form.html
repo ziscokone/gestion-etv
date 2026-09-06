@@ -1,0 +1,612 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if form.instance.pk %}{{ form.instance.display_immat }}{% else %}Nouveau Véhicule{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Page ──────────────────────────────────────────────── */
+.veh-page { background: #f4f6fb; min-height: 100vh; padding: 32px 0; }
+
+/* ── Header ────────────────────────────────────────────── */
+.veh-header {
+    background: #1e3260;
+    border-radius: 12px 12px 0 0;
+    padding: 24px 32px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.veh-header-title {
+    font-size: 1.2rem;
+    font-weight: 800;
+    letter-spacing: -.3px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.veh-header-title i { font-size: 1rem; opacity: .8; }
+.veh-header-sub { font-size: 12px; opacity: .6; margin-top: 3px; }
+
+.veh-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+.veh-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 20px;
+    padding: 3px 11px;
+    font-size: 11px; font-weight: 600;
+}
+.veh-chip.actif   { background: rgba(39,174,96,.25); border-color: rgba(39,174,96,.4); }
+.veh-chip.inactif { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.15); opacity: .7; }
+
+.btn-back {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,.1);
+    border: 1.5px solid rgba(255,255,255,.22);
+    color: #fff; border-radius: 8px;
+    padding: 7px 16px; font-size: 13px; font-weight: 600;
+    text-decoration: none; transition: background .15s;
+    flex-shrink: 0;
+}
+.btn-back:hover { background: rgba(255,255,255,.2); color: #fff; }
+
+/* ── Barre d'onglets ───────────────────────────────────── */
+.veh-tabs-bar {
+    background: #fff;
+    border-bottom: 1px solid #eaecf4;
+    display: flex;
+    padding: 0 32px;
+    gap: 0;
+}
+.veh-tab-btn {
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #6b7280;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 14px 20px 11px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: color .15s, border-color .15s;
+    white-space: nowrap;
+    margin-bottom: -1px;
+    text-decoration: none;
+}
+.veh-tab-btn:hover { color: #1e3260; }
+.veh-tab-btn.active {
+    color: #1e3260;
+    border-bottom-color: #E67E22;
+    font-weight: 700;
+}
+.veh-tab-btn .tab-badge {
+    background: #fee2e2;
+    color: #dc2626;
+    border-radius: 10px;
+    padding: 1px 7px;
+    font-size: 11px;
+    font-weight: 700;
+}
+.veh-tab-btn .tab-badge.warn {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+/* ── Contenu principal ─────────────────────────────────── */
+.veh-body {
+    background: #fff;
+    border-radius: 0 0 12px 12px;
+    padding: 32px;
+}
+
+/* ── Sections formulaire ───────────────────────────────── */
+.form-section { margin-bottom: 32px; }
+.form-section:last-of-type { margin-bottom: 0; }
+
+.section-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    color: #1e3260;
+    margin-bottom: 18px;
+    padding-left: 12px;
+    border-left: 3px solid #E67E22;
+}
+.section-label i { color: #E67E22; font-size: 14px; }
+
+.section-divider {
+    border: none;
+    border-top: 1px solid #f0f3f9;
+    margin: 28px 0;
+}
+
+/* ── Champs ────────────────────────────────────────────── */
+.field-wrap { margin-bottom: 0; }
+.field-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 5px;
+    display: block;
+}
+.field-label .req { color: #dc2626; margin-left: 2px; }
+.field-hint { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+
+.form-control, .form-select {
+    border: 1.5px solid #dde3ef;
+    border-radius: 8px;
+    font-size: 13px;
+    padding: 9px 12px;
+    color: #111827;
+    background: #fff;
+    transition: border-color .15s, box-shadow .15s;
+    width: 100%;
+}
+.form-control:focus, .form-select:focus {
+    border-color: #1e3260;
+    box-shadow: 0 0 0 3px rgba(30,50,96,.08);
+    outline: none;
+}
+textarea.form-control { resize: vertical; min-height: 90px; }
+
+/* Switch actif */
+.switch-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: #f8f9fc;
+    border: 1.5px solid #dde3ef;
+    border-radius: 8px;
+    height: 42px;
+}
+.switch-row label { font-size: 13px; font-weight: 600; color: #374151; margin: 0; cursor: pointer; }
+
+/* ── Footer formulaire ─────────────────────────────────── */
+.form-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 24px;
+    border-top: 1px solid #f0f3f9;
+    margin-top: 28px;
+}
+.btn-submit {
+    background: #27ae60;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 28px;
+    font-size: 13px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    transition: background .15s, transform .1s;
+}
+.btn-submit:hover { background: #219a52; transform: translateY(-1px); }
+.btn-cancel {
+    font-size: 13px; font-weight: 700; color: #fff;
+    background: #e74c3c;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    text-decoration: none;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: background .15s, transform .1s;
+}
+.btn-cancel:hover { background: #c0392b; color: #fff; transform: translateY(-1px); }
+
+/* ── Tab pane ──────────────────────────────────────────── */
+.tab-pane-content { padding: 28px 32px; }
+
+/* ── Réparations partial ────────────────────────────────── */
+.rep-stat-card {
+    border-radius: 10px; border: 1px solid #e5e7eb;
+    padding: 16px; text-align: center; background: #fff;
+    transition: box-shadow 0.15s;
+}
+.rep-stat-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.rep-stat-val { font-size: 1.4rem; font-weight: 700; line-height: 1; margin-top: 8px; }
+.rep-stat-lbl { font-size: 11px; color: #6b7280; margin-top: 4px; }
+
+.rep-filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
+.rep-pill {
+    border: 2px solid #e5e7eb; border-radius: 20px; padding: 4px 14px;
+    font-size: 12px; font-weight: 600; background: #fff; color: #6b7280;
+    cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 5px;
+}
+.rep-pill:hover    { border-color: var(--color-accent); color: var(--color-accent); }
+.rep-pill.active   { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
+.rep-pill.p-term.active   { background: var(--color-success); border-color: var(--color-success); }
+.rep-pill.p-cours.active  { background: var(--color-warning); border-color: var(--color-warning); }
+.rep-pill.p-attente.active { background: #3b82f6; border-color: #3b82f6; }
+
+.timeline { position: relative; padding-left: 32px; }
+.timeline::before {
+    content: ''; position: absolute; left: 10px; top: 8px; bottom: 8px;
+    width: 2px; background: #e5e7eb; border-radius: 2px;
+}
+.tl-point {
+    position: absolute; left: -32px; top: 16px;
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 3px solid #fff; box-shadow: 0 0 0 2px #e5e7eb;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; color: #fff; flex-shrink: 0;
+}
+.tl-point.terminee  { background: var(--color-success); box-shadow: 0 0 0 2px var(--color-success); }
+.tl-point.en_cours  { background: var(--color-warning); box-shadow: 0 0 0 2px var(--color-warning); }
+.tl-point.en_attente { background: #3b82f6; box-shadow: 0 0 0 2px #3b82f6; }
+
+.rep-card {
+    position: relative; border-radius: 10px; border: 1px solid #e5e7eb;
+    margin-bottom: 12px; overflow: hidden; transition: box-shadow 0.15s, transform 0.1s;
+}
+.rep-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.09); transform: translateX(2px); }
+.rep-card.terminee   { background: #f0fdf4; border-color: #bbf7d0; }
+.rep-card.en_cours   { background: #fefce8; border-color: #fde68a; }
+.rep-card.en_attente { background: #eff6ff; border-color: #bfdbfe; }
+.rep-card-body { padding: 14px 16px; }
+.rep-main-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.rep-left  { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
+.rep-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+.rep-top-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rep-date { font-weight: 700; font-size: 13px; color: #111827; white-space: nowrap; }
+.rep-type-badge {
+    background: rgba(255,255,255,0.7); border: 1px solid #d1d5db;
+    border-radius: 12px; padding: 2px 10px; font-size: 11px; font-weight: 600; color: #374151;
+}
+.rep-statut {
+    display: inline-flex; align-items: center; gap: 4px;
+    border-radius: 12px; padding: 2px 10px; font-size: 11px; font-weight: 600;
+}
+.rep-statut.terminee   { background: #dcfce7; color: #166534; }
+.rep-statut.en_cours   { background: #fef3c7; color: #92400e; }
+.rep-statut.en_attente { background: #dbeafe; color: #1e40af; }
+.rep-garage { font-size: 12px; color: #374151; font-weight: 600; }
+.rep-desc   { font-size: 12px; color: #6b7280; }
+.rep-montant { font-size: 1rem; font-weight: 800; color: var(--color-accent); white-space: nowrap; }
+.rep-actions { display: flex; gap: 4px; }
+.btn-action-sm {
+    width: 30px; height: 30px; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px; border: 1px solid #e5e7eb;
+    background: rgba(255,255,255,0.8); color: #6b7280;
+    transition: all 0.15s; text-decoration: none;
+}
+.btn-action-sm:hover           { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+.btn-action-sm.view:hover { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+.btn-action-sm.edit:hover { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+.btn-action-sm.del:hover  { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+.rep-total-bar {
+    background: #1e3260; border-radius: 10px; padding: 12px 20px;
+    color: #fff; display: flex; justify-content: space-between; align-items: center;
+    margin-top: 16px; font-size: 13px;
+}
+.rep-total-bar .total-val { font-size: 1.1rem; font-weight: 800; }
+.rep-empty { text-align: center; padding: 48px 20px; color: #9ca3af; }
+.rep-empty i { font-size: 2.5rem; display: block; margin-bottom: 12px; opacity: 0.4; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="veh-page">
+<div class="container-fluid px-4" style="max-width:1400px;margin:auto;">
+
+    <div style="border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(30,50,96,.1);">
+
+        <!-- ══ Header ══ -->
+        <div class="veh-header">
+            <div>
+                <h1 class="veh-header-title">
+                    <i class="bi bi-bus-front"></i>
+                    {% if form.instance.pk %}{{ form.instance.display_immat }}{% else %}Nouveau Véhicule{% endif %}
+                </h1>
+                {% if form.instance.pk %}
+                <div class="veh-meta">
+                    <span class="veh-chip"><i class="bi bi-collection"></i>{{ form.instance.modele.marque }} – {{ form.instance.modele.nom }}</span>
+                    <span class="veh-chip"><i class="bi bi-people"></i>{{ form.instance.modele.capacite }} places</span>
+                    <span class="veh-chip"><i class="bi bi-speedometer2"></i>{{ form.instance.kilometrage_actuel|default:0 }} km</span>
+                    <span class="veh-chip"><i class="bi bi-tools"></i>{{ form.instance.reparations.count }} réparation{{ form.instance.reparations.count|pluralize }}</span>
+                    {% if form.instance.actif %}
+                        <span class="veh-chip actif"><i class="bi bi-check-circle"></i>Actif</span>
+                    {% else %}
+                        <span class="veh-chip inactif"><i class="bi bi-pause-circle"></i>Inactif</span>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="veh-header-sub">Remplissez les informations du nouveau véhicule</div>
+                {% endif %}
+            </div>
+            <a href="{% url 'vehicules:vehicule_list' %}" class="btn-back">
+                <i class="bi bi-arrow-left"></i> Retour
+            </a>
+        </div>
+
+        <!-- ══ Barre d'onglets (mode édition uniquement) ══ -->
+        {% if form.instance.pk %}
+        <div class="veh-tabs-bar" id="vehiculeTabs">
+            <button class="veh-tab-btn active" data-target="tab-infos">
+                <i class="bi bi-info-circle"></i> Informations
+            </button>
+            <button class="veh-tab-btn" data-target="tab-reparations">
+                <i class="bi bi-tools"></i> Réparations
+                {% with nb=form.instance.reparations.count %}
+                    {% if nb > 0 %}<span class="tab-badge">{{ nb }}</span>{% endif %}
+                {% endwith %}
+            </button>
+            <button class="veh-tab-btn" data-target="tab-entretien">
+                <i class="bi bi-activity"></i> Suivi entretien
+                {% if nb_alertes_entretien > 0 %}
+                    <span class="tab-badge warn">{{ nb_alertes_entretien }}</span>
+                {% endif %}
+            </button>
+        </div>
+        {% endif %}
+
+        <!-- ══ Onglet : Informations / Formulaire ══ -->
+        <div id="tab-infos">
+        <div class="veh-body">
+            <form method="post" novalidate>
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;font-size:13px;color:#dc2626;margin-bottom:20px;">
+                    <i class="bi bi-exclamation-triangle me-2"></i>{{ form.non_field_errors }}
+                </div>
+                {% endif %}
+
+                <!-- ▸ Identification -->
+                <div class="form-section">
+                    <div class="section-label"><i class="bi bi-card-list"></i>Identification</div>
+                    <div class="row g-3">
+                        <div class="col-md-5">
+                            <label class="field-label">{{ form.modele.label }}<span class="req">*</span></label>
+                            {{ form.modele }}
+                            {% if form.modele.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ form.modele.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="field-label">{{ form.immatriculation.label }}<span class="req">*</span></label>
+                            {{ form.immatriculation }}
+                            {% if form.immatriculation.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ form.immatriculation.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="field-label">{{ form.numero_ordre.label }}</label>
+                            {{ form.numero_ordre }}
+                            {% if form.numero_ordre.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ form.numero_ordre.errors }}</div>{% endif %}
+                            <div class="form-text" style="font-size:10px;">Ex : 01, 05, 30</div>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <div class="switch-row w-100">
+                                {{ form.actif }}
+                                <label for="{{ form.actif.id_for_label }}">{{ form.actif.label }}</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="section-divider">
+
+                <!-- ▸ Caractéristiques techniques -->
+                <div class="form-section">
+                    <div class="section-label"><i class="bi bi-gear-fill"></i>Caractéristiques techniques</div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="field-label">{{ form.numero_chassis.label }}</label>
+                            {{ form.numero_chassis }}
+                            {% if form.numero_chassis.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ form.numero_chassis.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="field-label">{{ form.type_carburant.label }}</label>
+                            {{ form.type_carburant }}
+                            {% if form.type_carburant.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ form.type_carburant.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="field-label">{{ form.type_boite.label }}</label>
+                            {{ form.type_boite }}
+                            {% if form.type_boite.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ form.type_boite.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="field-label">{{ form.annee_fabrication.label }}</label>
+                            {{ form.annee_fabrication }}
+                            {% if form.annee_fabrication.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ form.annee_fabrication.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="field-label">{{ form.date_mise_circulation.label }}</label>
+                            {{ form.date_mise_circulation }}
+                            {% if form.date_mise_circulation.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ form.date_mise_circulation.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="field-label">{{ form.kilometrage_actuel.label }}</label>
+                            {{ form.kilometrage_actuel }}
+                            {% if form.kilometrage_actuel.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ form.kilometrage_actuel.errors }}</div>{% endif %}
+                            <div class="field-hint">Mis à jour automatiquement à chaque voyage terminé</div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="section-divider">
+
+                <!-- ▸ Documents administratifs -->
+                <div class="form-section">
+                    <div class="section-label"><i class="bi bi-folder2-open"></i>Documents administratifs</div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="field-label">{{ form.numero_carte_grise.label }}</label>
+                            {{ form.numero_carte_grise }}
+                            {% if form.numero_carte_grise.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ form.numero_carte_grise.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="field-label">{{ form.patente.label }}</label>
+                            {{ form.patente }}
+                            {% if form.patente.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ form.patente.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="field-label">{{ form.carte_stationnement.label }}</label>
+                            {{ form.carte_stationnement }}
+                            {% if form.carte_stationnement.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ form.carte_stationnement.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="section-divider">
+
+                <!-- ▸ Documents & conformité -->
+                <div class="form-section">
+                    <div class="section-label"><i class="bi bi-file-earmark-check"></i>Documents &amp; conformité légale</div>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="field-label">{{ form.compagnie_assurance.label }}</label>
+                            {{ form.compagnie_assurance }}
+                            {% if form.compagnie_assurance.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ form.compagnie_assurance.errors }}</div>{% endif %}
+                        </div>
+                        {% if form.date_expiration_assurance %}
+                        <div class="col-md-6">
+                            <label class="field-label">{{ form.date_expiration_assurance.label }}</label>
+                            {{ form.date_expiration_assurance }}
+                            {% if form.date_expiration_assurance.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ form.date_expiration_assurance.errors }}</div>{% endif %}
+                        </div>
+                        {% endif %}
+                        {% if form.date_expiration_visite_technique %}
+                        <div class="col-md-6">
+                            <label class="field-label">{{ form.date_expiration_visite_technique.label }}</label>
+                            {{ form.date_expiration_visite_technique }}
+                            {% if form.date_expiration_visite_technique.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ form.date_expiration_visite_technique.errors }}</div>{% endif %}
+                        </div>
+                        {% endif %}
+                        {% if form.date_expiration_carte_grise %}
+                        <div class="col-md-6">
+                            <label class="field-label">{{ form.date_expiration_carte_grise.label }}</label>
+                            {{ form.date_expiration_carte_grise }}
+                            {% if form.date_expiration_carte_grise.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ form.date_expiration_carte_grise.errors }}</div>{% endif %}
+                        </div>
+                        {% endif %}
+                        {% if form.date_expiration_licence_transport %}
+                        <div class="col-md-6">
+                            <label class="field-label">{{ form.date_expiration_licence_transport.label }}</label>
+                            {{ form.date_expiration_licence_transport }}
+                            {% if form.date_expiration_licence_transport.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ form.date_expiration_licence_transport.errors }}</div>{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <hr class="section-divider">
+
+                <!-- ▸ Notes -->
+                <div class="form-section">
+                    <div class="section-label"><i class="bi bi-pencil-square"></i>Notes &amp; observations</div>
+                    {{ form.notes }}
+                    {% if form.notes.errors %}<div class="invalid-feedback d-block" style="font-size:12px;">{{ form.notes.errors }}</div>{% endif %}
+                </div>
+
+                <!-- Footer -->
+                <div class="form-footer">
+                    <a href="{% url 'vehicules:vehicule_list' %}" class="btn-cancel">
+                        <i class="bi bi-x-circle"></i> Annuler
+                    </a>
+                    <button type="submit" class="btn-submit">
+                        <i class="bi bi-check-circle-fill"></i>
+                        {% if form.instance.pk %}Enregistrer les modifications{% else %}Créer le véhicule{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+        </div>
+
+        <!-- ══ Onglet : Réparations ══ -->
+        {% if form.instance.pk %}
+        <div id="tab-reparations" style="display:none;">
+            <div class="tab-pane-content" id="rep-ajax-container">
+                <div class="text-center py-5" id="rep-spinner">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="text-muted mt-2" style="font-size:13px;">Chargement des réparations…</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ Onglet : Suivi entretien ══ -->
+        <div id="tab-entretien" style="display:none;">
+            {% include 'vehicules/partials/suivi_entretien.html' %}
+        </div>
+        {% endif %}
+
+    </div><!-- /wrapper -->
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const tabs = document.querySelectorAll('.veh-tab-btn');
+    if (!tabs.length) return;
+
+    {% if form.instance.pk %}
+    const vehiculeId = {{ form.instance.pk }};
+    let repLoaded = false;
+    let entretienLoaded = false;
+
+    window.loadReparations = function (statut, page) {
+        const container = document.getElementById('rep-ajax-container');
+        container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="text-muted mt-2" style="font-size:13px;">Chargement…</p></div>';
+        fetch(`/vehicules/${vehiculeId}/reparations-ajax/?statut=${statut}&page=${page}`)
+            .then(r => r.text())
+            .then(html => { container.innerHTML = html; })
+            .catch(() => {
+                container.innerHTML = '<div class="alert alert-danger m-3">Erreur lors du chargement des réparations.</div>';
+            });
+    };
+
+    window.loadEntretienHistorique = function (page) {
+        const container = document.getElementById('entretien-historique-container');
+        container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></div>';
+        fetch(`/vehicules/${vehiculeId}/entretien-ajax/?page=${page}`)
+            .then(r => r.text())
+            .then(html => { container.innerHTML = html; })
+            .catch(() => {
+                container.innerHTML = '<div class="alert alert-danger mt-2">Erreur lors du chargement.</div>';
+            });
+    };
+    {% endif %}
+
+    tabs.forEach(btn => {
+        btn.addEventListener('click', function () {
+            tabs.forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('#tab-infos, #tab-reparations, #tab-entretien')
+                    .forEach(p => p.style.display = 'none');
+
+            this.classList.add('active');
+            document.getElementById(this.dataset.target).style.display = 'block';
+
+            {% if form.instance.pk %}
+            if (this.dataset.target === 'tab-reparations' && !repLoaded) {
+                repLoaded = true;
+                loadReparations('', 1);
+            }
+            if (this.dataset.target === 'tab-entretien' && !entretienLoaded) {
+                entretienLoaded = true;
+                loadEntretienHistorique(1);
+            }
+            {% endif %}
+        });
+    });
+})();
+</script>
+{% endblock %}

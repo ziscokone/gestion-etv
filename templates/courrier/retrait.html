@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+
+{% block title %}Retrait de colis{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+            <div class="card shadow-sm mb-3">
+                <div class="card-header text-white">
+                    <h4 class="mb-0"><i class="bi bi-box-arrow-down me-2"></i>Retrait de colis</h4>
+                </div>
+                <div class="card-body">
+                    <form method="get" id="retraitSearchForm">
+                        <label class="form-label">Code colis ou téléphone du destinataire</label>
+                        <div class="input-group">
+                            <input type="text" name="q" id="retraitSearchInput" class="form-control" placeholder="Ex: COL-CKY20260800012 ou 07..." value="{{ query }}" autocomplete="off" autofocus>
+                            <span id="retraitSearchSpinner" class="spinner-border spinner-border-sm text-primary align-self-center mx-2" style="display:none;"></span>
+                            <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i></button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div id="retraitResultContainer">
+                {% include 'courrier/partials/retrait_resultat.html' %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function initRetraitForm() {
+    const telInput = document.getElementById('id_retirant_telephone');
+    const nomInput = document.getElementById('id_retirant_nom');
+    const cniInput = document.getElementById('id_piece_identite');
+    const suggestions = document.getElementById('retirantSuggestions');
+    if (!telInput) return;
+
+    let searchTimeout = null;
+
+    function hide() {
+        suggestions.style.display = 'none';
+        suggestions.innerHTML = '';
+    }
+
+    function select(tel, nom, cni) {
+        telInput.value = tel;
+        nomInput.value = nom;
+        if (cni) { cniInput.value = cni; }
+        hide();
+    }
+
+    function display(clients) {
+        if (!clients.length) { hide(); return; }
+        suggestions.innerHTML = clients.map(c =>
+            `<button type="button" class="list-group-item list-group-item-action py-1 small">${c.nom_complet} — ${c.telephone}</button>`
+        ).join('');
+        [...suggestions.children].forEach((el, i) => {
+            el.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                select(clients[i].telephone, clients[i].nom_complet, clients[i].numero_cni);
+            });
+        });
+        suggestions.style.display = 'block';
+    }
+
+    function rechercherSuggestions(q) {
+        if (q.length < 3) { hide(); return; }
+        fetch(`/clients/api/suggerer/?q=${encodeURIComponent(q)}`)
+            .then(r => r.json())
+            .then(data => display(data.clients))
+            .catch(() => {});
+    }
+
+    telInput.addEventListener('input', function () {
+        clearTimeout(searchTimeout);
+        const q = this.value.trim();
+        searchTimeout = setTimeout(() => rechercherSuggestions(q), 300);
+    });
+    telInput.addEventListener('blur', function () {
+        setTimeout(hide, 150);
+    });
+
+    // Retrouve, silencieusement (sans ouvrir le menu déroulant), le CNI déjà
+    // mémorisé pour un numéro exact — utilisé au chargement et à chaque
+    // retour sur "Le destinataire lui-même".
+    function rechercherCniSilencieux(tel) {
+        if (tel.length < 3) return;
+        fetch(`/clients/api/suggerer/?q=${encodeURIComponent(tel)}`)
+            .then(r => r.json())
+            .then(data => {
+                const exact = data.clients.find(c => c.telephone === tel);
+                cniInput.value = (exact && exact.numero_cni) ? exact.numero_cni : '';
+            })
+            .catch(() => {});
+    }
+
+    const infoEl = document.getElementById('retraitDestinataireInfo');
+    const destinataireNom = infoEl ? infoEl.dataset.nom : '';
+    const destinataireTel = infoEl ? infoEl.dataset.tel : '';
+    const radioDestinataire = document.getElementById('quiRetireDestinataire');
+    const radioAutre = document.getElementById('quiRetireAutre');
+
+    function casDestinataire() {
+        telInput.value = destinataireTel;
+        nomInput.value = destinataireNom;
+        telInput.readOnly = true;
+        nomInput.readOnly = true;
+        hide();
+        rechercherCniSilencieux(destinataireTel);
+    }
+
+    function casAutrePersonne() {
+        telInput.value = '';
+        nomInput.value = '';
+        cniInput.value = '';
+        telInput.readOnly = false;
+        nomInput.readOnly = false;
+        telInput.focus();
+    }
+
+    radioDestinataire.addEventListener('change', function () { if (this.checked) casDestinataire(); });
+    radioAutre.addEventListener('change', function () { if (this.checked) casAutrePersonne(); });
+
+    // État initial : "Le destinataire lui-même" est coché par défaut.
+    casDestinataire();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const searchForm = document.getElementById('retraitSearchForm');
+    const searchInput = document.getElementById('retraitSearchInput');
+    const resultContainer = document.getElementById('retraitResultContainer');
+    const spinner = document.getElementById('retraitSearchSpinner');
+    let searchTimeout = null;
+
+    function rechercher() {
+        const q = searchInput.value.trim();
+        spinner.style.display = 'inline-block';
+        const params = new URLSearchParams({ q });
+        fetch(`{% url 'courrier:retrait_ajax' %}?${params.toString()}`)
+            .then(r => r.text())
+            .then(html => {
+                resultContainer.innerHTML = html;
+                window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+                initRetraitForm();
+            })
+            .catch(() => {})
+            .finally(() => { spinner.style.display = 'none'; });
+    }
+
+    searchInput.addEventListener('input', function () {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(rechercher, 350);
+    });
+
+    // Le bouton et l'entrée clavier restent utilisables (dégradation propre, pas de JS = formulaire classique).
+    searchForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        clearTimeout(searchTimeout);
+        rechercher();
+    });
+
+    initRetraitForm();
+});
+</script>
+{% endblock %}

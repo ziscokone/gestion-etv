@@ -1,0 +1,89 @@
+{% load humanize %}
+
+{% if page_obj.object_list %}
+<div class="table-responsive">
+    <table class="table mb-0" style="font-size:13px;">
+        <thead>
+            <tr style="background:#fafbfc;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;">
+                <th style="padding:10px 14px;border-bottom:1px solid #f0f0f0;">Date</th>
+                <th style="padding:10px 14px;border-bottom:1px solid #f0f0f0;">Type</th>
+                <th style="padding:10px 14px;border-bottom:1px solid #f0f0f0;">Km compteur</th>
+                <th style="padding:10px 14px;border-bottom:1px solid #f0f0f0;">Intervalle</th>
+                <th style="padding:10px 14px;border-bottom:1px solid #f0f0f0;">Prochain à</th>
+                <th style="padding:10px 14px;border-bottom:1px solid #f0f0f0;">Détail</th>
+                <th style="padding:10px 14px;border-bottom:1px solid #f0f0f0;">Montant</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ligne in page_obj %}
+            <tr style="border-bottom:1px solid #f5f5f5;">
+                <td style="padding:11px 14px;font-weight:600;color:#111827;">
+                    {{ ligne.reparation.date_reparation|date:"d/m/Y" }}
+                </td>
+                <td style="padding:11px 14px;">
+                    <span style="background:#eef2ff;color:#3730a3;border-radius:10px;padding:2px 9px;font-size:11px;font-weight:600;">
+                        {{ ligne.type_reparation.nom }}
+                    </span>
+                </td>
+                <td style="padding:11px 14px;color:#374151;">{{ ligne.kilometrage|intcomma }} km</td>
+                <td style="padding:11px 14px;color:#374151;">
+                    {% if ligne.intervalle_km %}{{ ligne.intervalle_km|intcomma }} km
+                    {% elif ligne.type_reparation.intervalle_km_defaut %}{{ ligne.type_reparation.intervalle_km_defaut|intcomma }} km
+                    {% else %}—{% endif %}
+                </td>
+                <td style="padding:11px 14px;font-weight:600;">
+                    {% if ligne.km_prochaine %}{{ ligne.km_prochaine|intcomma }} km{% else %}—{% endif %}
+                </td>
+                <td style="padding:11px 14px;font-size:12px;color:#6b7280;">
+                    {% if ligne.type_reparation.is_vidange and ligne.huile_utilisee %}
+                    <span style="background:#eff6ff;color:#1d4ed8;border-radius:6px;padding:1px 7px;font-size:11px;">
+                        <i class="bi bi-droplet-fill me-1"></i>{{ ligne.huile_utilisee }}
+                    </span>
+                    {% else %}—{% endif %}
+                </td>
+                <td style="padding:11px 14px;font-weight:700;color:#1e3260;">{{ ligne.montant|floatformat:0|intcomma }} F</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="d-flex justify-content-between align-items-center mt-3 px-1">
+    <div class="text-muted" style="font-size:12px;">
+        Page <strong>{{ page_obj.number }}</strong> sur <strong>{{ page_obj.paginator.num_pages }}</strong>
+        &nbsp;·&nbsp; {{ page_obj.paginator.count }} entrée{{ page_obj.paginator.count|pluralize }}
+    </div>
+    <div class="btn-group btn-group-sm">
+        {% if page_obj.has_previous %}
+        <button class="btn btn-outline-secondary"
+                onclick="loadEntretienHistorique({{ page_obj.previous_page_number }})">
+            <i class="bi bi-chevron-left"></i> Précédent
+        </button>
+        {% else %}
+        <button class="btn btn-outline-secondary" disabled>
+            <i class="bi bi-chevron-left"></i> Précédent
+        </button>
+        {% endif %}
+
+        {% if page_obj.has_next %}
+        <button class="btn btn-outline-primary"
+                onclick="loadEntretienHistorique({{ page_obj.next_page_number }})">
+            Suivant <i class="bi bi-chevron-right"></i>
+        </button>
+        {% else %}
+        <button class="btn btn-outline-primary" disabled>
+            Suivant <i class="bi bi-chevron-right"></i>
+        </button>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<div style="text-align:center;padding:32px;color:#9ca3af;">
+    <i class="bi bi-speedometer2" style="font-size:2.5rem;display:block;margin-bottom:10px;opacity:.4;"></i>
+    <p class="fw-semibold mb-0">Aucun entretien kilométrique enregistré</p>
+</div>
+{% endif %}

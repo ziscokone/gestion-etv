@@ -1,0 +1,277 @@
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recap Destinations - {{ voyage.ligne }} - {{ voyage.date_depart|date:"d/m/Y" }}</title>
+    <style>
+        @media print {
+            body { margin: 0; }
+            .no-print { display: none !important; }
+            @page {
+                margin: 0;
+                size: 80mm 80mm;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 9pt;
+            line-height: 1.2;
+            color: #000;
+            background: #f5f5f5;
+        }
+
+        .ticket {
+            background: white;
+            width: 80mm;
+            height: 80mm;
+            margin: 10px auto;
+            padding: 3mm;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        @media print {
+            .ticket {
+                margin: 0;
+                box-shadow: none;
+            }
+        }
+
+        /* En-tête */
+        .header {
+            text-align: center;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 2mm;
+            margin-bottom: 2mm;
+        }
+
+        .logo-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 1mm;
+        }
+
+        .logo {
+            max-width: 15mm;
+            max-height: 15mm;
+        }
+
+        .company-name {
+            font-size: 10pt;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .company-contact {
+            font-size: 7pt;
+            color: #333;
+        }
+
+        /* Titre */
+        .title {
+            text-align: center;
+            font-size: 9pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin: 2mm 0;
+            padding: 1mm 0;
+            background: #000;
+            color: #fff;
+        }
+
+        /* Infos voyage */
+        .voyage-info {
+            font-size: 7pt;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 2mm;
+            margin-bottom: 2mm;
+        }
+
+        .voyage-info-row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .info-label {
+            font-weight: bold;
+        }
+
+        /* Liste des destinations */
+        .destinations {
+            margin: 2mm 0;
+        }
+
+        .destination-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5mm 0;
+            font-size: 8pt;
+            border-bottom: 1px dotted #ccc;
+        }
+
+        .destination-row:last-child {
+            border-bottom: none;
+        }
+
+        .destination-name {
+            font-weight: normal;
+            text-transform: uppercase;
+        }
+
+        .destination-count {
+            font-weight: bold;
+            min-width: 25px;
+            text-align: right;
+        }
+
+        /* Total */
+        .total-section {
+            border-top: 1px dashed #000;
+            margin-top: 2mm;
+            padding-top: 2mm;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10pt;
+            font-weight: bold;
+        }
+
+        /* Pied de page */
+        .footer {
+            text-align: center;
+            font-size: 6pt;
+            color: #666;
+            margin-top: 2mm;
+            padding-top: 1mm;
+            border-top: 1px dashed #000;
+        }
+
+        /* Boutons (non imprimables) */
+        .action-buttons {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 11pt;
+            text-decoration: none;
+            color: white;
+        }
+
+        .btn-print {
+            background: #27ae60;
+        }
+
+        .btn-print:hover {
+            background: #229954;
+        }
+
+        .btn-close {
+            background: #95a5a6;
+        }
+
+        .btn-close:hover {
+            background: #7f8c8d;
+        }
+    </style>
+    {% if print_mode %}
+    <script>
+        window.onload = function() {
+            window.print();
+        }
+    </script>
+    {% endif %}
+</head>
+<body>
+    <div class="action-buttons no-print">
+        <button onclick="window.print()" class="btn btn-print">Imprimer</button>
+        <button onclick="window.close()" class="btn btn-close">Fermer</button>
+    </div>
+
+    <div class="ticket">
+        <!-- En-tête avec logo et contact -->
+        <div class="header">
+            <div class="logo-container">
+                {% if compagnie.logo %}
+                    <img src="{{ compagnie.logo.url }}" alt="Logo" class="logo">
+                {% endif %}
+            </div>
+            <div class="company-name">{{ compagnie.nom|default:"COMPAGNIE DE TRANSPORT" }}</div>
+            <div class="company-contact">
+                {% if compagnie.telephone %}Tel: {{ compagnie.telephone }}{% endif %}
+                {% if compagnie.adresse %}<br>{{ compagnie.adresse }}{% endif %}
+            </div>
+        </div>
+
+        <!-- Titre -->
+        <div class="title">RECAP DESTINATIONS</div>
+
+        <!-- Informations du voyage -->
+        <div class="voyage-info">
+            <div class="voyage-info-row">
+                <span class="info-label">Voyage:</span>
+                <span>N°{{ voyage.numero_depart }} - {{ voyage.ligne.nom }}</span>
+            </div>
+            <div class="voyage-info-row">
+                <span class="info-label">Date:</span>
+                <span>{{ voyage.date_depart|date:"d/m/Y" }} {{ voyage.heure_depart|time:"H:i" }}</span>
+            </div>
+            {% if voyage.vehicule %}
+            <div class="voyage-info-row">
+                <span class="info-label">Vehicule:</span>
+                <span>{{ voyage.vehicule.display_immat }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Liste des destinations -->
+        <div class="destinations">
+            {% for destination, count in destinations %}
+            <div class="destination-row">
+                <span class="destination-name">{{ destination }}</span>
+                <span class="destination-count">{{ count }}</span>
+            </div>
+            {% empty %}
+            <div style="text-align: center; font-size: 8pt; color: #666;">
+                Aucun billet vendu
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Total -->
+        {% if destinations %}
+        <div class="total-section">
+            <div class="total-row">
+                <span>TOTAL PASSAGERS</span>
+                <span>{{ total_passagers }}</span>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Pied de page -->
+        <div class="footer">
+            Imprime le {{ date_impression|date:"d/m/Y" }} a {{ date_impression|time:"H:i" }}
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,254 @@
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Réassignations - {{ voyage.ligne }} - {{ voyage.date_depart|date:"d/m/Y" }}</title>
+    <style>
+        @media print {
+            body { margin: 0; }
+            .no-print { display: none !important; }
+            @page { margin: 0; size: A4 portrait; }
+            tr { page-break-inside: avoid; }
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 9pt;
+            color: #333;
+            background: #f5f5f5;
+        }
+
+        .page {
+            background: white;
+            width: 21cm;
+            margin: 1cm auto;
+            padding: 1cm;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        @media print {
+            .page { margin: 0; padding: 1cm; box-shadow: none; width: 100%; }
+        }
+
+        .header {
+            border-bottom: 2px solid #e74c3c;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .company-name { font-size: 13pt; font-weight: bold; color: #2c3e50; }
+
+        .logo { max-width: 50px; max-height: 50px; }
+
+        .document-title {
+            text-align: center;
+            font-size: 12pt;
+            font-weight: bold;
+            color: white;
+            background: #e74c3c;
+            padding: 6px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .voyage-info {
+            background: #ecf0f1;
+            padding: 8px;
+            border-radius: 3px;
+            margin-bottom: 12px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 5px 15px;
+        }
+
+        .info-row { display: flex; font-size: 8pt; }
+        .info-label { font-weight: bold; min-width: 70px; color: #2c3e50; }
+
+        .alert-box {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-bottom: 12px;
+            font-size: 8pt;
+            color: #92400e;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 8px 0;
+        }
+
+        thead { background: #e74c3c; color: white; }
+
+        th {
+            padding: 6px 5px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 8pt;
+        }
+
+        th.text-center, td.text-center { text-align: center; }
+
+        tbody tr { border-bottom: 1px solid #ddd; }
+        tbody tr:nth-child(even) { background: #fdf2f2; }
+
+        td { padding: 5px; font-size: 8pt; }
+
+        .siege-ancien {
+            font-size: 10pt;
+            font-weight: bold;
+            color: #e74c3c;
+            text-decoration: line-through;
+            text-align: center;
+        }
+
+        .siege-nouveau {
+            font-size: 12pt;
+            font-weight: bold;
+            color: #27ae60;
+            text-align: center;
+        }
+
+        .arrow { text-align: center; color: #7f8c8d; font-size: 10pt; }
+
+        .footer {
+            margin-top: 15px;
+            padding-top: 8px;
+            border-top: 1px solid #ecf0f1;
+            display: flex;
+            justify-content: space-between;
+            font-size: 7pt;
+            color: #7f8c8d;
+        }
+
+        .action-buttons {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 11pt;
+            text-decoration: none;
+            color: white;
+        }
+
+        .btn-print { background: #e74c3c; }
+        .btn-print:hover { background: #c0392b; }
+        .btn-close-btn { background: #95a5a6; }
+        .btn-close-btn:hover { background: #7f8c8d; }
+    </style>
+    {% if print_mode %}
+    <script>window.onload = function() { window.print(); }</script>
+    {% endif %}
+</head>
+<body>
+    <div class="action-buttons no-print">
+        <button onclick="window.print()" class="btn btn-print">Imprimer</button>
+        <button onclick="window.close()" class="btn btn-close-btn">✕ Fermer</button>
+    </div>
+
+    <div class="page">
+        <div class="header">
+            <div>
+                {% if compagnie %}
+                    <div class="company-name">{{ compagnie.nom }}</div>
+                    {% if compagnie.adresse %}<div style="font-size:7pt;color:#7f8c8d;">{{ compagnie.adresse }}</div>{% endif %}
+                    {% if compagnie.telephone %}<div style="font-size:7pt;color:#7f8c8d;">{{ compagnie.telephone }}</div>{% endif %}
+                {% else %}
+                    <div class="company-name">COMPAGNIE DE TRANSPORT</div>
+                {% endif %}
+            </div>
+            {% if compagnie.logo %}
+                <img src="{{ compagnie.logo.url }}" alt="Logo" class="logo">
+            {% endif %}
+        </div>
+
+        <div class="document-title">
+            ⚠ Liste des Passagers à Notifier — Changement de Siège
+        </div>
+
+        <div class="voyage-info">
+            <div class="info-row">
+                <span class="info-label">Ligne :</span>
+                <span>{{ voyage.ligne.nom }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Date :</span>
+                <span>{{ voyage.date_depart|date:"d/m/Y" }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Heure :</span>
+                <span>{{ voyage.heure_depart|time:"H:i" }} — Départ N°{{ voyage.numero_depart }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Véhicule :</span>
+                <span>{% if voyage.vehicule %}{{ voyage.vehicule.display_immat }} ({{ voyage.vehicule.capacite }} places){% else %}Non assigné{% endif %}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Gare :</span>
+                <span>{{ voyage.gare.nom }}</span>
+            </div>
+        </div>
+
+        <div class="alert-box">
+            Suite au changement de véhicule, <strong>{{ reassignations|length }} passager(s)</strong>
+            ont été automatiquement réassignés à de nouveaux sièges.
+            Merci d'identifier ces passagers et de leur remettre un nouveau ticket.
+        </div>
+
+        {% if reassignations %}
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:25px;" class="text-center">N°</th>
+                    <th>Nom du Passager</th>
+                    <th>Téléphone</th>
+                    <th class="text-center" style="width:70px;">Ancien Siège</th>
+                    <th class="text-center" style="width:30px;"></th>
+                    <th class="text-center" style="width:80px;">Nouveau Siège</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in reassignations %}
+                <tr>
+                    <td class="text-center">{{ forloop.counter }}</td>
+                    <td><strong>{{ r.billet.client_nom }}</strong></td>
+                    <td>{{ r.billet.client_telephone }}</td>
+                    <td class="siege-ancien">{{ r.ancien_siege }}</td>
+                    <td class="arrow">→</td>
+                    <td class="siege-nouveau">{{ r.nouveau_siege }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align:center; padding:20px; color:#7f8c8d; font-style:italic;">
+            Aucune réassignation enregistrée pour ce voyage.
+        </div>
+        {% endif %}
+
+        <div class="footer">
+            <div>Imprimé le {{ date_impression|date:"d/m/Y à H:i" }}</div>
+            <div>{{ reassignations|length }} passager(s) concerné(s)</div>
+        </div>
+    </div>
+</body>
+</html>

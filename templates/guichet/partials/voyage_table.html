@@ -1,0 +1,141 @@
+    <div class="table-header">
+        <span><i class="bi bi-bus-front me-2" style="color:var(--color-accent)"></i>Liste des voyages</span>
+        <span class="badge rounded-pill" style="background:#eef2ff;color:#4338ca;font-size:12px;font-weight:600">
+            {% if page_obj %}{{ page_obj.paginator.count }}{% else %}{{ voyages|length }}{% endif %} voyage{% if voyages|length != 1 %}s{% endif %}
+        </span>
+    </div>
+
+    {% if voyages %}
+    <div class="table-responsive">
+        <table class="table v-table mb-0">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Heure</th>
+                    <th>N°</th>
+                    <th>Période</th>
+                    <th>Ligne</th>
+                    <th>Gare</th>
+                    <th>Véhicule</th>
+                    <th>Places</th>
+                    <th>Statut</th>
+                    <th class="text-end pe-4">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for voyage in voyages %}
+                <tr>
+                    <td><span class="date-cell">{{ voyage.date_depart|date:"d/m/Y" }}</span></td>
+                    <td style="color:#6b7280;">{{ voyage.heure_depart|time:"H:i" }}</td>
+                    <td><span class="num-badge">{{ voyage.numero_depart }}</span></td>
+                    <td>
+                        <span class="periode-badge {% if voyage.periode == 'matin' %}periode-matin{% else %}periode-soir{% endif %}">
+                            {{ voyage.get_periode_display }}
+                        </span>
+                    </td>
+                    <td style="font-weight:600;">{{ voyage.ligne }}</td>
+                    <td style="color:#6b7280;font-size:12px;">{{ voyage.gare.code }}</td>
+                    <td>
+                        {% if voyage.vehicule %}
+                            <div class="v-assigné">{{ voyage.vehicule.display_immat }}</div>
+                            <div class="v-sub">{{ voyage.vehicule.modele.nom }}</div>
+                        {% else %}
+                            <span class="v-non-assigne"><i class="bi bi-exclamation-circle me-1"></i>Non assigné</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if voyage.vehicule %}
+                            {% with dispo=voyage.get_nb_places_disponibles %}
+                            <span class="places-badge {% if dispo > 10 %}places-ok{% elif dispo > 0 %}places-low{% else %}places-full{% endif %}">
+                                {{ dispo }}
+                            </span>
+                            {% endwith %}
+                        {% else %}
+                            <span style="color:#d1d5db;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="statut-badge
+                            {% if voyage.statut == 'programme' %}statut-programme
+                            {% elif voyage.statut == 'en_cours' %}statut-en_cours
+                            {% else %}statut-termine{% endif %}">
+                            {% if voyage.statut == 'programme' %}<i class="bi bi-calendar-check"></i>
+                            {% elif voyage.statut == 'en_cours' %}<i class="bi bi-play-circle"></i>
+                            {% else %}<i class="bi bi-check-circle"></i>{% endif %}
+                            {{ voyage.get_statut_display }}
+                        </span>
+                    </td>
+                    <td class="text-end pe-4">
+                        <div class="d-flex gap-2 justify-content-end align-items-center">
+                            <a href="{% url 'voyages:voyage_detail' voyage.public_id %}"
+                               class="btn-action view" title="Voir le point du voyage">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            {% if voyage.vehicule and voyage.get_nb_places_disponibles > 0 %}
+                            <a href="{% url 'guichet:vente' voyage.public_id %}" class="btn-vendre">
+                                <i class="bi bi-cart-plus"></i> Vendre
+                            </a>
+                            {% elif not voyage.vehicule %}
+                            <span style="font-size:11px;color:#9ca3af;">Véhicule requis</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ── Pagination ── -->
+    {% if page_obj.has_other_pages %}
+    <div class="pagination-zone">
+        <div class="pagination-info">
+            Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}
+            &nbsp;·&nbsp;
+            {{ page_obj.paginator.count }} voyage{{ page_obj.paginator.count|pluralize }}
+        </div>
+        <ul class="c-pagination">
+            {% if page_obj.has_previous %}
+            <li>
+                <a class="page-btn" href="?page={{ page_obj.previous_page_number }}{% if request.GET.date %}&date={{ request.GET.date }}{% endif %}{% if request.GET.ligne %}&ligne={{ request.GET.ligne }}{% endif %}{% if request.GET.periode %}&periode={{ request.GET.periode }}{% endif %}{% if request.GET.statut %}&statut={{ request.GET.statut }}{% endif %}">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            </li>
+            {% else %}
+            <li><span class="page-btn disabled"><i class="bi bi-chevron-left"></i></span></li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+                    {% if page_obj.number == num %}
+                    <li><span class="page-btn active">{{ num }}</span></li>
+                    {% else %}
+                    <li>
+                        <a class="page-btn" href="?page={{ num }}{% if request.GET.date %}&date={{ request.GET.date }}{% endif %}{% if request.GET.ligne %}&ligne={{ request.GET.ligne }}{% endif %}{% if request.GET.periode %}&periode={{ request.GET.periode }}{% endif %}{% if request.GET.statut %}&statut={{ request.GET.statut }}{% endif %}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+            <li>
+                <a class="page-btn" href="?page={{ page_obj.next_page_number }}{% if request.GET.date %}&date={{ request.GET.date }}{% endif %}{% if request.GET.ligne %}&ligne={{ request.GET.ligne }}{% endif %}{% if request.GET.periode %}&periode={{ request.GET.periode }}{% endif %}{% if request.GET.statut %}&statut={{ request.GET.statut }}{% endif %}">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+            {% else %}
+            <li><span class="page-btn disabled"><i class="bi bi-chevron-right"></i></span></li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <i class="bi bi-calendar-x text-muted"></i>
+        <p class="fw-semibold">Aucun voyage trouvé avec ces critères</p>
+        <a href="{% url 'guichet:voyage_list' %}" class="btn btn-sm btn-outline-secondary mt-2">
+            <i class="bi bi-x me-1"></i>Réinitialiser les filtres
+        </a>
+    </div>
+    {% endif %}

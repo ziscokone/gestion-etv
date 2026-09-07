@@ -27,3 +27,12 @@ class CompagnieAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         """Empêche la suppression de la compagnie."""
         return False
+
+from .models import Remise
+
+
+@admin.register(Remise)
+class RemiseAdmin(admin.ModelAdmin):
+    list_display = ('libelle', 'montant', 'actif', 'ordre')
+    list_editable = ('montant', 'actif', 'ordre')
+    list_filter = ('actif',)

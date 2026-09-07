@@ -1,0 +1,64 @@
+{% load custom_filters %}
+{% comment %}
+Modale de paiement d'une réservation — remise facultative (défaut : aucune).
+Incluse dans vente.html et reservations.html. Attend `remises` dans le contexte.
+{% endcomment %}
+<div class="modal fade" id="paiementReservationModal" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:16px;border:none;overflow:hidden;">
+      <div class="modal-header" style="background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;">
+        <h5 class="modal-title"><i class="bi bi-cash-coin me-2"></i>Paiement de la réservation</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="p-2 mb-3" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:13px;">
+          <div><strong id="prCli">—</strong> · siège <strong id="prSiege">—</strong> · <span id="prDest">—</span></div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold" style="font-size:13px;">Moyen de paiement</label>
+          <div class="d-flex flex-wrap gap-2">
+            <div class="form-check"><input class="form-check-input" type="radio" name="prMoyen" id="prCash" value="cash" checked>
+              <label class="form-check-label badge" for="prCash" style="background:#6c757d;cursor:pointer;">Cash</label></div>
+            <div class="form-check"><input class="form-check-input" type="radio" name="prMoyen" id="prWave" value="wave">
+              <label class="form-check-label badge" for="prWave" style="background:#00CED1;cursor:pointer;">Wave</label></div>
+            <div class="form-check"><input class="form-check-input" type="radio" name="prMoyen" id="prOrange" value="orange_money">
+              <label class="form-check-label badge" for="prOrange" style="background:#FF6600;cursor:pointer;">Orange</label></div>
+            <div class="form-check"><input class="form-check-input" type="radio" name="prMoyen" id="prMTN" value="mtn_money">
+              <label class="form-check-label badge" for="prMTN" style="background:#FFCC00;color:#000;cursor:pointer;">MTN</label></div>
+            <div class="form-check"><input class="form-check-input" type="radio" name="prMoyen" id="prMoov" value="moov_money">
+              <label class="form-check-label badge" for="prMoov" style="background:#003366;cursor:pointer;">Moov</label></div>
+          </div>
+        </div>
+
+        {% if remises %}
+        <div class="mb-3">
+          <label class="form-label fw-semibold" style="font-size:13px;">Remise</label>
+          <select class="form-select" id="prRemise">
+            <option value="" data-montant="0">Aucune remise</option>
+            {% for r in remises %}
+            <option value="{{ r.pk }}" data-montant="{{ r.montant }}">
+              {% if r.libelle %}{{ r.libelle }} — {% endif %}−{{ r.montant|format_montant }} FCFA
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+
+        <div class="p-2" style="background:#f8fafc;border-radius:8px;font-size:14px;">
+          <strong>Montant à encaisser : <span id="prMontant" class="text-success">—</span></strong>
+          <span id="prMontantDetail" class="text-muted ms-1" style="display:none;"></span>
+        </div>
+      </div>
+      <div class="modal-footer" style="border:none;padding:12px 24px 20px;">
+        <button type="button" class="btn btn-danger fw-bold" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle me-1"></i>Annuler
+        </button>
+        <button type="button" id="prValider"
+                style="background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer;">
+          <i class="bi bi-check-circle me-1"></i>Valider &amp; imprimer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

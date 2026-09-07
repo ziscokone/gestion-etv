@@ -38,29 +38,30 @@
     background: #fff;
 }
 
-/* ── Section divider ─────────────────────────────────────── */
+/* ── Entête de section — même design que la fiche véhicule ─── */
 .section-label {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.8px;
-    text-transform: uppercase;
-    color: var(--color-accent);
-    margin-bottom: 14px;
-    padding-bottom: 6px;
-    border-bottom: 2px solid rgba(74,111,165,0.12);
     display: flex;
     align-items: center;
-    gap: 6px;
-}
-
-/* ── Labels compacts ─────────────────────────────────────── */
-.form-label-sm {
-    font-size: 11px;
-    font-weight: 600;
-    color: #6b7280;
-    margin-bottom: 4px;
+    gap: 10px;
+    font-size: 12px;
+    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.4px;
+    letter-spacing: 0.8px;
+    color: #1e3260;
+    margin-bottom: 18px;
+    padding: 0 0 0 12px;
+    border: none;
+    border-left: 3px solid #E67E22;
+}
+.section-label i { color: #E67E22; font-size: 14px; }
+
+/* ── Labels de champ ─────────────────────────────────────── */
+.form-label-sm {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 5px;
 }
 
 /* ── Boutons footer ──────────────────────────────────────── */
@@ -226,18 +227,6 @@
                                 <i class="bi bi-info-circle me-1"></i>{{ form.convoyeur.help_text }}
                             </div>
                         {% endif %}
-                    </div>
-                </div>
-
-                <!-- Section : Statut -->
-                <div class="section-label">
-                    <i class="bi bi-toggle-on"></i> Statut
-                </div>
-                <div class="row">
-                    <div class="col-md-4">
-                        <label class="form-label-sm">{{ form.statut.label }}</label>
-                        {{ form.statut }}
-                        {% if form.statut.errors %}<div class="invalid-feedback d-block">{{ form.statut.errors }}</div>{% endif %}
                     </div>
                 </div>
 

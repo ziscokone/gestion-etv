@@ -155,3 +155,33 @@ class Compagnie(models.Model):
     def get_instance(cls):
         """Retourne l'instance unique de la compagnie ou None."""
         return cls.objects.first()
+
+
+class Remise(models.Model):
+    """
+    Montant de remise pré-défini par la compagnie. Le guichetier choisit une
+    remise dans cette liste au moment de la vente / du paiement — il ne saisit
+    jamais un montant libre. Le montant appliqué est recopié sur le billet
+    (Billet.remise), donc modifier/supprimer une remise ici n'affecte pas les
+    ventes passées.
+    """
+    libelle = models.CharField(
+        max_length=100, blank=True, verbose_name="Libellé",
+        help_text="Optionnel — ex : « Geste commercial », « Tarif étudiant »",
+    )
+    montant = models.DecimalField(
+        max_digits=10, decimal_places=0, verbose_name="Montant de la remise (FCFA)",
+    )
+    actif = models.BooleanField(default=True, verbose_name="Actif")
+    ordre = models.PositiveSmallIntegerField(default=0, verbose_name="Ordre d'affichage")
+    date_creation = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Remise"
+        verbose_name_plural = "Remises"
+        ordering = ['ordre', 'montant']
+
+    def __str__(self):
+        if self.libelle:
+            return f"{self.libelle} (−{self.montant:.0f} FCFA)"
+        return f"−{self.montant:.0f} FCFA"

@@ -50,6 +50,8 @@
 </div>
 
 <!-- Modal vendre à un autre client -->
+{% include "guichet/_modal_paiement_reservation.html" %}
+
 <div class="modal fade" id="vendreAutreModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -364,44 +366,74 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Payer une réservation (délégation d'événement — voir commentaire ci-dessus)
-    document.getElementById('reservationsTableContainer').addEventListener('click', function(e) {
-        const btn = e.target.closest('.btn-payer');
-        if (!btn) return;
+    // Payer une réservation → modale (moyen de paiement + remise, défaut aucune)
+    (function () {
+        var modalEl = document.getElementById('paiementReservationModal');
+        if (!modalEl) return;
+        var modal = new bootstrap.Modal(modalEl);
+        var prRemise = document.getElementById('prRemise');
+        var prMontant = document.getElementById('prMontant');
+        var prMontantDetail = document.getElementById('prMontantDetail');
+        var prValider = document.getElementById('prValider');
+        var courant = null;
 
-        const billetId = btn.dataset.id;
-        const row = document.getElementById(`reservation-${billetId}`);
-
-        if (!confirm('Confirmer le paiement de cette réservation ?')) return;
-
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-
-        fetch(`/api/payer/${billetId}/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}'
+        function majMontantPr() {
+            if (!courant) return;
+            var tarif = courant.tarif, remise = 0;
+            if (prRemise && prRemise.value) {
+                remise = parseFloat(prRemise.options[prRemise.selectedIndex].dataset.montant) || 0;
             }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                displayTicket(data.billet);
-                imprimerBillets([data.billet.public_id], '{{ csrf_token }}');
-                if (row) row.remove();
-            } else {
-                alert(data.error);
-                btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-cash me-1"></i> Payer';
-            }
-        })
-        .catch(error => {
-            console.error('Erreur:', error);
-            alert('Erreur de connexion');
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-cash me-1"></i> Payer';
+            if (remise > tarif) remise = tarif;
+            prMontant.textContent = (tarif - remise).toLocaleString('fr-FR') + ' FCFA';
+            if (remise > 0) {
+                prMontantDetail.textContent = '(tarif ' + tarif.toLocaleString('fr-FR') + ' − remise ' + remise.toLocaleString('fr-FR') + ')';
+                prMontantDetail.style.display = 'inline';
+            } else { prMontantDetail.style.display = 'none'; }
+        }
+        if (prRemise) prRemise.addEventListener('change', majMontantPr);
+
+        document.getElementById('reservationsTableContainer').addEventListener('click', function (e) {
+            var btn = e.target.closest('.btn-payer');
+            if (!btn) return;
+            courant = {
+                id: btn.dataset.id,
+                tarif: parseFloat(btn.dataset.montant) || 0,
+                row: document.getElementById('reservation-' + btn.dataset.id),
+            };
+            document.getElementById('prCli').textContent = btn.dataset.client || '—';
+            document.getElementById('prSiege').textContent = btn.dataset.siege || '—';
+            document.getElementById('prDest').textContent = btn.dataset.destination || '—';
+            if (prRemise) prRemise.value = '';
+            var cash = document.getElementById('prCash'); if (cash) cash.checked = true;
+            majMontantPr();
+            modal.show();
         });
-    });
+
+        prValider.addEventListener('click', function () {
+            if (!courant) return;
+            var body = new FormData();
+            var moyenEl = document.querySelector('input[name="prMoyen"]:checked');
+            body.append('moyen_paiement', moyenEl ? moyenEl.value : 'cash');
+            if (prRemise && prRemise.value) body.append('remise_id', prRemise.value);
+            prValider.disabled = true;
+            fetch('/api/payer/' + courant.id + '/', {
+                method: 'POST', body: body, headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            })
+            .then(r => r.json())
+            .then(function (data) {
+                if (data.success) {
+                    modal.hide();
+                    displayTicket(data.billet);
+                    imprimerBillets([data.billet.public_id], '{{ csrf_token }}');
+                    if (courant.row) courant.row.remove();
+                } else {
+                    alert(data.error || 'Une erreur est survenue');
+                }
+            })
+            .catch(() => alert('Erreur de connexion'))
+            .finally(() => { prValider.disabled = false; });
+        });
+    })();
 });
 </script>
 {% endblock %}

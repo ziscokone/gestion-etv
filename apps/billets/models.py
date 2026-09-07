@@ -69,7 +69,15 @@ class Billet(models.Model):
     montant = models.DecimalField(
         max_digits=10,
         decimal_places=0,
-        verbose_name="Montant (FCFA)"
+        verbose_name="Montant (FCFA)",
+        help_text="Montant réellement encaissé = tarif de la destination − remise."
+    )
+    remise = models.DecimalField(
+        max_digits=10,
+        decimal_places=0,
+        default=0,
+        verbose_name="Remise (FCFA)",
+        help_text="Réduction accordée sur ce billet (choisie parmi les remises configurées)."
     )
     statut = models.CharField(
         max_length=25,
@@ -188,6 +196,11 @@ class Billet(models.Model):
     def est_reserve(self):
         return self.statut == 'reserve'
 
+    @property
+    def tarif_plein(self):
+        """Tarif avant remise = montant encaissé + remise accordée."""
+        return (self.montant or 0) + (self.remise or 0)
+
     def get_info_impression(self):
         """Retourne les informations pour l'impression du ticket."""
         gare = self.voyage.gare
@@ -214,6 +227,8 @@ class Billet(models.Model):
             'heure_depart': self.voyage.heure_depart.strftime('%H:%M'),
             'periode': self.voyage.get_periode_display(),
             'montant': self.montant,
+            'remise': self.remise,
+            'tarif_plein': self.tarif_plein,
             'moyen_paiement': self.moyen_paiement,
             'moyen_paiement_display': moyen_paiement_display.get(self.moyen_paiement, 'Cash'),
             # Informations de la gare
@@ -228,8 +243,17 @@ class Billet(models.Model):
             'statut': self.statut,
         }
 
+    @staticmethod
+    def _remise_valide(destination, remise):
+        """Borne la remise entre 0 et le tarif de la destination."""
+        try:
+            r = max(0, int(remise or 0))
+        except (TypeError, ValueError):
+            return 0
+        return min(r, int(destination.montant)) if destination else 0
+
     @classmethod
-    def creer_billet(cls, voyage, client_nom, client_telephone, numero_siege, guichetier, destination=None, payer=True, moyen_paiement='cash'):
+    def creer_billet(cls, voyage, client_nom, client_telephone, numero_siege, guichetier, destination=None, payer=True, moyen_paiement='cash', remise=0):
         """
         Crée un nouveau billet.
 
@@ -242,6 +266,7 @@ class Billet(models.Model):
             destination: Instance de la Destination choisie par le client
             payer: Si True, marque directement comme payé
             moyen_paiement: Moyen de paiement (cash, wave, orange_money, mtn_money, moov_money)
+            remise: Réduction accordée (FCFA) — ignorée sur une simple réservation.
 
         Returns:
             Instance du Billet créé
@@ -253,13 +278,17 @@ class Billet(models.Model):
         if not destination:
             raise ValidationError("Une destination doit être spécifiée pour créer un billet.")
 
+        # Pas de remise sur une réservation non payée : elle se choisira au paiement.
+        remise = cls._remise_valide(destination, remise) if payer else 0
+
         billet = cls(
             voyage=voyage,
             destination=destination,
             client_nom=client_nom,
             client_telephone=client_telephone,
             numero_siege=numero_siege,
-            montant=destination.montant,
+            montant=destination.montant - remise,
+            remise=remise,
             guichetier=guichetier,
             statut='paye' if payer else 'reserve',
             moyen_paiement=moyen_paiement if payer else 'cash',
@@ -269,7 +298,7 @@ class Billet(models.Model):
         return billet
 
     @classmethod
-    def creer_billets_plage(cls, voyage, client_nom, client_telephone, siege_debut, siege_fin, guichetier, destination, payer=True, moyen_paiement='cash'):
+    def creer_billets_plage(cls, voyage, client_nom, client_telephone, siege_debut, siege_fin, guichetier, destination, payer=True, moyen_paiement='cash', remise=0):
         """
         Crée plusieurs billets pour une plage de sièges.
         Ignore les sièges déjà pris.
@@ -305,7 +334,8 @@ class Billet(models.Model):
                         guichetier=guichetier,
                         destination=destination,
                         payer=payer,
-                        moyen_paiement=moyen_paiement
+                        moyen_paiement=moyen_paiement,
+                        remise=remise,
                     )
                     billets_crees.append(billet)
                 except ValidationError:
@@ -316,7 +346,7 @@ class Billet(models.Model):
 
     @classmethod
     def creer_billets_avec_fidelite(cls, voyage, client, client_nom, client_telephone,
-                                    sieges, guichetier, destination, moyen_paiement='cash'):
+                                    sieges, guichetier, destination, moyen_paiement='cash', remise=0):
         """
         Crée des billets PAYÉS pour une suite de sièges, en convertissant
         automatiquement en billets FIDÉLITÉ (0 FCFA, statut 'fidelite') ceux
@@ -343,6 +373,9 @@ class Billet(models.Model):
         payes = client.fidelite_voyages_comptabilises if fidelite_ok else 0
         emis = client.fidelite_tickets_emis if fidelite_ok else 0
 
+        # La remise ne s'applique jamais à un billet fidélité (déjà à 0 F).
+        remise = cls._remise_valide(destination, remise)
+
         billets_crees = []
         sieges_disponibles = set(voyage.get_sieges_disponibles())
 
@@ -359,7 +392,8 @@ class Billet(models.Model):
                 client_nom=client_nom,
                 client_telephone=client_telephone,
                 numero_siege=numero_siege,
-                montant=0 if offert else destination.montant,
+                montant=0 if offert else destination.montant - remise,
+                remise=0 if offert else remise,
                 statut='fidelite' if offert else 'paye',
                 moyen_paiement='cash' if offert else moyen_paiement,
                 guichetier=guichetier,

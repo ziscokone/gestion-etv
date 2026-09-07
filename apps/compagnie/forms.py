@@ -1,8 +1,35 @@
 from django import forms
+from django.forms import modelformset_factory
 
-from .models import Compagnie
+from .models import Compagnie, Remise
 
 DOCUMENTS_CLES = [cle for cle, _, _ in Compagnie.DOCUMENTS_VEHICULE]
+
+
+class RemiseForm(forms.ModelForm):
+    class Meta:
+        model = Remise
+        fields = ['libelle', 'montant', 'actif']
+        widgets = {
+            'libelle': forms.TextInput(attrs={
+                'class': 'form-control form-control-sm', 'placeholder': 'ex : Geste commercial',
+            }),
+            'montant': forms.NumberInput(attrs={
+                'class': 'form-control form-control-sm', 'min': '1', 'step': '1', 'placeholder': 'ex : 1000',
+            }),
+            'actif': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+    def clean_montant(self):
+        m = self.cleaned_data.get('montant')
+        if m is not None and m <= 0:
+            raise forms.ValidationError("Le montant doit être supérieur à 0.")
+        return m
+
+
+RemiseFormSet = modelformset_factory(
+    Remise, form=RemiseForm, extra=1, can_delete=True,
+)
 
 
 class CompagnieForm(forms.ModelForm):

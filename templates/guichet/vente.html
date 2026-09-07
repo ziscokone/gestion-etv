@@ -162,7 +162,11 @@
                                     <td>
                                         <button type="button"
                                                 class="btn btn-sm btn-success btn-payer"
-                                                data-id="{{ reservation.public_id }}">
+                                                data-id="{{ reservation.public_id }}"
+                                                data-client="{{ reservation.client_nom }}"
+                                                data-siege="{{ reservation.numero_siege }}"
+                                                data-destination="{{ reservation.destination.ville_arrivee|default:'-' }}"
+                                                data-montant="{{ reservation.montant|floatformat:0 }}">
                                             <i class="bi bi-cash"></i> Payer
                                         </button>
                                         <button type="button"
@@ -246,8 +250,27 @@
                                 </option>
                                 {% endfor %}
                             </select>
-                            <div class="mt-2">
+                        </div>
+
+                        {% if remises %}
+                        <div class="mb-3">
+                            <label class="form-label">Remise</label>
+                            <select class="form-select" name="remise_id" id="remiseSelect">
+                                <option value="" data-montant="0">Aucune remise</option>
+                                {% for r in remises %}
+                                <option value="{{ r.pk }}" data-montant="{{ r.montant }}">
+                                    {% if r.libelle %}{{ r.libelle }} — {% endif %}−{{ r.montant|format_montant }} FCFA
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">S'applique à la vente ; ignorée sur une réservation et un ticket fidélité.</small>
+                        </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <div class="mt-1" id="montantBloc">
                                 <strong>Montant : <span id="montantAffiche" class="text-success">-</span></strong>
+                                <span id="montantRemiseInfo" class="text-muted ms-1" style="display:none;"></span>
                             </div>
                         </div>
 
@@ -281,13 +304,16 @@
                             <label class="form-label">Plage de sièges</label>
                             <div class="row g-2">
                                 <div class="col-6">
-                                    <input type="number" class="form-control" name="siege_debut"
+                                    <input type="number" class="form-control" name="siege_debut" id="siegeDebut"
                                            placeholder="De" min="1">
                                 </div>
                                 <div class="col-6">
-                                    <input type="number" class="form-control" name="siege_fin"
+                                    <input type="number" class="form-control" name="siege_fin" id="siegeFin"
                                            placeholder="À" min="1">
                                 </div>
+                            </div>
+                            <div id="plageInfo" class="mt-2 p-2 text-center fw-bold"
+                                 style="display:none;background:#e0f2fe;color:#075985;border-radius:8px;font-size:14px;">
                             </div>
                             <small class="text-muted">Les sièges déjà pris seront ignorés</small>
                         </div>
@@ -435,6 +461,28 @@
     </div>
 </div>
 
+<!-- Modal générique : message d'information / erreur de vente -->
+<div class="modal fade" id="venteMessageModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:16px;border:none;overflow:hidden;">
+            <div class="modal-body text-center p-4">
+                <div id="venteMessageIcone"
+                     style="width:56px;height:56px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                    <i class="bi bi-exclamation-triangle-fill" style="font-size:1.6rem;color:#dc2626;"></i>
+                </div>
+                <h5 id="venteMessageTitre" class="mb-1" style="font-weight:700;">Impossible</h5>
+                <p id="venteMessageTexte" class="text-muted mb-4" style="font-size:.92rem;"></p>
+                <button type="button" class="btn flex-fill w-100" data-bs-dismiss="modal"
+                        style="border:2px solid #1e3260;color:#1e3260;font-weight:700;border-radius:12px;padding:12px 8px;">
+                    <i class="bi bi-check-lg me-1"></i>OK
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include "guichet/_modal_paiement_reservation.html" %}
+
 <!-- Modal vendre à un autre client -->
 <div class="modal fade" id="vendreAutreModal" tabindex="-1">
     <div class="modal-dialog">
@@ -561,6 +609,29 @@
 {% block extra_js %}
 <script src="{% static 'js/print-ticket.js' %}"></script>
 <script>
+// Modale générique pour les messages de vente (remplace les alert() natifs).
+// Déclarée au niveau du <script> pour être visible dans tous les blocs.
+var _venteMsgModal = null;
+function messageVente(texte, opts) {
+    opts = opts || {};
+    var el = document.getElementById('venteMessageModal');
+    if (!el || !window.bootstrap) { alert(texte); return; }
+    var themes = {
+        danger:  { bg: '#fee2e2', color: '#dc2626', icon: 'bi-exclamation-triangle-fill', titre: 'Impossible' },
+        warning: { bg: '#fef3c7', color: '#b45309', icon: 'bi-exclamation-circle-fill',  titre: 'Attention' },
+        info:    { bg: '#e0f2fe', color: '#0284c7', icon: 'bi-info-circle-fill',          titre: 'Information' }
+    };
+    var t = themes[opts.type || 'danger'] || themes.danger;
+    var boite = document.getElementById('venteMessageIcone');
+    boite.style.background = t.bg;
+    boite.querySelector('i').className = 'bi ' + t.icon;
+    boite.querySelector('i').style.color = t.color;
+    document.getElementById('venteMessageTitre').textContent = opts.titre || t.titre;
+    document.getElementById('venteMessageTexte').textContent = texte;
+    if (!_venteMsgModal) _venteMsgModal = new bootstrap.Modal(el);
+    _venteMsgModal.show();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const voyageId = "{{ voyage.public_id }}";
     const form = document.getElementById('venteForm');
@@ -692,29 +763,85 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!this.value.trim()) resetClientField();
     });
 
-    // Affichage automatique du montant quand on sélectionne une destination
-    destinationSelect.addEventListener('change', function() {
-        const selectedOption = this.options[this.selectedIndex];
-        const montant = selectedOption.dataset.montant;
+    // Affichage automatique du montant = tarif destination − remise
+    const remiseSelect = document.getElementById('remiseSelect');
+    const montantRemiseInfo = document.getElementById('montantRemiseInfo');
 
-        if (montant) {
-            montantAffiche.textContent = parseFloat(montant).toLocaleString('fr-FR') + ' FCFA';
+    function majMontant() {
+        const optDest = destinationSelect.options[destinationSelect.selectedIndex];
+        const tarif = parseFloat(optDest ? optDest.dataset.montant : 0) || 0;
+        let remise = 0;
+        if (remiseSelect && remiseSelect.value) {
+            const optR = remiseSelect.options[remiseSelect.selectedIndex];
+            remise = parseFloat(optR.dataset.montant) || 0;
+        }
+        if (remise > tarif) remise = tarif;
+
+        if (tarif > 0) {
+            const net = tarif - remise;
+            montantAffiche.textContent = net.toLocaleString('fr-FR') + ' FCFA';
             montantAffiche.classList.add('text-success');
+            if (remise > 0 && montantRemiseInfo) {
+                montantRemiseInfo.textContent = '(tarif ' + tarif.toLocaleString('fr-FR')
+                    + ' − remise ' + remise.toLocaleString('fr-FR') + ')';
+                montantRemiseInfo.style.display = 'inline';
+            } else if (montantRemiseInfo) {
+                montantRemiseInfo.style.display = 'none';
+            }
         } else {
             montantAffiche.textContent = '-';
             montantAffiche.classList.remove('text-success');
+            if (montantRemiseInfo) montantRemiseInfo.style.display = 'none';
         }
-    });
+    }
+
+    destinationSelect.addEventListener('change', majMontant);
+    if (remiseSelect) remiseSelect.addEventListener('change', majMontant);
+
+    // Nombre de tickets d'une vente par plage (affiché uniquement en mode plage)
+    const siegeDebut = document.getElementById('siegeDebut');
+    const siegeFin = document.getElementById('siegeFin');
+    const plageInfo = document.getElementById('plageInfo');
+
+    var PLAGE_CLASSES_PRISES = ['paye', 'reserve', 'non-vendable', 'gratuit', 'gratuit_en_attente', 'fidelite'];
+
+    function majNombrePlage() {
+        if (!plageInfo) return;
+        if (!modePlage.checked) { plageInfo.style.display = 'none'; return; }
+        let d = parseInt(siegeDebut.value, 10);
+        let f = parseInt(siegeFin.value, 10);
+        if (!d || !f) { plageInfo.style.display = 'none'; return; }
+        if (d > f) { const t = d; d = f; f = t; }
+
+        // On ne compte que les places réellement libres de la plage
+        // (le serveur ignore de toute façon les sièges déjà pris).
+        let libres = 0, pris = 0;
+        for (let n = d; n <= f; n++) {
+            const el = document.querySelector('.siege[data-numero="' + n + '"]');
+            if (!el) continue; // siège inexistant dans ce véhicule
+            const bloque = PLAGE_CLASSES_PRISES.some(c => el.classList.contains(c));
+            if (bloque) pris++; else libres++;
+        }
+
+        plageInfo.innerHTML = '<strong>' + libres + (libres > 1 ? ' tickets' : ' ticket')
+            + '</strong> à créer (sièges ' + d + ' à ' + f + ')'
+            + (pris > 0 ? ' — <span style="color:#b45309;">' + pris + ' déjà pris, ignoré' + (pris > 1 ? 's' : '') + '</span>' : '');
+        plageInfo.style.display = 'block';
+    }
+    if (siegeDebut) siegeDebut.addEventListener('input', majNombrePlage);
+    if (siegeFin) siegeFin.addEventListener('input', majNombrePlage);
 
     // Gestion du mode de vente
     modeUnitaire.addEventListener('change', function() {
         venteUnitaireDiv.style.display = 'block';
         ventePlageDiv.style.display = 'none';
+        majNombrePlage();
     });
 
     modePlage.addEventListener('change', function() {
         venteUnitaireDiv.style.display = 'none';
         ventePlageDiv.style.display = 'block';
+        majNombrePlage();
     });
 
     // Sélection des sièges
@@ -780,12 +907,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Validation
         if (!destinationSelect.value) {
-            alert('Veuillez sélectionner une destination');
+            messageVente('Veuillez sélectionner une destination');
             return;
         }
 
         if (modeUnitaire.checked && !siegeInput.value) {
-            alert('Veuillez sélectionner un siège');
+            messageVente('Veuillez sélectionner un siège');
             return;
         }
 
@@ -852,13 +979,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 siegeInput.value = '';
                 montantAffiche.textContent = '-';
                 montantAffiche.classList.remove('text-success');
+                if (montantRemiseInfo) montantRemiseInfo.style.display = 'none';
+                if (plageInfo) plageInfo.style.display = 'none';
             } else {
-                alert(data.error || 'Une erreur est survenue');
+                messageVente(data.error || 'Une erreur est survenue');
             }
         })
         .catch(error => {
             console.error('Erreur:', error);
-            alert('Erreur de connexion');
+            messageVente('Erreur de connexion');
         })
         .finally(() => {
             submitBtn.disabled = false;
@@ -1070,6 +1199,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         });
                     });
+                    if (typeof majNombrePlage === 'function') majNombrePlage();
                 }
             });
     }
@@ -1197,8 +1327,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const destinationId = vendreAutreDestination.value;
         const moyenPaiement = document.querySelector('input[name="vendreAutrePaiement"]:checked').value;
 
-        if (!telephone || !nom) { alert('Le nom et le téléphone sont obligatoires'); return; }
-        if (!destinationId) { alert('Veuillez sélectionner une destination'); return; }
+        if (!telephone || !nom) { messageVente('Le nom et le téléphone sont obligatoires'); return; }
+        if (!destinationId) { messageVente('Veuillez sélectionner une destination'); return; }
 
         this.disabled = true;
         this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Traitement...';
@@ -1226,44 +1356,89 @@ document.addEventListener('DOMContentLoaded', function() {
                 const row = document.querySelector(`button.btn-vendre-autre[data-id="${billetId}"]`);
                 if (row) row.closest('tr').remove();
             } else {
-                alert(data.error || 'Une erreur est survenue');
+                messageVente(data.error || 'Une erreur est survenue');
             }
         })
-        .catch(() => alert('Erreur de connexion'))
+        .catch(() => messageVente('Erreur de connexion'))
         .finally(() => {
             this.disabled = false;
             this.innerHTML = '<i class="bi bi-cash me-1"></i>Valider et imprimer';
         });
     });
 
-    // Payer une réservation
-    document.querySelectorAll('.btn-payer').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const billetId = this.dataset.id;
+    // Payer une réservation → passe par la modale (moyen de paiement + remise)
+    (function () {
+        var modalEl = document.getElementById('paiementReservationModal');
+        if (!modalEl) return;
+        var modal = new bootstrap.Modal(modalEl);
+        var prRemise = document.getElementById('prRemise');
+        var prMontant = document.getElementById('prMontant');
+        var prMontantDetail = document.getElementById('prMontantDetail');
+        var prValider = document.getElementById('prValider');
+        var courant = null; // { id, tarif, row }
 
-            if (!confirm('Confirmer le paiement de cette réservation ?')) return;
+        function majMontantPr() {
+            if (!courant) return;
+            var tarif = courant.tarif;
+            var remise = 0;
+            if (prRemise && prRemise.value) {
+                remise = parseFloat(prRemise.options[prRemise.selectedIndex].dataset.montant) || 0;
+            }
+            if (remise > tarif) remise = tarif;
+            prMontant.textContent = (tarif - remise).toLocaleString('fr-FR') + ' FCFA';
+            if (remise > 0) {
+                prMontantDetail.textContent = '(tarif ' + tarif.toLocaleString('fr-FR') + ' − remise ' + remise.toLocaleString('fr-FR') + ')';
+                prMontantDetail.style.display = 'inline';
+            } else {
+                prMontantDetail.style.display = 'none';
+            }
+        }
+        if (prRemise) prRemise.addEventListener('change', majMontantPr);
 
-            fetch(`/api/payer/${billetId}/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    displayTickets([data.billet]);
-                    // Impression physique ESC/POS du paiement de réservation
-                    imprimerBillets([data.billet.public_id], '{{ csrf_token }}');
-                    refreshSeats();
-                    // Supprimer la ligne de réservation
-                    this.closest('tr').remove();
-                } else {
-                    alert(data.error);
-                }
+        document.querySelectorAll('.btn-payer').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                courant = {
+                    id: this.dataset.id,
+                    tarif: parseFloat(this.dataset.montant) || 0,
+                    row: this.closest('tr'),
+                };
+                document.getElementById('prCli').textContent = this.dataset.client || '—';
+                document.getElementById('prSiege').textContent = this.dataset.siege || '—';
+                document.getElementById('prDest').textContent = this.dataset.destination || '—';
+                if (prRemise) prRemise.value = '';
+                var cash = document.getElementById('prCash'); if (cash) cash.checked = true;
+                majMontantPr();
+                modal.show();
             });
         });
-    });
+
+        prValider.addEventListener('click', function () {
+            if (!courant) return;
+            var body = new FormData();
+            var moyenEl = document.querySelector('input[name="prMoyen"]:checked');
+            body.append('moyen_paiement', moyenEl ? moyenEl.value : 'cash');
+            if (prRemise && prRemise.value) body.append('remise_id', prRemise.value);
+
+            prValider.disabled = true;
+            fetch('/api/payer/' + courant.id + '/', {
+                method: 'POST', body: body, headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            })
+            .then(r => r.json())
+            .then(function (data) {
+                if (data.success) {
+                    modal.hide();
+                    displayTickets([data.billet]);
+                    imprimerBillets([data.billet.public_id], '{{ csrf_token }}');
+                    refreshSeats();
+                    if (courant.row) courant.row.remove();
+                } else {
+                    messageVente(data.error || 'Une erreur est survenue');
+                }
+            })
+            .catch(() => messageVente('Erreur de connexion'))
+            .finally(() => { prValider.disabled = false; });
+        });
+    })();
 });
 
 // ── Ticket Gratuit ───────────────────────────────────────
@@ -1296,15 +1471,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const numeroSiege = siegeSelected ? siegeSelected.dataset.numero : '';
 
         if (!clientNom || !clientTel) {
-            alert('Veuillez renseigner le nom et le téléphone du client avant de demander un ticket gratuit.');
+            messageVente('Veuillez renseigner le nom et le téléphone du client avant de demander un ticket gratuit.');
             return;
         }
         if (!numeroSiege) {
-            alert('Veuillez sélectionner un siège avant de demander un ticket gratuit.');
+            messageVente('Veuillez sélectionner un siège avant de demander un ticket gratuit.');
             return;
         }
         if (!destSelect || !destSelect.value) {
-            alert('Veuillez sélectionner une destination.');
+            messageVente('Veuillez sélectionner une destination.');
             return;
         }
 

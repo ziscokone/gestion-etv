@@ -248,6 +248,11 @@
                                 <i class="bi bi-truck"></i>Véhicules
                             </button>
                         </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-remises" type="button" role="tab">
+                                <i class="bi bi-percent"></i>Remises
+                            </button>
+                        </li>
                     </ul>
 
                     <div class="tab-content">
@@ -469,6 +474,68 @@
                             </div><!-- /p-4 -->
                         </div><!-- /tab-vehicules -->
 
+                        <!-- ═══════ Onglet 4 : Remises ═══════ -->
+                        <div class="tab-pane fade" id="tab-remises" role="tabpanel">
+                            <div class="p-4">
+                                <div class="section-label">
+                                    <i class="bi bi-percent"></i> Remises pré-définies
+                                </div>
+                                <p style="font-size:12px;color:#9ca3af;margin-top:-8px;margin-bottom:16px;">
+                                    Le guichetier choisit une remise dans cette liste au moment de la vente ou du
+                                    paiement — il ne saisit jamais un montant libre. Décocher « Actif » retire une
+                                    remise du choix sans supprimer l'historique.
+                                </p>
+
+                                {{ remise_formset.management_form }}
+                                {% if remise_formset.non_form_errors %}
+                                  <div class="alert alert-danger">{{ remise_formset.non_form_errors }}</div>
+                                {% endif %}
+
+                                <div class="table-responsive">
+                                  <table class="table table-sm align-middle" id="remises-table" style="font-size:13px;">
+                                    <thead>
+                                      <tr style="background:#f1f5f9;">
+                                        <th style="width:45%;">Libellé (optionnel)</th>
+                                        <th style="width:30%;">Montant (FCFA)</th>
+                                        <th class="text-center" style="width:12%;">Actif</th>
+                                        <th class="text-center" style="width:13%;">Suppr.</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {% for f in remise_formset %}
+                                      <tr class="remise-row">
+                                        {{ f.id }}
+                                        <td>{{ f.libelle }}{% if f.libelle.errors %}<div class="invalid-feedback d-block">{{ f.libelle.errors }}</div>{% endif %}</td>
+                                        <td>{{ f.montant }}{% if f.montant.errors %}<div class="invalid-feedback d-block">{{ f.montant.errors }}</div>{% endif %}</td>
+                                        <td class="text-center">{{ f.actif }}</td>
+                                        <td class="text-center">
+                                          {% if f.instance.pk %}{{ f.DELETE }}{% else %}
+                                          <button type="button" class="btn btn-sm btn-outline-danger js-remove-remise" title="Retirer">&times;</button>
+                                          {% endif %}
+                                        </td>
+                                      </tr>
+                                      {% endfor %}
+                                    </tbody>
+                                  </table>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="js-add-remise">
+                                  <i class="bi bi-plus-circle me-1"></i>Ajouter une remise
+                                </button>
+
+                                <!-- gabarit d'une nouvelle ligne (prefix __prefix__) -->
+                                <template id="remise-empty-row">
+                                  <tr class="remise-row">
+                                    <td>{{ remise_formset.empty_form.libelle }}</td>
+                                    <td>{{ remise_formset.empty_form.montant }}</td>
+                                    <td class="text-center">{{ remise_formset.empty_form.actif }}</td>
+                                    <td class="text-center">
+                                      <button type="button" class="btn btn-sm btn-outline-danger js-remove-remise" title="Retirer">&times;</button>
+                                    </td>
+                                  </tr>
+                                </template>
+                            </div>
+                        </div><!-- /tab-remises -->
+
                     </div><!-- /tab-content -->
 
                     <!-- ── Footer ── -->
@@ -512,6 +579,37 @@
             checkbox.addEventListener('change', actualiser);
             actualiser();
         });
+
+        // ── Onglet Remises : ajout / retrait de lignes du formset ──────────
+        (function () {
+            var addBtn = document.getElementById('js-add-remise');
+            var tbody = document.querySelector('#remises-table tbody');
+            var tmpl = document.getElementById('remise-empty-row');
+            var totalInput = document.querySelector('#id_remises-TOTAL_FORMS');
+            if (!addBtn || !tbody || !tmpl || !totalInput) return;
+
+            addBtn.addEventListener('click', function () {
+                var index = parseInt(totalInput.value, 10);
+                var html = tmpl.innerHTML.replace(/__prefix__/g, index);
+                var tr = document.createElement('tbody');
+                tr.innerHTML = html.trim();
+                tbody.appendChild(tr.firstChild);
+                totalInput.value = index + 1;
+            });
+
+            tbody.addEventListener('click', function (e) {
+                var btn = e.target.closest('.js-remove-remise');
+                if (!btn) return;
+                var row = btn.closest('tr');
+                var del = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+                if (del) {           // ligne existante → on coche DELETE et on masque
+                    del.checked = true;
+                    row.style.display = 'none';
+                } else {             // ligne toute neuve → on la retire du DOM
+                    row.remove();
+                }
+            });
+        })();
 
         // Si la validation a échoué sur un champ d'un onglet non affiché,
         // on bascule automatiquement sur cet onglet pour montrer l'erreur.

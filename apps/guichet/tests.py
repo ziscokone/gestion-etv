@@ -504,3 +504,104 @@ class FideliteSiegeDispositionTests(TestCase):
         self.assertEqual(statuts[2], 'paye')
         self.assertEqual(statuts[3], 'fidelite')
         self.assertNotIn(3, self.voyage.get_sieges_disponibles())
+
+
+class VenteAvecRemiseVueTests(TestCase):
+    """La vue creer_billet applique une remise choisie dans la liste configurée."""
+
+    def setUp(self):
+        from apps.clients.models import Client
+        from apps.compagnie.models import Remise
+        self.compagnie = Compagnie.objects.create(nom='C', nom_pdg='P')
+        self.remise = Remise.objects.create(libelle='Geste', montant=1000, actif=True)
+        self.remise_off = Remise.objects.create(libelle='Vieille', montant=2000, actif=False)
+        self.gare = Gare.objects.create(nom='G', code='ABJ', ville='Abidjan', compagnie=self.compagnie)
+        self.ligne = Ligne.objects.create(nom='L', gare=self.gare, ville_depart='A', ville_arrivee='B', compagnie=self.compagnie)
+        self.dest = Destination.objects.create(gare=self.gare, ligne=self.ligne, ville_arrivee='B', montant=10000)
+        modele = ModeleVehicule.objects.create(nom='Bus', marque='T', capacite=50)
+        veh = Vehicule.objects.create(immatriculation='RR-1-SS', modele=modele, compagnie=self.compagnie)
+        self.voyage = Voyage.objects.create(gare=self.gare, ligne=self.ligne, date_depart=date.today(),
+                                            heure_depart=time(8, 0), periode='matin', vehicule=veh)
+        self.g = Utilisateur.objects.create_user(username='g', password='x', nom_complet='G', role='guichetier', gare=self.gare)
+        self.client.force_login(self.g)
+
+    def _post(self, **extra):
+        data = {
+            'client_nom': 'Awa', 'client_telephone': '0700000001',
+            'destination_id': self.dest.pk, 'mode_vente': 'unitaire', 'numero_siege': 1,
+            'payer': 'true', 'moyen_paiement': 'cash', 'client_categorie': 'particulier',
+        }
+        data.update(extra)
+        return self.client.post(f'/api/creer-billet/{self.voyage.public_id}/', data)
+
+    def test_vente_avec_remise(self):
+        r = self._post(remise_id=self.remise.pk)
+        j = r.json()
+        self.assertTrue(j['success'])
+        self.assertEqual(j['remise_totale'], 1000)
+        self.assertEqual(int(j['billets'][0]['montant']), 9000)
+        self.assertEqual(int(j['billets'][0]['remise']), 1000)
+
+    def test_plage_remise_par_billet(self):
+        r = self._post(mode_vente='plage', siege_debut=1, siege_fin=3, remise_id=self.remise.pk)
+        j = r.json()
+        self.assertTrue(j['success'])
+        self.assertEqual(j['remise_totale'], 3000)
+        self.assertTrue(all(int(b['montant']) == 9000 for b in j['billets']))
+
+    def test_remise_inactive_refusee(self):
+        r = self._post(remise_id=self.remise_off.pk)
+        self.assertFalse(r.json()['success'])
+
+    def test_reservation_ignore_remise(self):
+        r = self._post(payer='false', remise_id=self.remise.pk)
+        j = r.json()
+        self.assertTrue(j['success'])
+        self.assertEqual(int(j['billets'][0]['montant']), 10000)
+        self.assertEqual(int(j['billets'][0]['remise']), 0)
+
+
+class PaiementReservationAvecRemiseTests(TestCase):
+    """Paiement d'une réservation : remise facultative (défaut aucune), montant recalculé."""
+
+    def setUp(self):
+        from apps.compagnie.models import Remise
+        self.compagnie = Compagnie.objects.create(nom='C', nom_pdg='P')
+        self.remise = Remise.objects.create(libelle='Etudiant', montant=500, actif=True)
+        self.gare = Gare.objects.create(nom='G', code='ABJ', ville='Abidjan', compagnie=self.compagnie)
+        self.ligne = Ligne.objects.create(nom='L', gare=self.gare, ville_depart='A', ville_arrivee='B', compagnie=self.compagnie)
+        self.dest = Destination.objects.create(gare=self.gare, ligne=self.ligne, ville_arrivee='B', montant=9000)
+        modele = ModeleVehicule.objects.create(nom='Bus', marque='T', capacite=40)
+        veh = Vehicule.objects.create(immatriculation='PP-1-QQ', modele=modele, compagnie=self.compagnie)
+        self.voyage = Voyage.objects.create(gare=self.gare, ligne=self.ligne, date_depart=date.today(),
+                                            heure_depart=time(8, 0), periode='matin', vehicule=veh)
+        self.g = Utilisateur.objects.create_user(username='g', password='x', nom_complet='G', role='guichetier', gare=self.gare)
+        self.client.force_login(self.g)
+        self.resa = Billet.creer_billet(self.voyage, 'Awa', '0700000001', 5, self.g, destination=self.dest, payer=False)
+
+    def test_paiement_sans_remise_par_defaut(self):
+        r = self.client.post(f'/api/payer/{self.resa.public_id}/', {'moyen_paiement': 'cash'})
+        self.assertTrue(r.json()['success'])
+        self.resa.refresh_from_db()
+        self.assertEqual(self.resa.statut, 'paye')
+        self.assertEqual(int(self.resa.montant), 9000)
+        self.assertEqual(int(self.resa.remise), 0)
+
+    def test_paiement_avec_remise(self):
+        r = self.client.post(f'/api/payer/{self.resa.public_id}/',
+                             {'moyen_paiement': 'wave', 'remise_id': self.remise.pk})
+        self.assertTrue(r.json()['success'])
+        self.resa.refresh_from_db()
+        self.assertEqual(self.resa.statut, 'paye')
+        self.assertEqual(int(self.resa.montant), 8500)
+        self.assertEqual(int(self.resa.remise), 500)
+        self.assertEqual(self.resa.moyen_paiement, 'wave')
+
+    def test_remise_inactive_refusee(self):
+        from apps.compagnie.models import Remise
+        off = Remise.objects.create(montant=1000, actif=False)
+        r = self.client.post(f'/api/payer/{self.resa.public_id}/',
+                             {'moyen_paiement': 'cash', 'remise_id': off.pk})
+        self.assertFalse(r.json()['success'])
+        self.resa.refresh_from_db()
+        self.assertEqual(self.resa.statut, 'reserve')

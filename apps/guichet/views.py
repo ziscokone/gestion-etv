@@ -198,6 +198,10 @@ class VenteView(LoginRequiredMixin, DetailView):
             active=True
         ).order_by('montant')
 
+        # Remises pré-définies (choisies par le guichetier, pas de saisie libre)
+        from apps.compagnie.models import Remise
+        context['remises'] = Remise.objects.filter(actif=True).order_by('ordre', 'montant')
+
         return context
 
 
@@ -249,6 +253,17 @@ def creer_billet(request, voyage_id):
             'error': 'Destination invalide'
         })
 
+    # Remise : le guichetier choisit dans la liste configurée (jamais un montant
+    # libre). Ignorée pour une réservation (elle se choisira au paiement).
+    remise_montant = 0
+    remise_id = request.POST.get('remise_id')
+    if payer and remise_id:
+        from apps.compagnie.models import Remise
+        remise_obj = Remise.objects.filter(pk=remise_id, actif=True).first()
+        if not remise_obj:
+            return JsonResponse({'success': False, 'error': 'Remise invalide ou inactive'})
+        remise_montant = int(remise_obj.montant)
+
     # La fiche client doit exister AVANT de créer les billets : le programme
     # de fidélité a besoin de l'historique du client. La catégorie (particulier
     # / société) n'est appliquée qu'à la création, jamais réécrasée ensuite
@@ -292,6 +307,7 @@ def creer_billet(request, voyage_id):
                 guichetier=user,
                 destination=destination,
                 moyen_paiement=moyen_paiement,
+                remise=remise_montant,
             )
         else:
             # Réservation non payée → pas de fidélité (elle se déclenchera au paiement).
@@ -314,7 +330,7 @@ def creer_billet(request, voyage_id):
         if not billets_crees:
             return JsonResponse({
                 'success': False,
-                'error': 'Aucun billet créé. Les sièges sont peut-être déjà pris.'
+                'error': 'Impossible de vendre : tous les sièges concernés sont déjà occupés (vendus ou réservés).'
             })
 
         # Lier au client les billets qui ne le sont pas encore (branche réservation).
@@ -324,14 +340,18 @@ def creer_billet(request, voyage_id):
 
         billets_data = [billet.get_info_impression() for billet in billets_crees]
         nb_offerts = sum(1 for b in billets_crees if b.statut == 'fidelite')
+        remise_totale = sum(int(b.remise or 0) for b in billets_crees)
         message = f'{len(billets_crees)} billet(s) créé(s)'
         if nb_offerts:
             message += f" — dont {nb_offerts} offert(s) (fidélité)"
+        if remise_totale:
+            message += f" — remise totale {remise_totale:,} FCFA".replace(',', ' ')
 
         return JsonResponse({
             'success': True,
             'message': message,
             'nb_offerts': nb_offerts,
+            'remise_totale': remise_totale,
             'billets': billets_data,
         })
 
@@ -370,6 +390,21 @@ def payer_reservation(request, billet_id):
 
     # Récupérer le moyen de paiement (par défaut cash)
     moyen_paiement = request.POST.get('moyen_paiement', 'cash')
+
+    # Remise (facultative) — choisie dans la liste configurée, jamais un montant
+    # libre. Par défaut : aucune remise.
+    remise_id = request.POST.get('remise_id')
+    if remise_id:
+        from apps.compagnie.models import Remise
+        remise_obj = Remise.objects.filter(pk=remise_id, actif=True).first()
+        if not remise_obj:
+            return JsonResponse({'success': False, 'error': 'Remise invalide ou inactive'})
+        tarif_plein = billet.tarif_plein  # = montant (remise à 0 sur une réservation)
+        remise_montant = min(int(remise_obj.montant), int(tarif_plein))
+        billet.remise = remise_montant
+        billet.montant = tarif_plein - remise_montant
+        billet.save(update_fields=['remise', 'montant', 'date_modification'])
+
     billet.payer(moyen_paiement=moyen_paiement)
 
     return JsonResponse({
@@ -490,6 +525,12 @@ class ReservationsListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         return _reservations_filtrees(self.request.user, self.request.GET.get('search'))
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from apps.compagnie.models import Remise
+        context['remises'] = Remise.objects.filter(actif=True).order_by('ordre', 'montant')
+        return context
 
 
 @require_http_methods(["GET"])

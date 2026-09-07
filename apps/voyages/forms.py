@@ -48,9 +48,11 @@ class VoyageForm(forms.ModelForm):
 
     class Meta:
         model = Voyage
+        # 'statut' est volontairement absent : il n'est pas modifiable depuis ce
+        # formulaire. Un voyage est créé directement « en cours » (voir save()).
         fields = [
             'gare', 'ligne', 'date_depart', 'heure_depart',
-            'periode', 'numero_depart', 'vehicule', 'chauffeur', 'convoyeur', 'statut'
+            'periode', 'numero_depart', 'vehicule', 'chauffeur', 'convoyeur'
         ]
         widgets = {
             'gare': forms.Select(attrs={'class': 'form-select'}),
@@ -76,7 +78,6 @@ class VoyageForm(forms.ModelForm):
             }),
             'chauffeur': forms.Select(attrs={'class': 'form-select'}),
             'convoyeur': forms.Select(attrs={'class': 'form-select'}),
-            'statut': forms.Select(attrs={'class': 'form-select'}),
         }
         labels = {
             'gare': 'Gare de départ',
@@ -88,7 +89,6 @@ class VoyageForm(forms.ModelForm):
             'vehicule': 'Véhicule',
             'chauffeur': 'Chauffeur',
             'convoyeur': 'Convoyeur',
-            'statut': 'Statut',
         }
         help_texts = {
             'chauffeur': 'Optionnel - peut être assigné plus tard',
@@ -156,3 +156,13 @@ class VoyageForm(forms.ModelForm):
                 )
 
         return cleaned_data
+
+    def save(self, commit=True):
+        voyage = super().save(commit=False)
+        # Le statut n'est pas exposé dans le formulaire : à la création, le voyage
+        # est directement « en cours ». En modification, on ne touche pas au statut.
+        if voyage.pk is None:
+            voyage.statut = 'en_cours'
+        if commit:
+            voyage.save()
+        return voyage

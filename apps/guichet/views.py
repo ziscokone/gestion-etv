@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.core.exceptions import ValidationError
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import TemplateView, ListView, DetailView
@@ -248,53 +249,67 @@ def creer_billet(request, voyage_id):
             'error': 'Destination invalide'
         })
 
-    billets_crees = []
+    # La fiche client doit exister AVANT de créer les billets : le programme
+    # de fidélité a besoin de l'historique du client. La catégorie (particulier
+    # / société) n'est appliquée qu'à la création, jamais réécrasée ensuite
+    # (elle se modifie depuis la fiche client).
+    categorie = request.POST.get('client_categorie')
+    if categorie not in ('particulier', 'societe'):
+        categorie = 'particulier'
+    client_obj, _ = Client.objects.get_or_create(
+        telephone=client_telephone,
+        defaults={'nom_complet': client_nom, 'categorie': categorie}
+    )
 
+    # Liste ordonnée des sièges à vendre (unitaire = 1 siège, plage = intervalle).
     try:
-        if mode_vente == 'unitaire':
-            numero_siege = int(request.POST.get('numero_siege', 0))
-            if not numero_siege:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Numéro de siège non spécifié'
-                })
-
-            billet = Billet.creer_billet(
-                voyage=voyage,
-                client_nom=client_nom,
-                client_telephone=client_telephone,
-                numero_siege=numero_siege,
-                guichetier=user,
-                destination=destination,
-                payer=payer,
-                moyen_paiement=moyen_paiement
-            )
-            billets_crees.append(billet)
-
-        elif mode_vente == 'plage':
+        if mode_vente == 'plage':
             siege_debut = int(request.POST.get('siege_debut', 0))
             siege_fin = int(request.POST.get('siege_fin', 0))
-
             if not siege_debut or not siege_fin:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Plage de sièges non spécifiée'
-                })
-
+                return JsonResponse({'success': False, 'error': 'Plage de sièges non spécifiée'})
             if siege_debut > siege_fin:
                 siege_debut, siege_fin = siege_fin, siege_debut
+            sieges = list(range(siege_debut, siege_fin + 1))
+        else:
+            numero_siege = int(request.POST.get('numero_siege', 0))
+            if not numero_siege:
+                return JsonResponse({'success': False, 'error': 'Numéro de siège non spécifié'})
+            sieges = [numero_siege]
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Sièges invalides'})
 
-            billets_crees = Billet.creer_billets_plage(
+    try:
+        if payer:
+            # Vente payée → applique automatiquement le programme de fidélité :
+            # les billets tombant sur un palier sortent à 0 FCFA (statut 'fidelite').
+            billets_crees = Billet.creer_billets_avec_fidelite(
                 voyage=voyage,
+                client=client_obj,
                 client_nom=client_nom,
                 client_telephone=client_telephone,
-                siege_debut=siege_debut,
-                siege_fin=siege_fin,
+                sieges=sieges,
                 guichetier=user,
                 destination=destination,
-                payer=payer,
-                moyen_paiement=moyen_paiement
+                moyen_paiement=moyen_paiement,
             )
+        else:
+            # Réservation non payée → pas de fidélité (elle se déclenchera au paiement).
+            billets_crees = []
+            for numero_siege in sieges:
+                try:
+                    billets_crees.append(Billet.creer_billet(
+                        voyage=voyage,
+                        client_nom=client_nom,
+                        client_telephone=client_telephone,
+                        numero_siege=numero_siege,
+                        guichetier=user,
+                        destination=destination,
+                        payer=False,
+                        moyen_paiement=moyen_paiement,
+                    ))
+                except ValidationError:
+                    continue  # siège déjà pris entre-temps
 
         if not billets_crees:
             return JsonResponse({
@@ -302,20 +317,22 @@ def creer_billet(request, voyage_id):
                 'error': 'Aucun billet créé. Les sièges sont peut-être déjà pris.'
             })
 
-        # Associer ou créer le client
-        client_obj, _ = Client.objects.get_or_create(
-            telephone=client_telephone,
-            defaults={'nom_complet': client_nom}
-        )
-        Billet.objects.filter(pk__in=[b.pk for b in billets_crees]).update(client=client_obj)
+        # Lier au client les billets qui ne le sont pas encore (branche réservation).
+        Billet.objects.filter(
+            pk__in=[b.pk for b in billets_crees], client__isnull=True
+        ).update(client=client_obj)
 
-        # Préparer les données pour l'impression
         billets_data = [billet.get_info_impression() for billet in billets_crees]
+        nb_offerts = sum(1 for b in billets_crees if b.statut == 'fidelite')
+        message = f'{len(billets_crees)} billet(s) créé(s)'
+        if nb_offerts:
+            message += f" — dont {nb_offerts} offert(s) (fidélité)"
 
         return JsonResponse({
             'success': True,
-            'message': f'{len(billets_crees)} billet(s) créé(s)',
-            'billets': billets_data
+            'message': message,
+            'nb_offerts': nb_offerts,
+            'billets': billets_data,
         })
 
     except Exception:

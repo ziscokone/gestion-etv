@@ -28,6 +28,29 @@ class Compagnie(models.Model):
         help_text="Message affiché au bas du ticket client. Ex: Soyez à la gare 30 min avant le départ. BON VOYAGE !"
     )
 
+    # ── Programme de fidélité ───────────────────────────────────────
+    # Après `fidelite_seuil_voyages` voyages payés (toutes gares confondues,
+    # comptés à partir de `fidelite_active_depuis`), le voyage suivant du
+    # client peut être émis gratuitement (statut 'fidelite', 0 FCFA, filigrane
+    # FIDÉLITÉ). Ne s'applique qu'aux clients de catégorie « particulier ».
+    fidelite_active = models.BooleanField(
+        default=False,
+        verbose_name="Activer le programme de fidélité",
+        help_text="Si activé, un voyage offert est accordé aux clients particuliers ayant atteint le seuil."
+    )
+    fidelite_seuil_voyages = models.PositiveIntegerField(
+        default=10,
+        verbose_name="Nombre de voyages payés pour un voyage offert",
+        help_text="Ex : 10 → le 11ᵉ voyage du client est gratuit, puis le compteur repart."
+    )
+    fidelite_active_depuis = models.DateTimeField(
+        null=True,
+        blank=True,
+        editable=False,
+        verbose_name="Fidélité active depuis",
+        help_text="Date de la dernière activation du programme — seuls les voyages payés après cette date comptent."
+    )
+
     # ── Alertes documents véhicules ──────────────────────────────────
     # Un document non "actif" est totalement ignoré par les alertes, même si
     # une date d'expiration existe encore en base pour un véhicule (rien
@@ -114,6 +137,18 @@ class Compagnie(models.Model):
         if not self.pk and Compagnie.objects.exists():
             existing = Compagnie.objects.first()
             self.pk = existing.pk
+
+        # « Repartir de zéro » : à chaque passage OFF → ON du programme de
+        # fidélité, on repositionne la date de référence à maintenant, pour
+        # ne pas rendre éligibles d'un coup des clients au long historique.
+        from django.utils import timezone
+        ancien = Compagnie.objects.filter(pk=self.pk).first() if self.pk else None
+        etait_active = ancien.fidelite_active if ancien else False
+        if self.fidelite_active and not etait_active:
+            self.fidelite_active_depuis = timezone.now()
+        elif not self.fidelite_active:
+            self.fidelite_active_depuis = None
+
         super().save(*args, **kwargs)
 
     @classmethod

@@ -168,7 +168,16 @@ def _imprimer_un_billet(p, info, duplicata, largeur):
         p.textln(_texte_imprimable(info['gare_telephone']))
     p.textln('-' * largeur)
 
-    if duplicata:
+    est_fidelite = info['statut'] == 'fidelite'
+
+    # Bandeau du haut : un ticket fidélité affiche toujours FIDELITE (jamais
+    # DUPLICATA, même en réimpression) ; sinon DUPLICATA si réimpression.
+    if est_fidelite:
+        p.set(align='center', bold=True, invert=True)
+        p.textln('*** FIDELITE ***')
+        p.set(align='center', bold=False, invert=False)
+        p.textln('-' * largeur)
+    elif duplicata:
         p.set(align='center', bold=True, invert=True)
         p.textln('*** DUPLICATA ***')
         p.set(align='center', bold=False, invert=False)
@@ -197,15 +206,24 @@ def _imprimer_un_billet(p, info, duplicata, largeur):
         p.set(align='center', bold=True, invert=True)
         p.textln('GRATUIT')
         p.set(align='left', bold=False, invert=False)
+    elif est_fidelite:
+        # Voyage offert : on montre bien « 0 FCFA » (demande métier), sans
+        # ligne Paiement.
+        p.set(align='center', bold=True, invert=True)
+        p.textln('VOYAGE OFFERT - FIDELITE')
+        p.set(align='left', bold=False, invert=False)
+        p.set(bold=True)
+        p.text(_ligne('Montant', _montant_affiche(info['montant']), largeur))
+        p.set(bold=False)
     else:
         p.set(bold=True)
         p.text(_ligne('Montant', _montant_affiche(info['montant']), largeur))
         p.set(bold=False)
         p.text(_ligne('Paiement', info['moyen_paiement_display'], largeur))
 
-    # Souche détachable : uniquement si le billet est effectivement payé
-    # (règle unifiée entre vente normale et duplicata).
-    souche = info['utiliser_souche'] and info['statut'] == 'paye'
+    # Souche détachable : billet payé OU billet fidélité (le filigrane FIDELITE
+    # doit sortir sur le ticket ET sur la souche).
+    souche = info['utiliser_souche'] and info['statut'] in ('paye', 'fidelite')
 
     if not souche and info['message_bas_ticket']:
         p.set(align='left', bold=False, font='b')
@@ -223,6 +241,10 @@ def _imprimer_un_billet(p, info, duplicata, largeur):
         p.set(align='center', bold=True, font='a')
         p.textln('COUPER ICI')
         p.textln('SOUCHE')
+        if est_fidelite:
+            p.set(align='center', bold=True, invert=True)
+            p.textln('*** FIDELITE ***')
+            p.set(align='center', bold=False, invert=False)
         p.set(align='left', bold=False)
         p.text(_ligne('N Depart', info['numero_depart'], largeur))
         p.set(bold=True)

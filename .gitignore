@@ -2,6 +2,14 @@
 venv/
 env/
 .venv/
+my_env/
+
+# Docs de déploiement (contiennent des secrets de prod en clair — jamais sur GitHub)
+DEPLOIEMENT_PRODUCTION.md
+DEPLOIEMENT_PRODUCTION.pdf
+DEPLOIEMENT_GARE_HORS_LIGNE.md
+DEPLOIEMENT_GARE_HORS_LIGNE.pdf
+*-gare-offline.zip
 
 # Base de données locale
 db.sqlite3

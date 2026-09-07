@@ -176,6 +176,9 @@ class Voyage(models.Model):
     def get_sieges_gratuits(self):
         return list(self.billets.filter(statut='gratuit').values_list('numero_siege', flat=True))
 
+    def get_sieges_fidelite(self):
+        return list(self.billets.filter(statut='fidelite').values_list('numero_siege', flat=True))
+
     def get_nb_places_vendues(self):
         """Retourne le nombre de places payées."""
         return self.billets.filter(statut='paye').count()
@@ -224,12 +227,15 @@ class Voyage(models.Model):
         sieges_payes = set(self.get_sieges_payes())
         sieges_gratuits_attente = set(self.get_sieges_gratuits_en_attente())
         sieges_gratuits = set(self.get_sieges_gratuits())
+        sieges_fidelite = set(self.get_sieges_fidelite())
 
         for rangee in disposition['rangees']:
             for siege in rangee['sieges']:
                 if siege['numero'] is not None:
                     if siege['numero'] in sieges_payes:
                         siege['statut'] = 'paye'
+                    elif siege['numero'] in sieges_fidelite:
+                        siege['statut'] = 'fidelite'
                     elif siege['numero'] in sieges_gratuits:
                         siege['statut'] = 'gratuit'
                     elif siege['numero'] in sieges_gratuits_attente:

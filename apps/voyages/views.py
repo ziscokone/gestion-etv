@@ -276,6 +276,13 @@ class VoyageBordereauView(GestionRequiredMixin, TemplateView):
             ville = bg.destination.ville_arrivee if bg.destination else voyage.ligne.ville_arrivee
             destinations_gratuits[ville] = destinations_gratuits.get(ville, 0) + 1
 
+        # Billets fidélité (voyages offerts — hors recette)
+        billets_fidelite = voyage.billets.filter(statut='fidelite').select_related('guichetier', 'destination').order_by('numero_siege')
+        destinations_fidelite = {}
+        for bf in billets_fidelite:
+            ville = bf.destination.ville_arrivee if bf.destination else voyage.ligne.ville_arrivee
+            destinations_fidelite[ville] = destinations_fidelite.get(ville, 0) + 1
+
         # Calculer le recap destinations
         destinations_count = {}
         for billet in billets:
@@ -302,6 +309,9 @@ class VoyageBordereauView(GestionRequiredMixin, TemplateView):
         context['billets_gratuits'] = billets_gratuits
         context['nb_billets_gratuits'] = billets_gratuits.count()
         context['destinations_gratuits'] = sorted(destinations_gratuits.items(), key=lambda x: x[0])
+        context['billets_fidelite'] = billets_fidelite
+        context['nb_billets_fidelite'] = billets_fidelite.count()
+        context['destinations_fidelite'] = sorted(destinations_fidelite.items(), key=lambda x: x[0])
         context['montant_total'] = montant_total_billets
         context['recette_bagages'] = recette_bagages
         context['total_recettes'] = total_recettes
@@ -336,9 +346,9 @@ class VoyageListePassagersView(GestionRequiredMixin, TemplateView):
                 from django.http import HttpResponseForbidden
                 return HttpResponseForbidden("Accès non autorisé")
 
-        # Billets payés + gratuits (approuvés)
+        # Billets payés + gratuits (approuvés) + fidélité (voyages offerts)
         billets = voyage.billets.filter(
-            statut__in=['paye', 'gratuit']
+            statut__in=['paye', 'gratuit', 'fidelite']
         ).select_related('destination', 'guichetier').order_by('numero_siege')
 
         context['voyage'] = voyage
@@ -1672,7 +1682,7 @@ def traiter_ticket_gratuit(request, demande_id):
         voyage = demande.billet.voyage
         peut_traiter = (
             user.is_superuser or
-            user.role in ['manager', 'pdg', 'super_admin'] or
+            user.has_global_access or
             (user.role == 'chef_gare' and voyage.gare == user.gare)
         )
         if not peut_traiter:

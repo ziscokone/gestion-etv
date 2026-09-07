@@ -9,11 +9,16 @@
   .page-header {
     background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
     border-radius: 14px;
-    padding: 26px 32px;
+    padding: 22px 32px;
     color: #fff;
     margin-bottom: 28px;
     position: relative;
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px 24px;
   }
   .page-header::after {
     pointer-events: none;
@@ -26,7 +31,7 @@
     top: -10px;
     line-height: 1;
   }
-  .page-header h4 { font-weight: 700; margin: 0 0 16px; }
+  .page-header h4 { font-weight: 700; margin: 0; white-space: nowrap; }
   .filter-inline .form-control {
     background: rgba(255,255,255,0.15);
     border: 1px solid rgba(255,255,255,0.3);
@@ -58,14 +63,6 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     transform: translateY(-1px);
     color: var(--color-accent);
-  }
-  .periode-badge {
-    background: rgba(255,255,255,0.18);
-    border-radius: 20px;
-    padding: 4px 14px;
-    font-size: 12px;
-    display: inline-block;
-    margin-top: 8px;
   }
 
   /* ── KPI cards ───────────────────────────────────────── */
@@ -240,12 +237,6 @@
         </button>
       </div>
     </form>
-    {% if date_debut and date_fin %}
-    <div class="periode-badge">
-      <i class="bi bi-calendar3 me-1"></i>
-      {{ date_debut|date:"d/m/Y" }} &rarr; {{ date_fin|date:"d/m/Y" }}
-    </div>
-    {% endif %}
   </div>
 
   <!-- ── KPI cards ────────────────────────────────────────────── -->

@@ -9,11 +9,16 @@
   .page-header {
     background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
     border-radius: 14px;
-    padding: 26px 32px;
+    padding: 22px 32px;
     color: #fff;
     margin-bottom: 28px;
     position: relative;
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px 24px;
   }
   .page-header::after {
     pointer-events: none;
@@ -26,7 +31,8 @@
     top: -10px;
     line-height: 1;
   }
-  .page-header h4 { font-weight: 700; margin: 0 0 16px; }
+  .page-header h4 { font-weight: 700; margin: 0; white-space: nowrap; }
+  .ph-filtre { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .date-input-group .form-control {
     background: rgba(255,255,255,0.15);
     border: 1px solid rgba(255,255,255,0.3);
@@ -53,7 +59,7 @@
     transition: box-shadow 0.15s;
   }
   .btn-voir:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.2); color: var(--color-accent); }
-  .date-label { font-size: 12px; opacity: 0.8; margin-bottom: 6px; font-weight: 500; }
+  .date-label { font-size: 12px; opacity: 0.8; font-weight: 500; margin: 0; white-space: nowrap; }
 
   /* ── KPI cards ───────────────────────────────────────── */
   .kpi-card {
@@ -158,9 +164,9 @@
   <!-- ── En-tête + filtre date ────────────────────────────────── -->
   <div class="page-header">
     <h4><i class="bi bi-cash-stack me-2"></i>Point journalier</h4>
-    <form method="get">
-      <div class="date-label">Sélectionner une date</div>
-      <div class="input-group date-input-group" style="max-width:320px">
+    <form method="get" class="ph-filtre">
+      <span class="date-label">Sélectionner une date</span>
+      <div class="input-group date-input-group" style="width:auto">
         <input type="date" name="date" class="form-control"
                value="{{ date_selectionnee|date:'Y-m-d' }}">
         <button type="submit" class="btn-voir">

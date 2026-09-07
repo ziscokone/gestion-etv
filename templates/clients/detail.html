@@ -222,8 +222,16 @@
                           <span class="badge bg-success">Payé</span>
                         {% elif billet.statut == 'reserve' %}
                           <span class="badge bg-warning text-dark">Réservé</span>
-                        {% else %}
+                        {% elif billet.statut == 'fidelite' %}
+                          <span class="badge" style="background:#0284c7;color:#fff;">Fidélité</span>
+                        {% elif billet.statut == 'gratuit' or billet.statut == 'gratuit_en_attente' %}
+                          <span class="badge" style="background:#0891b2;color:#fff;">{{ billet.get_statut_display }}</span>
+                        {% elif billet.statut == 'reporte' %}
                           <span class="badge bg-secondary">Reporté</span>
+                        {% elif billet.statut == 'rembourse' %}
+                          <span class="badge bg-danger">Remboursé</span>
+                        {% else %}
+                          <span class="badge bg-light text-dark">{{ billet.get_statut_display }}</span>
                         {% endif %}
                       </td>
                       <td class="text-end"><strong>{{ billet.montant|intcomma }} FCFA</strong></td>

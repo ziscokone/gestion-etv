@@ -91,6 +91,10 @@
                                 <div class="siege-legende-color" style="background-color:var(--color-siege-gratuit);"></div>
                                 <span>Gratuit</span>
                             </div>
+                            <div class="siege-legende-item">
+                                <div class="siege-legende-color" style="background-color:var(--color-siege-fidelite);"></div>
+                                <span>Fidélité</span>
+                            </div>
                         </div>
                         <a href="{% url 'voyages:voyage_detail' voyage.public_id %}" class="btn btn-sm btn-outline-primary" title="Voir les détails du voyage">
                             <i class="bi bi-eye me-1"></i>Voir détails
@@ -186,6 +190,17 @@
                     <i class="bi bi-cart-plus me-2"></i>Nouvelle vente
                 </div>
                 <div class="card-body">
+                    <!-- Bandeau fidélité : voyage(s) offert(s) sur la dernière vente.
+                         PAS de classe d-flex ici : elle force display:flex !important
+                         et empêcherait de masquer le bandeau via style.display. -->
+                    <div id="fideliteBanner"
+                         style="display:none;align-items:center;gap:8px;background:#e0f2fe;border:1px solid #7dd3fc;color:#075985;font-size:13px;border-radius:10px;padding:8px 12px;margin-bottom:16px;">
+                        <i class="bi bi-gift-fill" style="font-size:1.1rem;flex-shrink:0;"></i>
+                        <span id="fideliteBannerText" style="flex:1;"></span>
+                        <button type="button" id="fideliteBannerClose" aria-label="Fermer"
+                                style="border:none;background:none;font-size:1.1rem;line-height:1;color:#075985;cursor:pointer;flex-shrink:0;">&times;</button>
+                    </div>
+
                     <form id="venteForm">
                         {% csrf_token %}
 
@@ -384,6 +399,37 @@
                         style="background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer;">
                     <i class="bi bi-send-fill me-1"></i>Envoyer la demande
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal : catégorie d'un nouveau client (Particulier / Société) -->
+<div class="modal fade" id="categorieClientModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:16px;border:none;overflow:hidden;">
+            <div class="modal-body text-center p-4">
+                <div style="width:56px;height:56px;border-radius:50%;background:#e0f2fe;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                    <i class="bi bi-person-plus-fill" style="font-size:1.6rem;color:#0284c7;"></i>
+                </div>
+                <h5 class="mb-1" style="font-weight:700;">Nouveau client</h5>
+                <p class="text-muted mb-4" style="font-size:.9rem;">
+                    Ce numéro n'est pas encore enregistré. Quel type de client ?
+                </p>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn flex-fill" id="catParticulier"
+                            style="border:2px solid #1e3260;color:#1e3260;font-weight:700;border-radius:12px;padding:16px 8px;">
+                        <i class="bi bi-person-fill d-block mb-1" style="font-size:1.4rem;"></i>
+                        Particulier
+                        <div class="fw-normal text-muted" style="font-size:.72rem;">Compte le programme de fidélité</div>
+                    </button>
+                    <button type="button" class="btn flex-fill" id="catSociete"
+                            style="border:2px solid #E67E22;color:#E67E22;font-weight:700;border-radius:12px;padding:16px 8px;">
+                        <i class="bi bi-building-fill d-block mb-1" style="font-size:1.4rem;"></i>
+                        Société
+                        <div class="fw-normal text-muted" style="font-size:.72rem;">Structure qui envoie des passagers</div>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -589,7 +635,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Bandeau fidélité : fermeture manuelle + disparition dès qu'on recommence une vente.
+    const fideliteBanner = document.getElementById('fideliteBanner');
+    function masquerBandeauFidelite() { if (fideliteBanner) fideliteBanner.style.display = 'none'; }
+    const fideliteBannerClose = document.getElementById('fideliteBannerClose');
+    if (fideliteBannerClose) fideliteBannerClose.addEventListener('click', masquerBandeauFidelite);
+
     clientTelephone.addEventListener('input', function() {
+        masquerBandeauFidelite();
         clearTimeout(searchTimeout);
         const q = this.value.trim();
         clientSelectionne = false;
@@ -676,7 +729,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // Ne pas permettre la sélection des sièges non disponibles en mode unitaire
             if (modeUnitaire.checked) {
                 if (siege.classList.contains('paye') || siege.classList.contains('non-vendable') ||
-                    siege.classList.contains('gratuit_en_attente') || siege.classList.contains('gratuit')) {
+                    siege.classList.contains('gratuit_en_attente') || siege.classList.contains('gratuit') ||
+                    siege.classList.contains('fidelite')) {
                     return;
                 }
 
@@ -690,6 +744,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 siegeInput.value = numero;
             }
         });
+    }
+
+    // Demande la catégorie (Particulier / Société) pour un nouveau client,
+    // puis appelle callback(categorie). Modale bloquante : aucun choix par défaut.
+    let _categorieModal = null;
+    function demanderCategorieClient(callback) {
+        if (!_categorieModal) {
+            _categorieModal = new bootstrap.Modal(document.getElementById('categorieClientModal'));
+        }
+        const btnPart = document.getElementById('catParticulier');
+        const btnSoc = document.getElementById('catSociete');
+
+        function choisir(valeur) {
+            btnPart.removeEventListener('click', onPart);
+            btnSoc.removeEventListener('click', onSoc);
+            _categorieModal.hide();
+            callback(valeur);
+        }
+        function onPart() { choisir('particulier'); }
+        function onSoc() { choisir('societe'); }
+
+        btnPart.addEventListener('click', onPart);
+        btnSoc.addEventListener('click', onSoc);
+        _categorieModal.show();
     }
 
     // Soumission du formulaire
@@ -711,7 +789,23 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Envoi
+        // Client jamais sélectionné dans les suggestions = potentiellement
+        // nouveau → on demande sa catégorie avant de créer la fiche.
+        const clientNouveau = !clientSelectionne
+            && clientTelephone.value.trim()
+            && clientNom.value.trim();
+
+        if (clientNouveau) {
+            demanderCategorieClient(function(categorie) {
+                formData.set('client_categorie', categorie);
+                envoyerVente(formData, submitBtn);
+            });
+        } else {
+            envoyerVente(formData, submitBtn);
+        }
+    });
+
+    function envoyerVente(formData, submitBtn) {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Traitement...';
 
@@ -725,6 +819,15 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                // Programme de fidélité : au moins un voyage offert sur cette vente.
+                if (data.nb_offerts && data.nb_offerts > 0) {
+                    const n = data.nb_offerts;
+                    document.getElementById('fideliteBannerText').textContent =
+                        n + (n > 1 ? ' voyages offerts' : ' voyage offert')
+                        + ' (fidélité) sur cette vente — 0 FCFA, filigrane FIDÉLITÉ sur le ticket.';
+                    document.getElementById('fideliteBanner').style.display = 'flex';
+                }
+
                 // Si c'est une vente (paiement), afficher dans le container caché et imprimer
                 if (submitBtn.value === 'true') {
                     // Afficher les tickets dans le container caché (aperçu écran)
@@ -763,7 +866,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 ? '<i class="bi bi-cash me-2"></i>Vendre et imprimer'
                 : '<i class="bi bi-bookmark me-2"></i>Réserver seulement';
         });
-    });
+    }
 
     // Affichage des tickets dans le container caché (pour impression)
     function displayTickets(billets) {
@@ -799,7 +902,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span>Montant:</span>
                         ${(billet.statut === 'gratuit' || billet.statut === 'gratuit_en_attente')
                             ? `<strong style="background:#16a34a;color:#fff;padding:2px 10px;border-radius:6px;font-size:13px;letter-spacing:1px;">GRATUIT</strong>`
-                            : `<strong>${Number(billet.montant).toLocaleString('fr-FR')} FCFA</strong>`
+                            : billet.statut === 'fidelite'
+                                ? `<strong style="background:#0284c7;color:#fff;padding:2px 10px;border-radius:6px;font-size:13px;letter-spacing:1px;">FIDÉLITÉ · 0 FCFA</strong>`
+                                : `<strong>${Number(billet.montant).toLocaleString('fr-FR')} FCFA</strong>`
                         }
                     </div>
                     <div class="ticket-row"><span>Paiement:</span><strong>${billet.moyen_paiement_display || 'Cash'}</strong></div>
@@ -812,7 +917,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 : '';
 
             // Ajouter la souche si activé ET billet payé
-            if (billet.utiliser_souche && billet.statut === 'paye') {
+            if (billet.utiliser_souche && (billet.statut === 'paye' || billet.statut === 'fidelite')) {
                 // Message AVANT la ligne de découpe (reste sur la partie client)
                 if (msgHtml) html += msgHtml;
                 html += `
@@ -821,8 +926,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 <!-- SOUCHE COMPAGNIE -->
                 <div class="ticket-souche">
-                    <div class="souche-watermark">SOUCHE</div>
+                    <div class="souche-watermark">${billet.statut === 'fidelite' ? 'FIDÉLITÉ' : 'SOUCHE'}</div>
                     <div class="souche-header">SOUCHE</div>
+                    ${billet.statut === 'fidelite' ? '<div class="ticket-row" style="justify-content:center"><strong style="color:#0284c7;letter-spacing:1px;">*** FIDÉLITÉ ***</strong></div>' : ''}
                     <div class="ticket-row">
                         <span>N° Depart:</span>
                         <strong>${billet.numero_depart || 'N/A'}</strong>
@@ -889,7 +995,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span>Montant:</span>
                         ${(billet.statut === 'gratuit' || billet.statut === 'gratuit_en_attente')
                             ? `<strong style="background:#16a34a;color:#fff;padding:2px 10px;border-radius:6px;font-size:13px;letter-spacing:1px;">GRATUIT</strong>`
-                            : `<strong>${Number(billet.montant).toLocaleString('fr-FR')} FCFA</strong>`
+                            : billet.statut === 'fidelite'
+                                ? `<strong style="background:#0284c7;color:#fff;padding:2px 10px;border-radius:6px;font-size:13px;letter-spacing:1px;">FIDÉLITÉ · 0 FCFA</strong>`
+                                : `<strong>${Number(billet.montant).toLocaleString('fr-FR')} FCFA</strong>`
                         }
                     </div>
                 </div>
@@ -901,7 +1009,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 : '';
 
             // Ajouter la souche si activé ET billet payé
-            if (billet.utiliser_souche && billet.statut === 'paye') {
+            if (billet.utiliser_souche && (billet.statut === 'paye' || billet.statut === 'fidelite')) {
                 // Message AVANT la ligne de découpe (reste sur la partie client)
                 if (msgHtmlModal) html += msgHtmlModal;
                 html += `
@@ -910,8 +1018,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 <!-- SOUCHE COMPAGNIE -->
                 <div class="ticket-souche">
-                    <div class="souche-watermark">SOUCHE</div>
+                    <div class="souche-watermark">${billet.statut === 'fidelite' ? 'FIDÉLITÉ' : 'SOUCHE'}</div>
                     <div class="souche-header">SOUCHE</div>
+                    ${billet.statut === 'fidelite' ? '<div class="ticket-row" style="justify-content:center"><strong style="color:#0284c7;letter-spacing:1px;">*** FIDÉLITÉ ***</strong></div>' : ''}
                     <div class="ticket-row">
                         <span>N° Depart:</span>
                         <strong>${billet.numero_depart || 'N/A'}</strong>

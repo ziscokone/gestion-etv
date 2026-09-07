@@ -747,7 +747,7 @@ class RentabiliteVehiculeView(LoginRequiredMixin, UserPassesTestMixin, TemplateV
 
     def test_func(self):
         """Accessible uniquement par PDG, Super Admin et Manager."""
-        return self.request.user.role in ['pdg', 'super_admin', 'manager']
+        return self.request.user.has_global_access
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

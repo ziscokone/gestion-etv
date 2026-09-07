@@ -59,10 +59,16 @@ class Utilisateur(AbstractUser):
         ('pdg', 'PDG'),
         ('super_admin', 'Super Administrateur'),
         ('manager', 'Manager'),
+        ('comptable', 'Comptable'),
         ('chef_gare', 'Chef de Gare'),
         ('guichetier', 'Guichetier'),
         ('agent_courrier', 'Agent Courrier'),
     ]
+
+    # Rôles à accès transversal : toutes les gares, tous les rapports, la
+    # configuration globale. 'comptable' est un alias fonctionnel de 'manager'
+    # (mêmes droits exactement) — voir aussi la propriété is_manager.
+    ROLES_ACCES_GLOBAL = ('pdg', 'super_admin', 'manager', 'comptable')
 
     nom_complet = models.CharField(max_length=200, verbose_name="Nom complet")
     telephone = models.CharField(max_length=20, blank=True, verbose_name="Téléphone")
@@ -115,7 +121,12 @@ class Utilisateur(AbstractUser):
 
     @property
     def is_manager(self):
-        return self.role == 'manager'
+        # 'comptable' partage exactement les droits du manager (demande métier).
+        return self.role in ('manager', 'comptable')
+
+    @property
+    def is_comptable(self):
+        return self.role == 'comptable'
 
     @property
     def is_chef_gare(self):
@@ -132,7 +143,7 @@ class Utilisateur(AbstractUser):
     @property
     def has_global_access(self):
         """Vérifie si l'utilisateur a accès à toutes les gares."""
-        return self.role in ['pdg', 'super_admin', 'manager']
+        return self.role in self.ROLES_ACCES_GLOBAL
 
     def get_gares_accessibles(self):
         """Retourne les gares accessibles par l'utilisateur."""

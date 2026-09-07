@@ -36,27 +36,40 @@
     background: #fff;
 }
 
+/* Entête de section : barre + icône orange, titre bleu (même design que la
+   fiche véhicule — templates/vehicules/vehicule_form.html). */
 .section-label {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.8px;
-    text-transform: uppercase;
-    color: var(--color-accent);
-    margin-bottom: 14px;
-    padding-bottom: 6px;
-    border-bottom: 2px solid rgba(74,111,165,0.12);
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 10px;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #1e3260;
+    margin-bottom: 18px;
+    padding: 0 0 0 12px;
+    border: none;
+    border-left: 3px solid #E67E22;
+}
+.section-label i,
+.section-label .bi {
+    color: #E67E22;
+    font-size: 14px;
+}
+/* séparateur discret entre deux sections d'un même onglet */
+.section-divider {
+    border: none;
+    border-top: 1px solid #f0f3f9;
+    margin: 26px 0;
 }
 
 .form-label-sm {
-    font-size: 11px;
+    display: block;
+    font-size: 12px;
     font-weight: 600;
-    color: #6b7280;
-    margin-bottom: 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
+    color: #374151;
+    margin-bottom: 5px;
 }
 
 .toggle-zone {
@@ -156,6 +169,47 @@
     opacity: 0.4;
     pointer-events: none;
 }
+
+/* Onglets de configuration.
+   NB : custom.css impose un `.nav-link { color:#fff !important }` global
+   (pensé pour la navbar sombre) — d'où les !important ci-dessous pour
+   rester lisible sur fond blanc. */
+.config-tabs {
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0 12px;
+    background: #fff;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+}
+.config-tabs .nav-link {
+    border: none !important;
+    border-bottom: 2px solid transparent !important;
+    border-radius: 0;
+    color: #6b7280 !important;
+    background: transparent !important;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 14px 16px !important;
+    margin: 0;
+    white-space: nowrap;
+}
+.config-tabs .nav-link:hover {
+    color: #E67E22 !important;
+    background: transparent !important;
+}
+.config-tabs .nav-link.active {
+    color: #E67E22 !important;
+    background: transparent !important;
+    border-bottom-color: #E67E22 !important;
+    font-weight: 800;
+}
+.config-tabs .nav-link.active i,
+.config-tabs .nav-link.active .bi { color: #E67E22 !important; }
+.config-tabs .nav-link i,
+.config-tabs .nav-link .bi {
+    margin-right: 6px;
+    color: inherit !important;
+}
 </style>
 {% endblock %}
 
@@ -167,21 +221,42 @@
             <!-- ── Header ── -->
             <div class="page-header">
                 <h4><i class="bi bi-building-gear me-2"></i>Paramètres de la compagnie</h4>
-                <p>Coordonnées, logo, et réglages d'impression des tickets — réservé au Super Administrateur</p>
+                <p>Infos &amp; impression des tickets, programme de fidélité, alertes documents véhicules — réservé au Super Administrateur</p>
             </div>
 
-            <div class="row g-4">
-                <!-- ── Formulaire ── -->
-                <div class="col-lg-7">
-                    <div class="form-card">
-                        <form method="post" enctype="multipart/form-data" novalidate>
-                            {% csrf_token %}
+            <div class="form-card">
+                <form method="post" enctype="multipart/form-data" novalidate>
+                    {% csrf_token %}
 
-                            {% if form.non_field_errors %}
-                                <div class="alert alert-danger mx-3 mt-3">{{ form.non_field_errors }}</div>
-                            {% endif %}
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger m-3">{{ form.non_field_errors }}</div>
+                    {% endif %}
 
+                    <ul class="nav config-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-infos" type="button" role="tab">
+                                <i class="bi bi-info-circle"></i>Infos
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-fidelite" type="button" role="tab">
+                                <i class="bi bi-gift"></i>Fidélité
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-vehicules" type="button" role="tab">
+                                <i class="bi bi-truck"></i>Véhicules
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+
+                        <!-- ═══════ Onglet 1 : Infos ═══════ -->
+                        <div class="tab-pane fade show active" id="tab-infos" role="tabpanel">
                             <div class="p-4">
+                                <div class="row g-4">
+                                    <div class="col-lg-7">
 
                                 <!-- Section : Informations générales -->
                                 <div class="section-label">
@@ -208,6 +283,8 @@
                                     </div>
                                 </div>
 
+                                <hr class="section-divider">
+
                                 <!-- Section : Contact -->
                                 <div class="section-label">
                                     <i class="bi bi-telephone"></i> Contact
@@ -230,6 +307,8 @@
                                     </div>
                                 </div>
 
+                                <hr class="section-divider">
+
                                 <!-- Section : Configuration ticket -->
                                 <div class="section-label">
                                     <i class="bi bi-receipt"></i> Configuration des tickets
@@ -250,8 +329,64 @@
                                     {% if form.message_bas_ticket.errors %}<div class="invalid-feedback d-block">{{ form.message_bas_ticket.errors }}</div>{% endif %}
                                 </div>
 
+                                    </div><!-- /col-lg-7 -->
+
+                                    <!-- ── Aperçu du ticket ── -->
+                                    <div class="col-lg-5">
+                                        <div class="apercu-panel">
+                                            <div class="apercu-header">
+                                                <i class="bi bi-eye"></i> Aperçu du ticket (démo)
+                                            </div>
+                                            <div id="apercu-ticket-container"></div>
+                                            <p class="apercu-note">
+                                                Se met à jour quand tu coches « Imprimer avec souche » ou modifies le message.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                </div><!-- /row -->
+                            </div><!-- /p-4 -->
+                        </div><!-- /tab-infos -->
+
+                        <!-- ═══════ Onglet 2 : Fidélité ═══════ -->
+                        <div class="tab-pane fade" id="tab-fidelite" role="tabpanel">
+                            <div class="p-4">
+
+                                <!-- Section : Programme de fidélité -->
+                                <div class="section-label">
+                                    <i class="bi bi-gift"></i> Programme de fidélité
+                                </div>
+                                <p style="font-size:12px;color:#9ca3af;margin-top:-8px;margin-bottom:16px;">
+                                    Récompense les clients <strong>particuliers</strong> : après un certain nombre
+                                    de voyages payés (toutes gares confondues), leur voyage suivant est offert
+                                    (0 FCFA, filigrane « FIDÉLITÉ », hors recette). Ne s'applique pas aux clients « Société ».
+                                </p>
+                                <div class="toggle-zone mb-3">
+                                    {{ form.fidelite_active }}
+                                    <div>
+                                        <div class="toggle-label">{{ form.fidelite_active.label }}</div>
+                                        <div class="toggle-hint">{{ form.fidelite_active.help_text }}</div>
+                                    </div>
+                                </div>
+                                <div class="mb-1" style="max-width:320px;">
+                                    <label class="form-label-sm">{{ form.fidelite_seuil_voyages.label }}</label>
+                                    {{ form.fidelite_seuil_voyages }}
+                                    <div class="mt-1" style="font-size:11px;color:#9ca3af;">
+                                        <i class="bi bi-info-circle me-1"></i>{{ form.fidelite_seuil_voyages.help_text }}
+                                    </div>
+                                    {% if form.fidelite_seuil_voyages.errors %}<div class="invalid-feedback d-block">{{ form.fidelite_seuil_voyages.errors }}</div>{% endif %}
+                                </div>
+                                {% if form.fidelite_active.errors %}<div class="invalid-feedback d-block">{{ form.fidelite_active.errors }}</div>{% endif %}
+
+                            </div><!-- /p-4 -->
+                        </div><!-- /tab-fidelite -->
+
+                        <!-- ═══════ Onglet 3 : Véhicules ═══════ -->
+                        <div class="tab-pane fade" id="tab-vehicules" role="tabpanel">
+                            <div class="p-4">
+
                                 <!-- Section : Alertes documents véhicules -->
-                                <div class="section-label mt-4">
+                                <div class="section-label">
                                     <i class="bi bi-file-earmark-medical"></i> Alertes documents véhicules
                                 </div>
                                 <p style="font-size:12px;color:#9ca3af;margin-top:-8px;margin-bottom:16px;">
@@ -331,34 +466,21 @@
                                     </div>
                                 </div>
 
-                            </div>
+                            </div><!-- /p-4 -->
+                        </div><!-- /tab-vehicules -->
 
-                            <!-- ── Footer ── -->
-                            <div class="form-footer">
-                                <a href="{% url 'hub' %}" class="btn btn-secondary">
-                                    <i class="bi bi-arrow-left"></i> Retour
-                                </a>
-                                <button type="submit" class="btn-submit">
-                                    <i class="bi bi-check-circle"></i> Enregistrer
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                    </div><!-- /tab-content -->
 
-                <!-- ── Aperçu du ticket ── -->
-                <div class="col-lg-5">
-                    <div class="apercu-panel">
-                        <div class="apercu-header">
-                            <i class="bi bi-eye"></i> Aperçu du ticket (données de démonstration)
-                        </div>
-                        <div id="apercu-ticket-container"></div>
-                        <p class="apercu-note">
-                            Se met à jour automatiquement quand tu coches/décoches "Imprimer avec souche"
-                            ou modifies le message — même avant d'enregistrer.
-                        </p>
+                    <!-- ── Footer ── -->
+                    <div class="form-footer">
+                        <a href="{% url 'hub' %}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Retour
+                        </a>
+                        <button type="submit" class="btn-submit">
+                            <i class="bi bi-check-circle"></i> Enregistrer
+                        </button>
                     </div>
-                </div>
+                </form>
             </div>
 
         </div>
@@ -390,6 +512,15 @@
             checkbox.addEventListener('change', actualiser);
             actualiser();
         });
+
+        // Si la validation a échoué sur un champ d'un onglet non affiché,
+        // on bascule automatiquement sur cet onglet pour montrer l'erreur.
+        var champEnErreur = document.querySelector('.tab-content .invalid-feedback');
+        if (champEnErreur && window.bootstrap) {
+            var pane = champEnErreur.closest('.tab-pane');
+            var onglet = pane && document.querySelector('[data-bs-target="#' + pane.id + '"]');
+            if (onglet) new bootstrap.Tab(onglet).show();
+        }
     });
 </script>
 {% endblock %}

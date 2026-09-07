@@ -14,6 +14,7 @@ class CompagnieForm(forms.ModelForm):
             'nom', 'logo', 'nom_pdg',
             'adresse', 'telephone', 'email',
             'utiliser_souche', 'message_bas_ticket',
+            'fidelite_active', 'fidelite_seuil_voyages',
         ] + [
             f'alerte_{cle}_{suffixe}'
             for cle in DOCUMENTS_CLES
@@ -28,6 +29,8 @@ class CompagnieForm(forms.ModelForm):
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
             'utiliser_souche': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'message_bas_ticket': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'fidelite_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'fidelite_seuil_voyages': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
             **{
                 f'alerte_{cle}_active': forms.CheckboxInput(attrs={
                     'class': 'form-check-input doc-alerte-toggle',
@@ -53,7 +56,15 @@ class CompagnieForm(forms.ModelForm):
             'nom_pdg': 'Nom du PDG',
             'utiliser_souche': 'Imprimer avec souche',
             'message_bas_ticket': 'Message bas de ticket',
+            'fidelite_active': 'Activer le programme de fidélité',
+            'fidelite_seuil_voyages': 'Voyages payés pour un voyage offert',
         }
+
+    def clean_fidelite_seuil_voyages(self):
+        seuil = self.cleaned_data.get('fidelite_seuil_voyages')
+        if self.cleaned_data.get('fidelite_active') and (not seuil or seuil < 1):
+            raise forms.ValidationError("Indiquez un nombre de voyages d'au moins 1 pour activer la fidélité.")
+        return seuil
 
     def clean(self):
         cleaned_data = super().clean()

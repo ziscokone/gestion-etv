@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from django.test import TestCase, SimpleTestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.billets.models import Billet
 from apps.compagnie.models import Compagnie
@@ -305,3 +306,201 @@ class VoyageListAjaxTests(TestCase):
         response = self.client.get(reverse('guichet:voyage_list_ajax'))
         self.assertContains(response, '→ Bouake')
         self.assertContains(response, '→ Man')
+
+
+class CreerBilletCategorieClientTests(TestCase):
+    """La vente transmet la catégorie choisie (particulier / société) pour un
+    nouveau client ; une fiche existante n'est jamais réécrasée."""
+
+    def setUp(self):
+        from apps.clients.models import Client
+        self.Client = Client
+        self.compagnie = Compagnie.objects.create(nom='Ma Compagnie', nom_pdg='M. PDG')
+        self.gare = Gare.objects.create(nom='Gare Centrale', code='ABJ', ville='Abidjan', compagnie=self.compagnie)
+        self.ligne = Ligne.objects.create(
+            nom='Abidjan-Bouake', gare=self.gare, ville_depart='Abidjan',
+            ville_arrivee='Bouake', compagnie=self.compagnie,
+        )
+        self.destination = Destination.objects.create(
+            gare=self.gare, ligne=self.ligne, ville_arrivee='Bouake', montant=5000,
+        )
+        modele = ModeleVehicule.objects.create(nom='Coaster', marque='Toyota', capacite=30)
+        vehicule = Vehicule.objects.create(
+            immatriculation='AB-123-CD', modele=modele, compagnie=self.compagnie,
+        )
+        self.voyage = Voyage.objects.create(
+            gare=self.gare, ligne=self.ligne, date_depart=date.today(),
+            heure_depart=time(8, 0), periode='matin', vehicule=vehicule,
+        )
+        self.guichetier = Utilisateur.objects.create_user(
+            username='g1', password='x', nom_complet='G1', role='guichetier', gare=self.gare,
+        )
+        self.client.force_login(self.guichetier)
+
+    def _vendre(self, tel, nom, siege, categorie=None):
+        data = {
+            'client_nom': nom, 'client_telephone': tel,
+            'destination_id': self.destination.pk, 'mode_vente': 'unitaire',
+            'numero_siege': siege, 'payer': 'true', 'moyen_paiement': 'cash',
+        }
+        if categorie is not None:
+            data['client_categorie'] = categorie
+        return self.client.post(f'/api/creer-billet/{self.voyage.public_id}/', data)
+
+    def test_nouveau_client_societe(self):
+        r = self._vendre('0700000001', 'ACME SARL', 1, categorie='societe')
+        self.assertTrue(r.json()['success'])
+        self.assertEqual(self.Client.objects.get(telephone='0700000001').categorie, 'societe')
+
+    def test_nouveau_client_defaut_particulier(self):
+        r = self._vendre('0700000002', 'Awa', 2)  # pas de client_categorie
+        self.assertTrue(r.json()['success'])
+        self.assertEqual(self.Client.objects.get(telephone='0700000002').categorie, 'particulier')
+
+    def test_categorie_non_ecrasee_sur_client_existant(self):
+        self.Client.objects.create(telephone='0700000003', nom_complet='Déjà Là', categorie='societe')
+        r = self._vendre('0700000003', 'Déjà Là', 3, categorie='particulier')
+        self.assertTrue(r.json()['success'])
+        self.assertEqual(self.Client.objects.get(telephone='0700000003').categorie, 'societe')
+
+
+class FideliteEmissionVenteTests(TestCase):
+    """Émission automatique du billet fidélité au moment de la vente (unitaire
+    et par plage), via la vue guichet:creer_billet."""
+
+    def setUp(self):
+        from apps.clients.models import Client
+        self.Client = Client
+        self.compagnie = Compagnie.objects.create(nom='C', nom_pdg='P')
+        self.compagnie.fidelite_active = True
+        self.compagnie.fidelite_seuil_voyages = 10
+        self.compagnie.save()
+        self.gare = Gare.objects.create(nom='G', code='ABJ', ville='Abidjan', compagnie=self.compagnie)
+        self.ligne = Ligne.objects.create(
+            nom='L', gare=self.gare, ville_depart='Abidjan', ville_arrivee='Bouake', compagnie=self.compagnie,
+        )
+        self.destination = Destination.objects.create(
+            gare=self.gare, ligne=self.ligne, ville_arrivee='Bouake', montant=5000,
+        )
+        modele = ModeleVehicule.objects.create(nom='Bus', marque='Toyota', capacite=60)
+        vehicule = Vehicule.objects.create(immatriculation='XX-1-YY', modele=modele, compagnie=self.compagnie)
+        self.voyage = Voyage.objects.create(
+            gare=self.gare, ligne=self.ligne, date_depart=date.today(),
+            heure_depart=time(8, 0), periode='matin', vehicule=vehicule,
+        )
+        self.guichetier = Utilisateur.objects.create_user(
+            username='g', password='x', nom_complet='G', role='guichetier', gare=self.gare,
+        )
+        self.client.force_login(self.guichetier)
+
+    def _vendre(self, tel, nom, *, siege=None, debut=None, fin=None, categorie='particulier'):
+        data = {
+            'client_nom': nom, 'client_telephone': tel,
+            'destination_id': self.destination.pk, 'payer': 'true',
+            'moyen_paiement': 'cash', 'client_categorie': categorie,
+        }
+        if siege is not None:
+            data['mode_vente'] = 'unitaire'
+            data['numero_siege'] = siege
+        else:
+            data['mode_vente'] = 'plage'
+            data['siege_debut'] = debut
+            data['siege_fin'] = fin
+        return self.client.post(f'/api/creer-billet/{self.voyage.public_id}/', data)
+
+    def test_plage_de_12_le_11e_est_offert(self):
+        r = self._vendre('0700000001', 'Awa', debut=1, fin=12)
+        j = r.json()
+        self.assertTrue(j['success'])
+        self.assertEqual(j['nb_offerts'], 1)
+        statuts = [b['statut'] for b in j['billets']]
+        self.assertEqual(statuts.count('fidelite'), 1)
+        self.assertEqual(statuts.count('paye'), 11)
+        offert = next(b for b in j['billets'] if b['statut'] == 'fidelite')
+        self.assertEqual(offert['numero_siege'], 11)
+        self.assertEqual(int(offert['montant']), 0)
+
+    def test_client_societe_jamais_de_billet_offert(self):
+        r = self._vendre('0700000002', 'ACME', debut=1, fin=15, categorie='societe')
+        j = r.json()
+        self.assertTrue(j['success'])
+        self.assertEqual(j['nb_offerts'], 0)
+
+    def test_unitaire_offert_quand_seuil_deja_atteint(self):
+        cl = self.Client.objects.create(telephone='0700000003', nom_complet='Kofi', categorie='particulier')
+        from apps.billets.models import Billet
+        for i in range(1, 11):
+            Billet.objects.create(
+                voyage=self.voyage, destination=self.destination, client=cl,
+                client_nom='Kofi', client_telephone='0700000003', numero_siege=i,
+                montant=5000, statut='paye', numero=f'P{i}', date_paiement=timezone.now(),
+            )
+        r = self._vendre('0700000003', 'Kofi', siege=11)
+        j = r.json()
+        self.assertTrue(j['success'])
+        self.assertEqual(j['nb_offerts'], 1)
+        self.assertEqual(j['billets'][0]['statut'], 'fidelite')
+
+    def test_reservation_non_payee_ne_declenche_rien(self):
+        cl = self.Client.objects.create(telephone='0700000004', nom_complet='Ama', categorie='particulier')
+        from apps.billets.models import Billet
+        for i in range(1, 11):
+            Billet.objects.create(
+                voyage=self.voyage, destination=self.destination, client=cl,
+                client_nom='Ama', client_telephone='0700000004', numero_siege=i,
+                montant=5000, statut='paye', numero=f'Q{i}', date_paiement=timezone.now(),
+            )
+        data = {
+            'client_nom': 'Ama', 'client_telephone': '0700000004',
+            'destination_id': self.destination.pk, 'payer': 'false',
+            'mode_vente': 'unitaire', 'numero_siege': 11, 'client_categorie': 'particulier',
+        }
+        r = self.client.post(f'/api/creer-billet/{self.voyage.public_id}/', data)
+        j = r.json()
+        self.assertTrue(j['success'])
+        self.assertEqual(j['billets'][0]['statut'], 'reserve')
+
+
+class FideliteSiegeDispositionTests(TestCase):
+    """Un siège vendu en fidélité apparaît avec le statut 'fidelite' sur le
+    plan des sièges (et n'est donc plus proposé comme disponible)."""
+
+    def setUp(self):
+        from apps.clients.models import Client
+        self.compagnie = Compagnie.objects.create(nom='C', nom_pdg='P')
+        self.compagnie.fidelite_active = True
+        self.compagnie.fidelite_seuil_voyages = 2
+        self.compagnie.save()
+        self.gare = Gare.objects.create(nom='G', code='ABJ', ville='Abidjan', compagnie=self.compagnie)
+        self.ligne = Ligne.objects.create(
+            nom='L', gare=self.gare, ville_depart='Abidjan', ville_arrivee='Bouake', compagnie=self.compagnie,
+        )
+        self.destination = Destination.objects.create(
+            gare=self.gare, ligne=self.ligne, ville_arrivee='Bouake', montant=5000,
+        )
+        modele = ModeleVehicule.objects.create(nom='Bus', marque='Toyota', capacite=60)
+        vehicule = Vehicule.objects.create(immatriculation='ZZ-9-ZZ', modele=modele, compagnie=self.compagnie)
+        self.voyage = Voyage.objects.create(
+            gare=self.gare, ligne=self.ligne, date_depart=date.today(),
+            heure_depart=time(8, 0), periode='matin', vehicule=vehicule,
+        )
+        self.client_part = Client.objects.create(telephone='0700000009', nom_complet='Yao', categorie='particulier')
+
+    def test_siege_fidelite_dans_la_disposition(self):
+        from apps.billets.models import Billet
+        # 2 payés → le 3e est offert
+        Billet.creer_billets_avec_fidelite(
+            voyage=self.voyage, client=self.client_part,
+            client_nom='Yao', client_telephone='0700000009',
+            sieges=[1, 2, 3], guichetier=None, destination=self.destination,
+        )
+        self.assertEqual(self.voyage.get_sieges_fidelite(), [3])
+        dispo = self.voyage.get_disposition_sieges_avec_statut()
+        statuts = {
+            s['numero']: s['statut']
+            for r in dispo['rangees'] for s in r['sieges'] if s['numero'] in (1, 2, 3)
+        }
+        self.assertEqual(statuts[1], 'paye')
+        self.assertEqual(statuts[2], 'paye')
+        self.assertEqual(statuts[3], 'fidelite')
+        self.assertNotIn(3, self.voyage.get_sieges_disponibles())

@@ -23,6 +23,7 @@ class Billet(models.Model):
         ('paye', 'Payé'),
         ('gratuit_en_attente', 'Gratuit (en attente)'),
         ('gratuit', 'Gratuit'),
+        ('fidelite', 'Fidélité (offert)'),
         ('reporte', 'Reporté'),
         ('rembourse', 'Remboursé'),
     ]
@@ -157,10 +158,12 @@ class Billet(models.Model):
         if not self.numero:
             self.numero = self.voyage.gare.generer_numero_ticket()
 
-        # Définir le montant depuis la destination si non défini
-        if not self.montant and self.destination:
+        # Définir le montant depuis la destination si non renseigné. On teste
+        # `is None` (et pas la fausseté) pour qu'un montant explicitement à 0
+        # soit respecté — cas des billets gratuits / fidélité (0 FCFA).
+        if self.montant is None and self.destination:
             self.montant = self.destination.montant
-        elif not self.montant:
+        elif self.montant is None:
             # Si pas de destination spécifiée, le montant doit être fourni explicitement
             raise ValueError("Le montant doit être spécifié si aucune destination n'est fournie")
 
@@ -308,6 +311,68 @@ class Billet(models.Model):
                 except ValidationError:
                     # Siège déjà pris entre temps, on continue
                     continue
+
+        return billets_crees
+
+    @classmethod
+    def creer_billets_avec_fidelite(cls, voyage, client, client_nom, client_telephone,
+                                    sieges, guichetier, destination, moyen_paiement='cash'):
+        """
+        Crée des billets PAYÉS pour une suite de sièges, en convertissant
+        automatiquement en billets FIDÉLITÉ (0 FCFA, statut 'fidelite') ceux
+        qui tombent sur un palier du programme de fidélité du client.
+
+        Le comptage se fait au fil de la liste : chaque billet payé = 1 voyage,
+        et dès que le client atteint `seuil x (tickets_fidélité_émis + 1)`
+        voyages payés, le billet suivant est offert. Fonctionne aussi bien
+        pour une vente unitaire (un seul siège) que par plage.
+
+        `sieges` : itérable de numéros de siège, dans l'ordre de vente.
+        Les sièges déjà pris sont ignorés. Retourne la liste des billets créés.
+        """
+        from apps.compagnie.models import Compagnie
+
+        compagnie = Compagnie.get_instance()
+        fidelite_ok = bool(
+            client and getattr(client, 'est_particulier', False)
+            and compagnie and compagnie.fidelite_active and compagnie.fidelite_seuil_voyages
+        )
+        seuil = compagnie.fidelite_seuil_voyages if fidelite_ok else 0
+
+        # État du client AVANT cette vente (suivi localement ensuite).
+        payes = client.fidelite_voyages_comptabilises if fidelite_ok else 0
+        emis = client.fidelite_tickets_emis if fidelite_ok else 0
+
+        billets_crees = []
+        sieges_disponibles = set(voyage.get_sieges_disponibles())
+
+        for numero_siege in sieges:
+            if numero_siege not in sieges_disponibles:
+                continue
+
+            offert = fidelite_ok and payes >= seuil * (emis + 1)
+
+            billet = cls(
+                voyage=voyage,
+                destination=destination,
+                client=client,
+                client_nom=client_nom,
+                client_telephone=client_telephone,
+                numero_siege=numero_siege,
+                montant=0 if offert else destination.montant,
+                statut='fidelite' if offert else 'paye',
+                moyen_paiement='cash' if offert else moyen_paiement,
+                guichetier=guichetier,
+                date_paiement=timezone.now(),
+            )
+            billet.save()
+            billets_crees.append(billet)
+            sieges_disponibles.discard(numero_siege)
+
+            if offert:
+                emis += 1
+            else:
+                payes += 1
 
         return billets_crees
 

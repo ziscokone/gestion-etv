@@ -350,7 +350,7 @@ class RapportParGareView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     def test_func(self):
         """Accessible uniquement par PDG, Super Admin et Manager."""
         user = self.request.user
-        return user.role in ['pdg', 'super_admin', 'manager']
+        return user.has_global_access
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -598,7 +598,7 @@ class PerformanceChauffeurView(LoginRequiredMixin, UserPassesTestMixin, Template
     template_name = 'comptabilite/performance_chauffeurs.html'
 
     def test_func(self):
-        return self.request.user.role in ['pdg', 'super_admin', 'manager']
+        return self.request.user.has_global_access
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -661,7 +661,7 @@ class BilanMensuelView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     template_name = 'comptabilite/bilan_mensuel.html'
 
     def test_func(self):
-        return self.request.user.role in ['pdg', 'super_admin', 'manager']
+        return self.request.user.has_global_access
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

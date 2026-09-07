@@ -28,6 +28,7 @@
     --color-siege-non-vendable: #6C757D;
     --color-siege-gratuit-attente: #a5f3fc;
     --color-siege-gratuit: #0891b2;
+    --color-siege-fidelite: #0284c7;
 
     /* Bordures et ombres */
     --color-border: #DEE2E6;
@@ -440,6 +441,12 @@ a:hover {
 
 .siege.gratuit {
     background-color: var(--color-siege-gratuit);
+    color: white;
+    cursor: not-allowed;
+}
+
+.siege.fidelite {
+    background-color: var(--color-siege-fidelite);
     color: white;
     cursor: not-allowed;
 }
@@ -1026,4 +1033,59 @@ small, .small {
     font-size: 13px;
     color: var(--color-text-secondary);
     font-style: italic;
+}
+
+/* ============================================================
+   Mini-loader — indicateur de chargement pour la navigation des
+   modules de gestion (Comptabilité, Clients, Personnel, Flotte /
+   Garage, Trajet). Volontairement absent du circuit guichet
+   (vente / réservation), qui doit rester instantané.
+   Câblage : templates/base.html (objet window.MiniChargement).
+   ============================================================ */
+.mini-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .15s ease;
+}
+.mini-loader.mini-loader-show {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+.mini-loader-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--color-bg-card);
+    border-radius: 12px;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.18);
+    padding: 12px 18px;
+}
+.mini-loader-spinner {
+    width: 18px;
+    height: 18px;
+    border: 3px solid var(--color-accent);
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: mini-loader-spin .7s linear infinite;
+    flex-shrink: 0;
+}
+#mini-loader-texte {
+    font-size: .85rem;
+    color: var(--color-text-primary);
+    white-space: nowrap;
+}
+@keyframes mini-loader-spin {
+    to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .mini-loader { transition: none; }
+    .mini-loader-spinner { animation-duration: 1.4s; }
 }

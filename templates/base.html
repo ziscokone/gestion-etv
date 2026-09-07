@@ -8,7 +8,7 @@
 
     <link href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
     <link href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}" rel="stylesheet">
-    <link href="{% static 'css/custom.css' %}" rel="stylesheet">
+    <link href="{% static 'css/custom.css' %}?v=20260907b" rel="stylesheet">
 
     {% block extra_css %}{% endblock %}
 </head>
@@ -72,7 +72,7 @@
                     </a>
                     <ul class="dropdown-menu">
                         <li><h6 class="dropdown-header">Comptabilité</h6></li>
-                        {% if user.role in 'pdg,super_admin,manager' %}
+                        {% if user.has_global_access %}
                         <li>
                             <a class="dropdown-item" href="{% url 'comptabilite:bilan_mensuel' %}">
                                 <i class="bi bi-calendar2-check me-2"></i> Bilan mensuel
@@ -84,7 +84,7 @@
                                 <i class="bi bi-calendar-range me-2"></i> Rapport période
                             </a>
                         </li>
-                        {% if user.role in 'pdg,super_admin,manager' %}
+                        {% if user.has_global_access %}
                         <li>
                             <a class="dropdown-item" href="{% url 'comptabilite:rapport_par_gare' %}">
                                 <i class="bi bi-graph-up me-2"></i> Rapport par gare
@@ -108,7 +108,7 @@
                                 <i class="bi bi-ticket-perforated me-2"></i> Tickets gratuits
                             </a>
                         </li>
-                        {% if user.role in 'pdg,super_admin,manager' %}
+                        {% if user.has_global_access %}
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header">Performance</h6></li>
                         <li>
@@ -374,6 +374,107 @@
         </div>
     </div>
 </footer>
+
+{% comment %}
+Mini-loader : retour visuel pendant la navigation des modules de gestion.
+Actif uniquement vers les préfixes « lourds » (rapports, listes, agrégations)
+définis dans PREFIXES_CHARGEMENT ci-dessous. Le circuit guichet (vente /
+réservation / voyages / API) est volontairement exclu pour rester instantané.
+Ajouter data-no-transition="true" sur un lien ou un formulaire pour le désactiver.
+{% endcomment %}
+<div class="mini-loader" id="mini-loader" aria-hidden="true">
+    <div class="mini-loader-box" role="status">
+        <div class="mini-loader-spinner"></div>
+        <span id="mini-loader-texte">Chargement…</span>
+    </div>
+</div>
+<script>
+(function () {
+    // Préfixes d'URL où l'on affiche le mini-loader pendant la navigation.
+    var PREFIXES_CHARGEMENT = [
+        '/comptabilite/',                // Point du jour, Bilan mensuel, Rapport période / par gare, Performance chauffeurs
+        '/clients/',                     // Clients
+        '/personnel/',                   // Personnel (utilisateurs, chauffeurs, convoyeurs)
+        '/vehicules/',                   // Flotte + Gestion du garage (réparations)
+        '/lignes/',                      // Trajet
+        '/destinations/',                // Trajet
+        // Sous-menus « Opérations » du menu Rapports (sous /voyages/ mais sans
+        // ouvrir tout le module voyages, pour ne pas ralentir le circuit guichet)
+        '/voyages/dashboard/reports/',   // Reports de billets
+        '/voyages/remboursements/',      // Remboursements
+        '/voyages/rapports/'             // Tickets gratuits (et futurs rapports voyages)
+    ];
+
+    var MiniChargement = {
+        show: function (legende) {
+            var el = document.getElementById('mini-loader');
+            if (!el) return;
+            var texte = document.getElementById('mini-loader-texte');
+            if (texte) texte.textContent = legende || 'Chargement…';
+            el.classList.add('mini-loader-show');
+        },
+        hide: function () {
+            var el = document.getElementById('mini-loader');
+            if (el) el.classList.remove('mini-loader-show');
+        }
+    };
+    window.MiniChargement = MiniChargement;
+
+    function estUrlSuivie(cible) {
+        try {
+            var u = new URL(cible, window.location.origin);
+            if (u.origin !== window.location.origin) return false;
+            var p = u.pathname;
+            if (p.indexOf('/api/') !== -1 || p.indexOf('/ajax/') !== -1) return false;
+            for (var i = 0; i < PREFIXES_CHARGEMENT.length; i++) {
+                if (p.indexOf(PREFIXES_CHARGEMENT[i]) === 0) return true;
+            }
+            return false;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    // Navigation par lien (lignes de liste, onglets, pagination, filtres...)
+    document.addEventListener('click', function (e) {
+        if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+        var lien = e.target.closest('a[href]');
+        if (!lien || lien.target === '_blank') return;
+        if (lien.hasAttribute('data-bs-toggle') || lien.hasAttribute('data-bs-dismiss')) return;
+        if (lien.dataset.noTransition === 'true') return;
+        var href = lien.getAttribute('href');
+        if (!href || href.charAt(0) === '#' || href.indexOf('javascript:') === 0) return;
+        if (href.indexOf('mailto:') === 0 || href.indexOf('tel:') === 0) return;
+        if (!estUrlSuivie(href)) return;
+        e.preventDefault();
+        var legende = lien.dataset.loadingLegende || 'Chargement…';
+        var delai = parseInt(lien.dataset.loadingDelai || '150', 10);
+        MiniChargement.show(legende);
+        setTimeout(function () {
+            window.location.href = href;
+            // Filet de sécurité : export PDF/Excel qui ne change pas la page.
+            setTimeout(function () { MiniChargement.hide(); }, 1200);
+        }, delai);
+    });
+
+    // Submit de formulaire qui recharge la page (filtres de rapport GET,
+    // enregistrement client POST...). Les formulaires AJAX (data-live-filter)
+    // ou gérés par un autre script appellent preventDefault() en amont : on les
+    // laisse tranquilles via le test e.defaultPrevented.
+    document.addEventListener('submit', function (e) {
+        if (e.defaultPrevented) return;
+        var form = e.target;
+        if (!(form instanceof HTMLFormElement)) return;
+        if (form.dataset.noTransition === 'true' || form.hasAttribute('data-live-filter')) return;
+        var action = form.getAttribute('action') || window.location.pathname;
+        if (!estUrlSuivie(action)) return;
+        MiniChargement.show(form.dataset.loadingLegende || 'Chargement…');
+    });
+
+    // Retour arrière navigateur (bfcache) : on masque le loader resté visible.
+    window.addEventListener('pageshow', function () { MiniChargement.hide(); });
+})();
+</script>
 
 <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
 {% block extra_js %}{% endblock %}

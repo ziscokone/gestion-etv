@@ -178,7 +178,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span>Montant:</span>
                         ${(billet.statut === 'gratuit' || billet.statut === 'gratuit_en_attente')
                             ? `<strong style="background:#16a34a;color:#fff;padding:2px 10px;border-radius:6px;font-size:13px;letter-spacing:1px;">GRATUIT</strong>`
-                            : `<strong>${Number(billet.montant).toLocaleString('fr-FR')} FCFA</strong>`
+                            : billet.statut === 'fidelite'
+                                ? `<strong style="background:#0284c7;color:#fff;padding:2px 10px;border-radius:6px;font-size:13px;letter-spacing:1px;">FIDÉLITÉ · 0 FCFA</strong>`
+                                : `<strong>${Number(billet.montant).toLocaleString('fr-FR')} FCFA</strong>`
                         }
                     </div>
                     <div class="ticket-row"><span>Paiement:</span><strong>${billet.moyen_paiement_display || 'Cash'}</strong></div>

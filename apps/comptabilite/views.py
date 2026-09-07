@@ -788,4 +788,53 @@ class BilanMensuelView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
 
         context['bilan_gares'] = bilan_gares
         context['totaux']      = totaux
+
+        # ── Point crédits garage (global, tous véhicules) ─────────────
+        # Un véhicule n'est pas rattaché à une gare : ce bloc est présenté
+        # à part, sous le tableau par gare, pour le mois sélectionné.
+        from apps.vehicules.models import CreditPieceGarage, VersementCredit
+        from datetime import date as _d
+        import calendar
+        dernier_jour = _d(annee, mois, calendar.monthrange(annee, mois)[1])
+
+        credits_mois = CreditPieceGarage.objects.filter(
+            date_achat__year=annee, date_achat__month=mois
+        )
+        credit_contracte_mois = credits_mois.aggregate(t=Sum('montant_total'))['t'] or Decimal('0')
+
+        versements_mois_qs = VersementCredit.objects.filter(
+            date_versement__year=annee, date_versement__month=mois
+        ).select_related('credit')
+        credit_verse_mois = versements_mois_qs.aggregate(t=Sum('montant'))['t'] or Decimal('0')
+
+        # Encours au dernier jour du mois : Σ (total − versements jusqu'à cette date)
+        # pour les crédits pris au plus tard ce jour-là.
+        credit_encours_fin_mois = Decimal('0')
+        detail_fournisseurs = {}
+        for c in CreditPieceGarage.objects.filter(date_achat__lte=dernier_jour).prefetch_related('versements'):
+            paye_a_date = sum(
+                (v.montant for v in c.versements.all() if v.date_versement <= dernier_jour),
+                Decimal('0'),
+            )
+            reste = c.montant_total - paye_a_date
+            if reste > 0:
+                credit_encours_fin_mois += reste
+            d = detail_fournisseurs.setdefault(
+                c.fournisseur, {'contracte': Decimal('0'), 'verse': Decimal('0'), 'reste': Decimal('0')}
+            )
+            if c.date_achat.year == annee and c.date_achat.month == mois:
+                d['contracte'] += c.montant_total
+            d['reste'] += reste if reste > 0 else Decimal('0')
+        for v in versements_mois_qs:
+            detail_fournisseurs.setdefault(
+                v.credit.fournisseur, {'contracte': Decimal('0'), 'verse': Decimal('0'), 'reste': Decimal('0')}
+            )['verse'] += v.montant
+
+        context['credit_garage'] = {
+            'contracte_mois': credit_contracte_mois,
+            'verse_mois': credit_verse_mois,
+            'encours_fin_mois': credit_encours_fin_mois,
+            'detail_fournisseurs': sorted(detail_fournisseurs.items(), key=lambda x: x[0]),
+            'benefice_apres_credits': totaux['benefice_net'] - credit_verse_mois,
+        }
         return context

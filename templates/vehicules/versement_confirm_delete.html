@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Supprimer le versement{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-6">
+      <div class="card shadow-sm border-danger">
+        <div class="card-header bg-danger text-white">
+          <h4 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Confirmer la suppression</h4>
+        </div>
+        <div class="card-body">
+          <p>Supprimer ce versement de
+            <strong>{{ object.montant|floatformat:0|intcomma }} FCFA</strong>
+            du {{ object.date_versement|date:"d/m/Y" }} ?
+            Le solde du crédit « {{ object.credit.libelle }} » sera recalculé.</p>
+          <form method="post">
+            {% csrf_token %}
+            <div class="d-flex justify-content-between">
+              <a href="{% url 'vehicules:reparation_detail' object.credit.reparation_id %}" class="btn btn-danger">
+                <i class="bi bi-arrow-left me-1"></i>Annuler
+              </a>
+              <button type="submit" class="btn btn-danger"><i class="bi bi-trash me-1"></i>Supprimer</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

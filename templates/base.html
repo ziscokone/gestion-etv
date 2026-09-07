@@ -207,6 +207,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link {% if 'credit' in request.resolver_match.url_name or 'versement' in request.resolver_match.url_name %}active{% endif %}"
+                       href="{% url 'vehicules:credit_garage_list' %}">
+                        <i class="bi bi-cash-coin me-1"></i> Crédits
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link {% if request.resolver_match.url_name == 'rapport_reparations' %}active{% endif %}"
                        href="{% url 'vehicules:rapport_reparations' %}">
                         <i class="bi bi-file-earmark-bar-graph me-1"></i> Rapport

@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Enregistrer un versement{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-6">
+      <div class="card shadow-sm" style="border:none;border-radius:14px;overflow:hidden;">
+        <div class="card-header text-white" style="background:linear-gradient(135deg,#0e7490,#0891b2);border:none;">
+          <h4 class="mb-0"><i class="bi bi-wallet2 me-2"></i>Enregistrer un versement</h4>
+        </div>
+        <div class="card-body p-4">
+          <div class="p-3 mb-3" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;font-size:13px;">
+            <div><strong>{{ credit.fournisseur }}</strong> — {{ credit.libelle }}</div>
+            <div class="mt-1 d-flex flex-wrap gap-3">
+              <span>Total : <strong>{{ credit.montant_total|floatformat:0|intcomma }} F</strong></span>
+              <span>Déjà versé : <strong>{{ credit.montant_paye|floatformat:0|intcomma }} F</strong></span>
+              <span>Reste : <strong class="text-danger">{{ credit.reste_a_payer|floatformat:0|intcomma }} F</strong></span>
+            </div>
+          </div>
+
+          <form method="post" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            {% for field in form %}
+            <div class="mb-3">
+              <label for="{{ field.id_for_label }}" class="form-label fw-semibold" style="font-size:13px;">
+                {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
+              </label>
+              {{ field }}
+              {% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors }}</div>{% endif %}
+            </div>
+            {% endfor %}
+
+            <div class="d-flex justify-content-between mt-4">
+              <a href="{% url 'vehicules:reparation_detail' credit.reparation_id %}" class="btn btn-danger">
+                <i class="bi bi-arrow-left me-1"></i>Annuler
+              </a>
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-circle me-1"></i>Enregistrer le versement
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

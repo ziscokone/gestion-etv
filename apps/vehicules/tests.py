@@ -101,3 +101,132 @@ class ReparationListAjaxTests(TestCase):
         response = self.client.get(reverse('vehicules:reparation_list_ajax'))
         self.assertContains(response, 'AB-111-CD')
         self.assertContains(response, 'XY-222-ZT')
+
+
+class CreditPieceGarageTests(TestCase):
+    """Pièces à crédit : cumul des versements, reste dû, statut auto, garde-fou anti-surpaiement."""
+
+    def setUp(self):
+        from decimal import Decimal
+        self.Decimal = Decimal
+        self.compagnie = Compagnie.objects.create(nom='C', nom_pdg='P')
+        modele = ModeleVehicule.objects.create(nom='Bus', marque='Toyota', capacite=30)
+        self.vehicule = Vehicule.objects.create(
+            immatriculation='AB-1-CD', modele=modele, compagnie=self.compagnie,
+        )
+        self.reparation = ReparationVehicule.objects.create(
+            vehicule=self.vehicule, date_reparation=date.today(), garage_prestataire='Garage X',
+        )
+        self.admin = Utilisateur.objects.create_user(
+            username='sa', password='x', nom_complet='SA', role='super_admin',
+            is_staff=True, is_superuser=True,
+        )
+        self.client.force_login(self.admin)
+
+    def _credit(self, total='100000'):
+        from apps.vehicules.models import CreditPieceGarage
+        return CreditPieceGarage.objects.create(
+            reparation=self.reparation, fournisseur='Ets Sanogo',
+            libelle='plaquettes + disques', montant_total=self.Decimal(total),
+            date_achat=date.today(),
+        )
+
+    def test_versements_cumules_et_reste(self):
+        from apps.vehicules.models import VersementCredit
+        c = self._credit('100000')
+        VersementCredit.objects.create(credit=c, date_versement=date.today(), montant=40000)
+        VersementCredit.objects.create(credit=c, date_versement=date.today(), montant=25000)
+        c.refresh_from_db()
+        self.assertEqual(c.montant_paye, self.Decimal('65000'))
+        self.assertEqual(c.reste_a_payer, self.Decimal('35000'))
+        self.assertFalse(c.est_solde)
+        self.assertEqual(c.statut, 'en_cours')
+
+    def test_solde_automatique(self):
+        from apps.vehicules.models import VersementCredit
+        c = self._credit('50000')
+        VersementCredit.objects.create(credit=c, date_versement=date.today(), montant=50000)
+        c.refresh_from_db()
+        self.assertTrue(c.est_solde)
+        self.assertEqual(c.statut, 'solde')
+        self.assertEqual(c.reste_a_payer, self.Decimal('0'))
+
+    def test_suppression_versement_recalcule(self):
+        from apps.vehicules.models import VersementCredit
+        c = self._credit('50000')
+        v = VersementCredit.objects.create(credit=c, date_versement=date.today(), montant=50000)
+        c.refresh_from_db(); self.assertEqual(c.statut, 'solde')
+        v.delete()
+        c.refresh_from_db()
+        self.assertEqual(c.statut, 'en_cours')
+        self.assertEqual(c.montant_paye, self.Decimal('0'))
+
+    def test_form_refuse_surpaiement(self):
+        from apps.vehicules.forms import VersementCreditForm
+        c = self._credit('100000')
+        from apps.vehicules.models import VersementCredit
+        VersementCredit.objects.create(credit=c, date_versement=date.today(), montant=80000)
+        form = VersementCreditForm(
+            data={'date_versement': date.today(), 'montant': 30000, 'moyen_paiement': 'cash', 'note': ''},
+            credit=c,
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn('montant', form.errors)
+
+    def test_vue_versement_cree_et_redirige(self):
+        c = self._credit('60000')
+        url = reverse('vehicules:versement_create', kwargs={'credit_pk': c.pk})
+        resp = self.client.post(url, {
+            'date_versement': date.today(), 'montant': 60000, 'moyen_paiement': 'virement', 'note': 'solde',
+        })
+        self.assertEqual(resp.status_code, 302)
+        c.refresh_from_db()
+        self.assertEqual(c.statut, 'solde')
+
+    def test_ecran_credits_liste_accessible(self):
+        self._credit('100000')
+        resp = self.client.get(reverse('vehicules:credit_garage_list'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Ets Sanogo')
+
+
+class BilanMensuelCreditGarageTests(TestCase):
+    """Le bilan mensuel expose le point crédits garage : contracté / versé / encours."""
+
+    def setUp(self):
+        from decimal import Decimal
+        from datetime import time
+        from apps.lignes.models import Ligne
+        from apps.voyages.models import Voyage
+        self.Decimal = Decimal
+        self.compagnie = Compagnie.objects.create(nom='C', nom_pdg='P')
+        from apps.gares.models import Gare
+        self.gare = Gare.objects.create(nom='G', code='ABJ', ville='Abidjan', compagnie=self.compagnie)
+        ligne = Ligne.objects.create(nom='L', gare=self.gare, ville_depart='A', ville_arrivee='B', compagnie=self.compagnie)
+        # un voyage ce mois pour que le bilan ait un mois sélectionnable
+        self.voyage = Voyage.objects.create(
+            gare=self.gare, ligne=ligne, date_depart=date.today(), heure_depart=time(8, 0), periode='matin',
+        )
+        modele = ModeleVehicule.objects.create(nom='Bus', marque='T', capacite=30)
+        veh = Vehicule.objects.create(immatriculation='XX-9-YY', modele=modele, compagnie=self.compagnie)
+        rep = ReparationVehicule.objects.create(vehicule=veh, date_reparation=date.today(), garage_prestataire='GX')
+        from apps.vehicules.models import CreditPieceGarage, VersementCredit
+        c = CreditPieceGarage.objects.create(
+            reparation=rep, fournisseur='Sanogo', libelle='pièces',
+            montant_total=Decimal('200000'), date_achat=date.today(),
+        )
+        VersementCredit.objects.create(credit=c, date_versement=date.today(), montant=Decimal('75000'))
+        self.pdg = Utilisateur.objects.create_user(
+            username='pdg', password='x', nom_complet='PDG', role='pdg',
+        )
+        self.client.force_login(self.pdg)
+
+    def test_bloc_credit_dans_le_bilan(self):
+        mois = date.today().strftime('%Y-%m')
+        resp = self.client.get(reverse('comptabilite:bilan_mensuel'), {'mois': mois})
+        self.assertEqual(resp.status_code, 200)
+        cg = resp.context['credit_garage']
+        self.assertEqual(cg['contracte_mois'], self.Decimal('200000'))
+        self.assertEqual(cg['verse_mois'], self.Decimal('75000'))
+        self.assertEqual(cg['encours_fin_mois'], self.Decimal('125000'))
+        self.assertContains(resp, 'Point crédits garage')

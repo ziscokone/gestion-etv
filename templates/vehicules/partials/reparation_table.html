@@ -50,6 +50,13 @@
                                 <span class="montant-bas">{{ total|floatformat:0|intcomma }} F</span>
                             {% endif %}
                             {% endwith %}
+                            {% with du=rep.credit_reste_du %}{% if du %}
+                            <div class="mt-1">
+                              <span style="font-size:10px;font-weight:700;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:6px;white-space:nowrap;">
+                                <i class="bi bi-cash-coin"></i> Crédit : {{ du|floatformat:0|intcomma }} F
+                              </span>
+                            </div>
+                            {% endif %}{% endwith %}
                         </td>
                         <td style="font-size:12px;">{{ rep.garage_prestataire }}</td>
                         <td>

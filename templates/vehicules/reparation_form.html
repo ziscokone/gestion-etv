@@ -30,12 +30,14 @@
 .form-section:last-of-type { border-bottom: none; }
 .section-title {
     display: flex; align-items: center; gap: 10px;
-    font-size: 13px; font-weight: 700; color: #1e3260;
-    margin-bottom: 18px; padding-bottom: 10px; border-bottom: 2px solid #eef1f9;
+    font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px;
+    color: #1e3260;
+    margin-bottom: 18px; padding: 0 0 0 12px;
+    border: none; border-left: 3px solid #E67E22;
 }
-.section-title i { font-size: 15px; color: var(--color-accent); }
+.section-title i { font-size: 14px; color: #E67E22; }
 .field-label { font-size: 12px; font-weight: 600; color: #4b5563; margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
-.field-label i { color: #9ca3af; font-size: 13px; }
+.field-label i { color: #E67E22; font-size: 13px; }
 .req { color: #dc2626; margin-left: 1px; }
 .form-control, .form-select {
     border: 1.5px solid #e2e8f0; border-radius: 7px; font-size: 13px;
@@ -56,7 +58,7 @@ textarea.form-control { resize: vertical; min-height: 70px; }
 .ligne-intervention:hover { border-color: #c7d2fe; }
 .ligne-numero {
     position: absolute; top: -10px; left: 16px;
-    background: #1e3260; color: #fff; border-radius: 10px;
+    background: #E67E22; color: #fff; border-radius: 10px;
     font-size: 10px; font-weight: 700; padding: 2px 10px; letter-spacing: .3px;
 }
 .btn-remove-ligne {
@@ -127,7 +129,7 @@ textarea.form-control { resize: vertical; min-height: 70px; }
             <div style="font-size:12px;opacity:.7;margin-top:3px;">Renseignez le garage et ajoutez les interventions effectuées</div>
             {% endif %}
         </div>
-        <a href="{% url 'vehicules:reparation_list' %}" class="btn-back">
+        <a href="{% url 'vehicules:reparation_list' %}" class="btn btn-danger">
             <i class="bi bi-arrow-left"></i> Annuler
         </a>
     </div>
@@ -265,7 +267,7 @@ textarea.form-control { resize: vertical; min-height: 70px; }
 
             <!-- ══ Footer ══ -->
             <div class="form-footer">
-                <a href="{% url 'vehicules:reparation_list' %}" class="btn-cancel-footer">
+                <a href="{% url 'vehicules:reparation_list' %}" class="btn btn-danger">
                     <i class="bi bi-x-circle"></i> Annuler
                 </a>
                 <button type="submit" class="btn-submit">

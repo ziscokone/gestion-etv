@@ -28,6 +28,14 @@ urlpatterns = [
     path('reparations/<int:pk>/terminer/', views.ReparationVehiculeTerminerView.as_view(), name='reparation_terminer'),
     path('reparations/<int:pk>/supprimer/', views.ReparationVehiculeDeleteView.as_view(), name='reparation_delete'),
 
+    # Crédits pièces garage (pièces à crédit, versements échelonnés)
+    path('credits/', views.CreditGarageListView.as_view(), name='credit_garage_list'),
+    path('reparations/<int:reparation_pk>/credits/ajouter/', views.CreditPieceGarageCreateView.as_view(), name='credit_create'),
+    path('credits/<int:pk>/modifier/', views.CreditPieceGarageUpdateView.as_view(), name='credit_update'),
+    path('credits/<int:pk>/supprimer/', views.CreditPieceGarageDeleteView.as_view(), name='credit_delete'),
+    path('credits/<int:credit_pk>/versements/ajouter/', views.VersementCreditCreateView.as_view(), name='versement_create'),
+    path('versements/<int:pk>/supprimer/', views.VersementCreditDeleteView.as_view(), name='versement_delete'),
+
     # Rapport analytique
     path('rapport/', views.RapportReparationsView.as_view(), name='rapport_reparations'),
     path('rentabilite/', views.RentabiliteVehiculeView.as_view(), name='rentabilite'),

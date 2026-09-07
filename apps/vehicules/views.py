@@ -17,9 +17,11 @@ from core.mixins import AdminRequiredMixin, GestionRequiredMixin, SuperAdminRequ
 from core.utils import render_paginated_partial
 
 logger = logging.getLogger(__name__)
-from .models import ModeleVehicule, Vehicule, ReparationVehicule, LigneIntervention, TypeReparation
+from .models import (ModeleVehicule, Vehicule, ReparationVehicule, LigneIntervention,
+                     TypeReparation, CreditPieceGarage, VersementCredit)
 from .forms import (ModeleVehiculeForm, VehiculeForm, ReparationVehiculeForm,
                     LigneInterventionForm, LigneInterventionFormSet, TypeReparationForm,
+                    CreditPieceGarageForm, VersementCreditForm,
                     get_vidange_type_ids, get_km_type_ids, get_suivi_km_type_ids)
 from apps.compagnie.models import Compagnie
 
@@ -313,7 +315,7 @@ def _reparations_filtrees(get_params):
         queryset = queryset.filter(date_reparation__lte=date_fin)
 
     return queryset.select_related('vehicule', 'vehicule__modele').prefetch_related(
-        'lignes__type_reparation'
+        'lignes__type_reparation', 'credits_pieces__versements'
     ).order_by('-date_reparation')
 
 
@@ -426,6 +428,15 @@ class ReparationVehiculeDetailView(LoginRequiredMixin, DetailView):
     template_name = 'vehicules/reparation_detail.html'
     context_object_name = 'reparation'
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        credits = self.object.credits_pieces.prefetch_related('versements').all()
+        context['credits_pieces'] = credits
+        context['credit_total'] = sum((c.montant_total for c in credits), Decimal('0'))
+        context['credit_paye'] = sum((c.montant_paye for c in credits), Decimal('0'))
+        context['credit_reste'] = sum((c.reste_a_payer for c in credits), Decimal('0'))
+        return context
+
 
 class ReparationVehiculeUpdateView(GestionRequiredMixin, UpdateView):
     """Modifier une entrée au garage."""
@@ -518,6 +529,140 @@ class ReparationVehiculeDeleteView(SuperAdminRequiredMixin, DeleteView):
     def form_valid(self, form):
         messages.success(self.request, 'Réparation supprimée avec succès.')
         return super().form_valid(form)
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  Crédits pièces garage (pièces prises à crédit, remboursées en versements)
+# ══════════════════════════════════════════════════════════════════════
+
+class CreditPieceGarageCreateView(GestionRequiredMixin, CreateView):
+    """Déclarer des pièces prises à crédit, rattachées à une réparation."""
+    model = CreditPieceGarage
+    form_class = CreditPieceGarageForm
+    template_name = 'vehicules/credit_form.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        self.reparation = get_object_or_404(ReparationVehicule, pk=kwargs['reparation_pk'])
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['reparation'] = self.reparation
+        return context
+
+    def form_valid(self, form):
+        form.instance.reparation = self.reparation
+        form.instance.cree_par = self.request.user
+        messages.success(self.request, 'Crédit pièces enregistré.')
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('vehicules:reparation_detail', kwargs={'pk': self.reparation.pk})
+
+
+class CreditPieceGarageUpdateView(GestionRequiredMixin, UpdateView):
+    model = CreditPieceGarage
+    form_class = CreditPieceGarageForm
+    template_name = 'vehicules/credit_form.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['reparation'] = self.object.reparation
+        return context
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        self.object.recalculer_statut()
+        messages.success(self.request, 'Crédit pièces mis à jour.')
+        return response
+
+    def get_success_url(self):
+        return reverse_lazy('vehicules:reparation_detail', kwargs={'pk': self.object.reparation_id})
+
+
+class CreditPieceGarageDeleteView(SuperAdminRequiredMixin, DeleteView):
+    model = CreditPieceGarage
+    template_name = 'vehicules/credit_confirm_delete.html'
+
+    def get_success_url(self):
+        messages.success(self.request, 'Crédit pièces supprimé.')
+        return reverse_lazy('vehicules:reparation_detail', kwargs={'pk': self.object.reparation_id})
+
+
+class VersementCreditCreateView(GestionRequiredMixin, CreateView):
+    """Enregistrer un versement sur un crédit pièces."""
+    model = VersementCredit
+    form_class = VersementCreditForm
+    template_name = 'vehicules/versement_form.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        self.credit = get_object_or_404(CreditPieceGarage, pk=kwargs['credit_pk'])
+        if self.credit.est_solde:
+            messages.info(request, "Ce crédit est déjà soldé.")
+            return redirect('vehicules:reparation_detail', pk=self.credit.reparation_id)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['credit'] = self.credit
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['credit'] = self.credit
+        context['reparation'] = self.credit.reparation
+        return context
+
+    def form_valid(self, form):
+        form.instance.credit = self.credit
+        form.instance.saisi_par = self.request.user
+        messages.success(self.request, 'Versement enregistré.')
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('vehicules:reparation_detail', kwargs={'pk': self.credit.reparation_id})
+
+
+class VersementCreditDeleteView(GestionRequiredMixin, DeleteView):
+    model = VersementCredit
+    template_name = 'vehicules/versement_confirm_delete.html'
+
+    def get_success_url(self):
+        messages.success(self.request, 'Versement supprimé.')
+        return reverse_lazy('vehicules:reparation_detail', kwargs={'pk': self.object.credit.reparation_id})
+
+
+class CreditGarageListView(GestionRequiredMixin, ListView):
+    """Écran dédié : toutes les dettes garage, encours en tête."""
+    model = CreditPieceGarage
+    template_name = 'vehicules/credit_garage_list.html'
+    context_object_name = 'credits'
+    paginate_by = 25
+
+    def get_queryset(self):
+        qs = (CreditPieceGarage.objects
+              .select_related('reparation', 'reparation__vehicule', 'reparation__vehicule__modele')
+              .prefetch_related('versements'))
+        self.statut_filtre = self.request.GET.get('statut', 'en_cours')
+        if self.statut_filtre == 'solde':
+            qs = qs.filter(statut='solde')
+        elif self.statut_filtre == 'tous':
+            pass
+        else:
+            self.statut_filtre = 'en_cours'
+            qs = qs.filter(statut='en_cours')
+        return qs.order_by('-date_achat', '-date_creation')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        tous = CreditPieceGarage.objects.prefetch_related('versements')
+        context['statut_filtre'] = self.statut_filtre
+        context['total_encours'] = sum(
+            (c.reste_a_payer for c in tous if c.statut == 'en_cours'), Decimal('0')
+        )
+        context['nb_en_cours'] = tous.filter(statut='en_cours').count()
+        context['nb_solde'] = tous.filter(statut='solde').count()
+        return context
 
 
 # Vue pour le rapport analytique

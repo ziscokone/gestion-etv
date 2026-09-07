@@ -1,6 +1,9 @@
 from django import forms
 from django.forms import inlineformset_factory
-from .models import ModeleVehicule, Vehicule, ReparationVehicule, LigneIntervention, TypeReparation
+from .models import (
+    ModeleVehicule, Vehicule, ReparationVehicule, LigneIntervention, TypeReparation,
+    CreditPieceGarage, VersementCredit,
+)
 from datetime import date
 import json
 
@@ -395,3 +398,103 @@ class TypeReparationForm(forms.ModelForm):
             'intervalle_km_defaut': 'Optionnel — km avant la prochaine intervention (ex: 10 000 pour une vidange).',
             'is_vidange': 'Affiche en plus le champ "huile utilisée". Uniquement pour les vidanges d\'huile.',
         }
+
+
+class CreditPieceGarageForm(forms.ModelForm):
+    """Déclarer des pièces prises à crédit sur une réparation."""
+
+    class Meta:
+        model = CreditPieceGarage
+        fields = ['fournisseur', 'libelle', 'montant_total', 'date_achat', 'notes']
+        widgets = {
+            'fournisseur': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': 'Ex: Ets Sanogo Pièces Auto',
+            }),
+            'libelle': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': 'Ex: jeu de plaquettes + 2 disques avant',
+            }),
+            'montant_total': forms.NumberInput(attrs={
+                'class': 'form-control', 'min': '1', 'step': '0.01', 'placeholder': 'Ex: 180000',
+            }),
+            'date_achat': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control', 'rows': 2, 'placeholder': 'Optionnel...',
+            }),
+        }
+        labels = {
+            'fournisseur': 'Fournisseur / mécano',
+            'libelle': 'Pièces prises à crédit',
+            'montant_total': 'Montant total (FCFA)',
+            'date_achat': 'Date de prise à crédit',
+            'notes': 'Notes',
+        }
+
+    def clean_date_achat(self):
+        d = self.cleaned_data.get('date_achat')
+        if d and d > date.today():
+            raise forms.ValidationError("La date ne peut pas être dans le futur.")
+        return d
+
+    def clean_montant_total(self):
+        m = self.cleaned_data.get('montant_total')
+        if m is not None and m <= 0:
+            raise forms.ValidationError("Le montant doit être supérieur à 0.")
+        # En modification : le total ne peut pas descendre sous ce qui a déjà été versé.
+        if self.instance.pk and m is not None and m < self.instance.montant_paye:
+            raise forms.ValidationError(
+                f"Le total ne peut pas être inférieur au montant déjà versé "
+                f"({self.instance.montant_paye:.0f} FCFA)."
+            )
+        return m
+
+
+class VersementCreditForm(forms.ModelForm):
+    """Enregistrer un versement sur un crédit pièces."""
+
+    class Meta:
+        model = VersementCredit
+        fields = ['date_versement', 'montant', 'moyen_paiement', 'note']
+        widgets = {
+            'date_versement': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'montant': forms.NumberInput(attrs={
+                'class': 'form-control', 'min': '1', 'step': '0.01',
+            }),
+            'moyen_paiement': forms.Select(attrs={'class': 'form-select'}),
+            'note': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Optionnel'}),
+        }
+        labels = {
+            'date_versement': 'Date du versement',
+            'montant': 'Montant versé (FCFA)',
+            'moyen_paiement': 'Moyen de paiement',
+            'note': 'Note',
+        }
+
+    def __init__(self, *args, credit=None, **kwargs):
+        self.credit = credit
+        super().__init__(*args, **kwargs)
+        if credit is not None and not self.initial.get('montant'):
+            self.fields['montant'].initial = credit.reste_a_payer
+        if not self.initial.get('date_versement'):
+            self.fields['date_versement'].initial = date.today()
+
+    def clean_date_versement(self):
+        d = self.cleaned_data.get('date_versement')
+        if d and d > date.today():
+            raise forms.ValidationError("La date ne peut pas être dans le futur.")
+        return d
+
+    def clean_montant(self):
+        m = self.cleaned_data.get('montant')
+        if m is not None and m <= 0:
+            raise forms.ValidationError("Le montant doit être supérieur à 0.")
+        credit = self.credit or (self.instance.credit_id and self.instance.credit)
+        if credit and m is not None:
+            deja = credit.montant_paye
+            if self.instance.pk:
+                deja -= self.instance.montant
+            if deja + m > credit.montant_total:
+                reste = credit.montant_total - deja
+                raise forms.ValidationError(
+                    f"Ce versement dépasse le montant dû. Reste à payer : {reste:.0f} FCFA."
+                )
+        return m

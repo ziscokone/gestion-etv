@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if form.instance.pk %}Modifier{% else %}Nouveau{% endif %} crédit pièces{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-6">
+      <div class="card shadow-sm" style="border:none;border-radius:14px;overflow:hidden;">
+        <div class="card-header text-white" style="background:linear-gradient(135deg,#1e3260,#162550);border:none;">
+          <h4 class="mb-0">
+            <i class="bi bi-cash-coin me-2"></i>
+            {% if form.instance.pk %}Modifier le crédit pièces{% else %}Pièces prises à crédit{% endif %}
+          </h4>
+        </div>
+        <div class="card-body p-4">
+          <p class="text-muted" style="font-size:13px;">
+            Réparation :
+            <strong>{{ reparation.vehicule.display_immat }}</strong> —
+            {{ reparation.date_reparation|date:"d/m/Y" }} · {{ reparation.garage_prestataire }}
+          </p>
+
+          <form method="post" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            {% for field in form %}
+            <div class="mb-3">
+              <label for="{{ field.id_for_label }}" class="form-label fw-semibold" style="font-size:13px;">
+                {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
+              </label>
+              {{ field }}
+              {% if field.help_text %}<div class="form-text" style="font-size:11px;">{{ field.help_text }}</div>{% endif %}
+              {% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors }}</div>{% endif %}
+            </div>
+            {% endfor %}
+
+            <div class="d-flex justify-content-between mt-4">
+              <a href="{% url 'vehicules:reparation_detail' reparation.pk %}" class="btn btn-danger">
+                <i class="bi bi-arrow-left me-1"></i>Annuler
+              </a>
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-circle me-1"></i>Enregistrer
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

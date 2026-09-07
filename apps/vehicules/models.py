@@ -427,6 +427,12 @@ class ReparationVehicule(models.Model):
     def types_interventions(self):
         return ', '.join(self.lignes.values_list('type_reparation__nom', flat=True))
 
+    @property
+    def credit_reste_du(self):
+        """Total encore dû sur les pièces prises à crédit de cette réparation (0 si aucun)."""
+        from decimal import Decimal
+        return sum((c.reste_a_payer for c in self.credits_pieces.all()), Decimal('0'))
+
     def delete(self, *args, **kwargs):
         from django.core.exceptions import ValidationError
         if hasattr(self, 'depense_source') and self.depense_source.exists():
@@ -509,3 +515,138 @@ class LigneIntervention(models.Model):
         if intervalle:
             return self.kilometrage + intervalle
         return None
+
+
+class CreditPieceGarage(models.Model):
+    """
+    Pièces fournies à crédit pour une réparation : la compagnie reçoit et monte
+    les pièces immédiatement, puis rembourse le fournisseur en plusieurs
+    versements (`VersementCredit`) jusqu'à solder `montant_total`.
+
+    Le montant est indépendant des lignes d'intervention de la réparation
+    (ce sont deux choses distinctes) : dans le bilan, ce sont les versements
+    réellement effectués dans le mois qui constituent la sortie de caisse.
+    """
+
+    STATUT_CHOICES = [
+        ('en_cours', 'En cours'),
+        ('solde', 'Soldé'),
+    ]
+
+    MOYEN_PAIEMENT_CHOICES = [
+        ('cash', 'Cash'),
+        ('wave', 'Wave'),
+        ('orange_money', 'Orange Money'),
+        ('mtn_money', 'MTN Money'),
+        ('moov_money', 'Moov Money'),
+        ('virement', 'Virement'),
+    ]
+
+    reparation = models.ForeignKey(
+        ReparationVehicule,
+        on_delete=models.CASCADE,
+        related_name='credits_pieces',
+        verbose_name="Réparation",
+    )
+    fournisseur = models.CharField(max_length=200, verbose_name="Fournisseur / mécano")
+    libelle = models.CharField(
+        max_length=255,
+        verbose_name="Pièces prises à crédit",
+        help_text="Ex : jeu de plaquettes + 2 disques avant",
+    )
+    montant_total = models.DecimalField(
+        max_digits=12, decimal_places=2, verbose_name="Montant total (FCFA)"
+    )
+    date_achat = models.DateField(verbose_name="Date de prise à crédit")
+    statut = models.CharField(
+        max_length=10, choices=STATUT_CHOICES, default='en_cours',
+        verbose_name="Statut", editable=False,
+    )
+    notes = models.TextField(blank=True, verbose_name="Notes")
+    cree_par = models.ForeignKey(
+        'personnel.Utilisateur', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='credits_pieces_crees', verbose_name="Créé par",
+    )
+    date_creation = models.DateTimeField(auto_now_add=True)
+    date_modification = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Crédit pièces (garage)"
+        verbose_name_plural = "Crédits pièces (garage)"
+        ordering = ['-date_achat', '-date_creation']
+
+    def __str__(self):
+        return f"{self.fournisseur} — {self.libelle} ({self.montant_total} FCFA)"
+
+    @property
+    def montant_paye(self):
+        from decimal import Decimal
+        return self.versements.aggregate(t=models.Sum('montant'))['t'] or Decimal('0')
+
+    @property
+    def reste_a_payer(self):
+        from decimal import Decimal
+        reste = self.montant_total - self.montant_paye
+        return reste if reste > 0 else Decimal('0')
+
+    @property
+    def est_solde(self):
+        return self.montant_paye >= self.montant_total
+
+    @property
+    def pourcentage_paye(self):
+        if not self.montant_total:
+            return 0
+        return min(100, round(self.montant_paye * 100 / self.montant_total))
+
+    def recalculer_statut(self, save=True):
+        nouveau = 'solde' if self.est_solde else 'en_cours'
+        if nouveau != self.statut:
+            self.statut = nouveau
+            if save:
+                super().save(update_fields=['statut', 'date_modification'])
+        return self.statut
+
+
+class VersementCredit(models.Model):
+    """Un versement (échéance payée) sur un CreditPieceGarage."""
+
+    credit = models.ForeignKey(
+        CreditPieceGarage,
+        on_delete=models.CASCADE,
+        related_name='versements',
+        verbose_name="Crédit pièces",
+    )
+    date_versement = models.DateField(verbose_name="Date du versement")
+    montant = models.DecimalField(
+        max_digits=12, decimal_places=2, verbose_name="Montant versé (FCFA)"
+    )
+    moyen_paiement = models.CharField(
+        max_length=20,
+        choices=CreditPieceGarage.MOYEN_PAIEMENT_CHOICES,
+        default='cash',
+        verbose_name="Moyen de paiement",
+    )
+    saisi_par = models.ForeignKey(
+        'personnel.Utilisateur', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='versements_credit_saisis', verbose_name="Saisi par",
+    )
+    note = models.CharField(max_length=255, blank=True, verbose_name="Note")
+    date_creation = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Versement crédit garage"
+        verbose_name_plural = "Versements crédit garage"
+        ordering = ['date_versement', 'date_creation']
+
+    def __str__(self):
+        return f"{self.montant} FCFA — {self.date_versement} ({self.credit.fournisseur})"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self.credit.recalculer_statut()
+
+    def delete(self, *args, **kwargs):
+        credit = self.credit
+        super().delete(*args, **kwargs)
+        credit.recalculer_statut()

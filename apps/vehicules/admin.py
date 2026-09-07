@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import ModeleVehicule, Vehicule, TypeReparation, ReparationVehicule, LigneIntervention
+from .models import (ModeleVehicule, Vehicule, TypeReparation, ReparationVehicule,
+                     LigneIntervention, CreditPieceGarage, VersementCredit)
 
 
 @admin.register(TypeReparation)
@@ -77,3 +78,20 @@ class ReparationVehiculeAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+
+class VersementCreditInline(admin.TabularInline):
+    model = VersementCredit
+    extra = 0
+    fields = ('date_versement', 'montant', 'moyen_paiement', 'note')
+
+
+@admin.register(CreditPieceGarage)
+class CreditPieceGarageAdmin(admin.ModelAdmin):
+    list_display = ('fournisseur', 'libelle', 'montant_total', 'montant_paye', 'reste_a_payer', 'statut', 'date_achat')
+    list_filter = ('statut', 'date_achat')
+    search_fields = ('fournisseur', 'libelle', 'reparation__vehicule__immatriculation')
+    ordering = ('-date_achat',)
+    date_hierarchy = 'date_achat'
+    inlines = [VersementCreditInline]
+    readonly_fields = ('statut', 'montant_paye', 'reste_a_payer')

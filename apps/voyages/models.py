@@ -4,8 +4,10 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+from core.models import SyncableModel
 
-class Voyage(models.Model):
+
+class Voyage(SyncableModel):
     """
     Modèle représentant un voyage/départ.
     Peut être créé automatiquement via un programme ou manuellement.

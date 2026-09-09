@@ -3,46 +3,196 @@
 
 {% block title %}Programmes de Départ{% endblock %}
 
+{% block extra_css %}
+<style>
+  /* ── En-tête ─────────────────────────────────────────── */
+  .pg-header {
+    background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
+    border-radius: 14px;
+    padding: 22px 28px;
+    color: #fff;
+    margin-bottom: 22px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .pg-header::after {
+    content: '\F1E1';
+    font-family: 'Bootstrap-Icons';
+    font-size: 8rem;
+    opacity: 0.07;
+    position: absolute;
+    right: 18px;
+    top: -12px;
+    line-height: 1;
+    pointer-events: none;
+  }
+  .pg-header h4 { font-weight: 700; margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; }
+  .pg-stats { display: flex; gap: 10px; flex-wrap: wrap; }
+  .pg-stat {
+    background: rgba(255,255,255,0.13);
+    border-radius: 10px;
+    padding: 6px 14px;
+    text-align: center;
+    min-width: 74px;
+  }
+  .pg-stat .v { font-size: 1.25rem; font-weight: 800; line-height: 1; }
+  .pg-stat .l { font-size: 10.5px; opacity: 0.85; text-transform: uppercase; letter-spacing: .4px; }
+  .pg-btn-new {
+    background: #E67E22; color: #fff;
+    border: none; border-radius: 9px;
+    padding: 8px 16px; font-size: 13px; font-weight: 700;
+    display: inline-flex; align-items: center; gap: 6px;
+    text-decoration: none; white-space: nowrap;
+    transition: box-shadow .15s, transform .1s, background .15s;
+  }
+  .pg-btn-new:hover { background: #d06f18; box-shadow: 0 4px 14px rgba(230,126,34,.35); transform: translateY(-1px); color: #fff; }
+
+  /* ── Barre de recherche ──────────────────────────────── */
+  .pg-search {
+    background: #fff;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05);
+  }
+  .pg-search .input-group-text { background: #f8f9fc; border-color: #e5e7eb; color: #9ca3af; }
+  .pg-search .form-control { border-color: #e5e7eb; }
+  .pg-search .form-control:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px rgba(30,50,96,.08); }
+
+  /* ── Tableau ─────────────────────────────────────────── */
+  .pg-card {
+    background: #fff;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05);
+  }
+  .pg-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .pg-table thead th {
+    background: #f8f9fc;
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+    color: #6b7280;
+    padding: 11px 14px;
+    text-align: left;
+    border-bottom: 2px solid #eef0f4;
+    white-space: nowrap;
+  }
+  .pg-table tbody td { padding: 12px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+  .pg-table tbody tr:last-child td { border-bottom: none; }
+  .pg-table tbody tr:hover td { background: #fbfcfe; }
+
+  .pg-gare {
+    display: inline-block;
+    background: #eef2ff; color: #3730a3;
+    font-weight: 700; font-size: 11.5px;
+    padding: 2px 9px; border-radius: 6px;
+    letter-spacing: .3px;
+  }
+  .pg-ligne { font-weight: 600; color: #1f2937; }
+  .pg-ligne i { color: #9ca3af; margin-right: 6px; font-size: 12px; }
+
+  .pg-periode {
+    font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .pg-periode.matin { background: #e0f2fe; color: #075985; }
+  .pg-periode.soir  { background: #ede9fe; color: #5b21b6; }
+
+  .pg-heure { font-weight: 700; color: #1e3260; font-variant-numeric: tabular-nums; }
+  .pg-heure i { color: #9ca3af; margin-right: 4px; font-weight: 400; }
+
+  .pg-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 22px; height: 22px; padding: 0 6px;
+    background: #f1f5f9; color: #475569;
+    border-radius: 6px; font-weight: 700; font-size: 11.5px;
+  }
+
+  /* Bande des 7 jours */
+  .pg-week { display: inline-flex; gap: 3px; }
+  .pg-week span {
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9.5px; font-weight: 700; border-radius: 6px;
+    border: 1px solid #e5e7eb; color: #cbd5e1; background: #fff;
+  }
+  .pg-week span.on { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
+
+  .pg-statut { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 4px; }
+  .pg-statut.actif   { background: #dcfce7; color: #166534; }
+  .pg-statut.inactif { background: #f1f5f9; color: #64748b; }
+
+  .pg-actions { display: inline-flex; gap: 5px; }
+  .pg-actions .btn { padding: 4px 9px; font-size: 12px; border-radius: 7px; }
+
+  .pg-empty { text-align: center; padding: 52px 20px; color: #9ca3af; }
+  .pg-empty i { font-size: 2.8rem; display: block; margin-bottom: 12px; color: #cbd5e1; }
+
+  .pg-note {
+    margin-top: 16px; font-size: 12px; color: #64748b;
+    background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 10px;
+    padding: 10px 14px;
+  }
+  .pg-note i { color: #0284c7; margin-right: 6px; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Programmes de Départ</h2>
-        <a href="{% url 'programmes:programme_create' %}" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Nouveau Programme
-        </a>
+<div class="container-fluid py-4 px-4">
+
+  <!-- ── En-tête ── -->
+  <div class="pg-header">
+    <h4><i class="bi bi-calendar-week"></i> Programmes de départ</h4>
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <div class="pg-stats">
+        <div class="pg-stat"><div class="v">{{ nb_total }}</div><div class="l">Total</div></div>
+        <div class="pg-stat"><div class="v" style="color:#6fffa0;">{{ nb_actifs }}</div><div class="l">Actifs</div></div>
+        <div class="pg-stat"><div class="v" style="color:#ffd8a8;">{{ nb_inactifs }}</div><div class="l">Inactifs</div></div>
+      </div>
+      <a href="{% url 'programmes:programme_create' %}" class="pg-btn-new">
+        <i class="bi bi-plus-circle"></i> Nouveau programme
+      </a>
     </div>
+  </div>
 
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        {% endfor %}
-    {% endif %}
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
 
-    <div class="card mb-4">
-        <div class="card-body">
-            <form method="get" data-live-filter="{% url 'programmes:programme_list_ajax' %}" data-target="programmeTableContainer" class="row g-3">
-                <div class="col-md-10">
-                    <input type="text"
-                           name="q"
-                           class="form-control"
-                           placeholder="Rechercher par gare, ligne ou destination..."
-                           value="{{ search_query }}">
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Rechercher
-                    </button>
-                </div>
-            </form>
+  <!-- ── Recherche ── -->
+  <div class="pg-search">
+    <form method="get" data-live-filter="{% url 'programmes:programme_list_ajax' %}"
+          data-target="programmeTableContainer" class="row g-2 align-items-center">
+      <div class="col">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input type="text" name="q" class="form-control"
+                 placeholder="Rechercher par gare, ligne ou destination…"
+                 value="{{ search_query }}" autocomplete="off">
         </div>
-    </div>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-search me-1"></i>Rechercher
+        </button>
+      </div>
+    </form>
+  </div>
 
-    <div id="programmeTableContainer">
-        {% include 'programmes/partials/programme_table.html' %}
-    </div>
+  <div id="programmeTableContainer">
+    {% include 'programmes/partials/programme_table.html' %}
+  </div>
 </div>
 {% endblock %}
 

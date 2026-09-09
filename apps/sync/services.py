@@ -94,7 +94,10 @@ def _upsert_client(data):
     nouveau_nom = data.get('nom_complet')
     if nouveau_nom and client.nom_complet != nouveau_nom:
         client.nom_complet = nouveau_nom
-        client.save(update_fields=['nom_complet', 'date_modification'])
+        # 'synced_at' explicite : cette écriture EST la synchro, elle ne doit pas
+        # être réinterprétée comme une modification locale à renvoyer (SyncableModel).
+        client.synced_at = timezone.now()
+        client.save(update_fields=['nom_complet', 'synced_at', 'date_modification'])
 
     return client
 
@@ -141,9 +144,12 @@ def _upsert_voyage(data, gare):
         voyage.recette_bagages = data.get('recette_bagages') or 0
         voyage.statut = data.get('statut', voyage.statut)
         voyage.notes = data.get('notes', voyage.notes)
+        # 'synced_at' explicite : cette écriture EST la synchro (SyncableModel ne
+        # doit pas la prendre pour une modification locale à renvoyer).
+        voyage.synced_at = timezone.now()
         voyage.save(update_fields=[
             'vehicule', 'chauffeur', 'convoyeur', 'recette_bagages',
-            'statut', 'notes', 'date_modification',
+            'statut', 'notes', 'synced_at', 'date_modification',
         ])
 
     return voyage
@@ -197,8 +203,11 @@ def _upsert_billet(data, gare):
         billet.moyen_paiement = data.get('moyen_paiement', billet.moyen_paiement)
         billet.date_paiement = data.get('date_paiement')
         billet.client = client
+        # 'synced_at' explicite : cette écriture EST la synchro (SyncableModel ne
+        # doit pas la prendre pour une modification locale à renvoyer).
+        billet.synced_at = timezone.now()
         billet.save(update_fields=[
-            'statut', 'moyen_paiement', 'date_paiement', 'client', 'date_modification',
+            'statut', 'moyen_paiement', 'date_paiement', 'client', 'synced_at', 'date_modification',
         ])
 
     return billet

@@ -6,6 +6,7 @@ from apps.gares.models import Gare
 from apps.lignes.models import Ligne
 from apps.personnel.models import Utilisateur
 
+from .forms import DestinationForm
 from .models import Destination
 
 
@@ -40,3 +41,63 @@ class DestinationListAjaxTests(TestCase):
         response = self.client.get(reverse('destinations:destination_list_ajax'))
         self.assertContains(response, 'Bouaké')
         self.assertContains(response, 'Man</td>')
+
+
+class DestinationUniciteTests(TestCase):
+    """Doublons interdits sur (ligne + gare + ville d'arrivée + montant),
+    sans tenir compte de la casse, des accents ni des espaces."""
+
+    def setUp(self):
+        self.compagnie = Compagnie.objects.create(nom='Ma Compagnie', nom_pdg='M. PDG')
+        self.gare = Gare.objects.create(nom='Gare Adjamé', code='ADJ', ville='Abidjan', compagnie=self.compagnie)
+        self.ligne = Ligne.objects.create(
+            nom='Abidjan - Ouangolo', gare=self.gare,
+            ville_depart='Abidjan', ville_arrivee='Ouangolo', compagnie=self.compagnie,
+        )
+        self.dest = Destination.objects.create(
+            gare=self.gare, ligne=self.ligne, ville_arrivee='Bouaké', montant=6000,
+        )
+
+    def _form(self, **overrides):
+        data = {
+            'ligne': self.ligne.pk, 'gare': self.gare.pk,
+            'ville_arrivee': 'Bouaké', 'montant': '6000', 'active': True,
+        }
+        data.update(overrides)
+        return DestinationForm(data=data)
+
+    def test_doublon_exact_refuse(self):
+        self.assertFalse(self._form().is_valid())
+
+    def test_doublon_casse_et_accents_refuse(self):
+        form = self._form(ville_arrivee='  bouake ')
+        self.assertFalse(form.is_valid())
+        self.assertIn('ville_arrivee', form.errors)
+
+    def test_doublon_majuscules_refuse(self):
+        self.assertFalse(self._form(ville_arrivee='BOUAKÉ').is_valid())
+
+    def test_montant_different_autorise(self):
+        self.assertTrue(self._form(montant='7000').is_valid())
+
+    def test_ville_differente_autorisee(self):
+        self.assertTrue(self._form(ville_arrivee='Katiola').is_valid())
+
+    def test_modification_sans_changement_autorisee(self):
+        form = DestinationForm(
+            data={
+                'ligne': self.ligne.pk, 'gare': self.gare.pk,
+                'ville_arrivee': 'BOUAKÉ', 'montant': '6000', 'active': True,
+            },
+            instance=self.dest,
+        )
+        self.assertTrue(form.is_valid(), form.errors.as_json())
+
+    def test_espaces_normalises_a_la_sauvegarde(self):
+        form = self._form(ville_arrivee='Yamoussoukro', montant='7000')
+        self.assertTrue(form.is_valid())
+        form2 = self._form(ville_arrivee='  Yamoussoukro  ', montant='7000')
+        self.assertEqual(form2.data['ville_arrivee'], '  Yamoussoukro  ')
+        # après nettoyage la ville ne contient plus d'espaces superflus
+        self.assertTrue(form.is_valid())
+        self.assertEqual(form.cleaned_data['ville_arrivee'], 'Yamoussoukro')

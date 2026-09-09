@@ -1,5 +1,21 @@
+import unicodedata
+
 from django.db import models
 from django.db.models.functions import Lower
+
+
+def cle_ville(valeur):
+    """Forme normalisée d'une ville d'arrivée, utilisée pour comparer deux
+    destinations : espaces multiples réduits, accents retirés, casse ignorée.
+
+    « Bouaké », «  bouake  » et « BOUAKÉ » donnent tous la même clé. Ce test
+    est fait en Python (et non via ``LOWER()`` SQL) car ``LOWER()`` de SQLite
+    ne gère que l'ASCII : « É » y resterait en majuscule.
+    """
+    texte = ' '.join((valeur or '').split())
+    texte = unicodedata.normalize('NFKD', texte)
+    texte = ''.join(c for c in texte if not unicodedata.combining(c))
+    return texte.casefold()
 
 
 class Destination(models.Model):
@@ -35,9 +51,12 @@ class Destination(models.Model):
         ordering = ['gare', 'ville_arrivee']
         constraints = [
             models.UniqueConstraint(
-                'gare', 'ligne', Lower('ville_arrivee'),
-                name='destination_unique_gare_ligne_ville_ci',
-                violation_error_message="Une destination existe déjà pour cette gare, cette ligne et cette ville d'arrivée (la casse n'est pas prise en compte).",
+                'gare', 'ligne', Lower('ville_arrivee'), 'montant',
+                name='destination_unique_gare_ligne_ville_montant_ci',
+                violation_error_message=(
+                    "Cette destination existe déjà : même ligne, même gare de départ, "
+                    "même ville d'arrivée et même montant (la casse n'est pas prise en compte)."
+                ),
             ),
         ]
 

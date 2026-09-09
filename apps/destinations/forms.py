@@ -1,5 +1,5 @@
 from django import forms
-from .models import Destination
+from .models import Destination, cle_ville
 from apps.lignes.models import Ligne
 from apps.gares.models import Gare
 
@@ -58,3 +58,32 @@ class DestinationForm(forms.ModelForm):
             'montant': 'Prix du billet en Francs CFA',
             'active': 'Si désactivée, cette destination ne sera plus disponible à la vente',
         }
+
+    def clean_ville_arrivee(self):
+        """Normalise les espaces : « Bouaké  » et «  Bouaké » deviennent « Bouaké »."""
+        ville = self.cleaned_data.get('ville_arrivee') or ''
+        return ' '.join(ville.split())
+
+    def clean(self):
+        """Empêche les doublons sur la combinaison
+        (ligne + gare de départ + ville d'arrivée + montant),
+        sans tenir compte de la casse, des accents ni des espaces.
+        """
+        cleaned = super().clean()
+        ligne = cleaned.get('ligne')
+        gare = cleaned.get('gare')
+        ville = cleaned.get('ville_arrivee')
+        montant = cleaned.get('montant')
+
+        if ligne and gare and ville and montant is not None:
+            doublons = Destination.objects.filter(gare=gare, ligne=ligne, montant=montant)
+            if self.instance and self.instance.pk:
+                doublons = doublons.exclude(pk=self.instance.pk)
+            cible = cle_ville(ville)
+            if any(cle_ville(d.ville_arrivee) == cible for d in doublons):
+                self.add_error('ville_arrivee', (
+                    "Cette destination existe déjà : même ligne, même gare de départ, "
+                    "même ville d'arrivée et même montant. L'écriture (majuscules, "
+                    "accents, espaces) n'est pas prise en compte."
+                ))
+        return cleaned

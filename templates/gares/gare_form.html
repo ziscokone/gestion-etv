@@ -1,90 +1,160 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if object %}Modifier{% else %}Créer{% endif %} une Gare - Gestion Billetterie{% endblock %}
+{% block title %}{% if object %}Modifier{% else %}Nouvelle{% endif %} gare{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-header {
+    background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
+    border-radius: 14px; padding: 22px 32px; color: #fff; margin-bottom: 26px;
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+}
+.page-header::after {
+    content: '\F17F'; font-family: 'Bootstrap-Icons'; font-size: 9rem; opacity: .07;
+    position: absolute; right: 22px; top: -12px; line-height: 1; pointer-events: none;
+}
+.page-header h4 { font-weight: 700; margin: 0; font-size: 1.2rem; }
+
+.form-card { border: none; border-radius: 13px; box-shadow: 0 2px 12px rgba(0,0,0,.07); overflow: hidden; background: #fff; }
+
+.section-label {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px;
+    color: #1e3260; margin-bottom: 16px; padding: 0 0 0 12px;
+    border-left: 3px solid #E67E22;
+}
+.section-label i { color: #E67E22; font-size: 14px; }
+.section-divider { border: none; border-top: 1px solid #f0f3f9; margin: 24px 0; }
+
+.form-label-sm { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 5px; }
+.field-hint { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+
+.toggle-zone {
+    display: flex; align-items: center; gap: 12px;
+    background: #f8f9fc; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 16px;
+}
+.toggle-zone .form-check-input { width: 2.5em; height: 1.35em; cursor: pointer; margin: 0; }
+.toggle-zone .toggle-label { font-weight: 600; font-size: 13px; color: #374151; }
+.toggle-zone .toggle-hint { font-size: 11px; color: #9ca3af; }
+
+.form-footer {
+    padding: 16px 24px; border-top: 1px solid #f0f0f0; background: #fafbfc;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.btn-submit {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 22px; border-radius: 8px; font-weight: 700; font-size: 13px;
+    background: var(--color-accent); color: #fff; border: none; cursor: pointer;
+    transition: background .15s, transform .1s, box-shadow .15s;
+}
+.btn-submit:hover { background: var(--color-accent-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(30,50,96,.3); }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2 class="mb-0">
-                    <i class="bi bi-building me-2 text-accent"></i>
-                    {% if object %}Modifier la gare{% else %}Nouvelle gare{% endif %}
-                </h2>
-                <a href="{% url 'gares:gare_list' %}" class="btn btn-danger text-white fw-bold">
-                    <i class="bi bi-arrow-left me-2"></i>Retour
-                </a>
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-9">
+
+      <div class="page-header">
+        <h4><i class="bi bi-building me-2"></i>{% if object %}Modifier la gare{% else %}Nouvelle gare{% endif %}</h4>
+        <a href="{% url 'gares:gare_list' %}" class="btn btn-danger text-white fw-bold">
+          <i class="bi bi-arrow-left me-1"></i>Retour
+        </a>
+      </div>
+
+      <div class="form-card">
+        <form method="post" novalidate>
+          {% csrf_token %}
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger m-3">{{ form.non_field_errors }}</div>
+          {% endif %}
+
+          <div class="p-4">
+
+            <!-- Identité -->
+            <div class="section-label"><i class="bi bi-card-heading"></i> Identité</div>
+            <div class="row mb-2">
+              <div class="col-md-8 mb-3">
+                <label class="form-label-sm">Nom de la gare <span class="text-danger">*</span></label>
+                {{ form.nom }}
+                {% if form.nom.errors %}<div class="invalid-feedback d-block">{{ form.nom.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label-sm">Code <span class="text-danger">*</span></label>
+                {{ form.code }}
+                <div class="field-hint"><i class="bi bi-info-circle me-1"></i>Code unique utilisé pour la numérotation des tickets</div>
+                {% if form.code.errors %}<div class="invalid-feedback d-block">{{ form.code.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-12 mb-3">
+                <label class="form-label-sm">Ville <span class="text-danger">*</span></label>
+                {{ form.ville }}
+                {% if form.ville.errors %}<div class="invalid-feedback d-block">{{ form.ville.errors.0 }}</div>{% endif %}
+              </div>
             </div>
 
-            <div class="card">
-                <div class="card-body">
-                    <form method="post">
-                        {% csrf_token %}
+            <hr class="section-divider">
 
-                        <div class="row">
-                            <div class="col-md-8 mb-3">
-                                <label class="form-label">Nom de la gare *</label>
-                                {{ form.nom }}
-                                {% if form.nom.errors %}
-                                    <div class="text-danger small">{{ form.nom.errors.0 }}</div>
-                                {% endif %}
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Code *</label>
-                                {{ form.code }}
-                                <small class="text-muted">Code unique pour les tickets</small>
-                                {% if form.code.errors %}
-                                    <div class="text-danger small">{{ form.code.errors.0 }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Ville *</label>
-                                {{ form.ville }}
-                                {% if form.ville.errors %}
-                                    <div class="text-danger small">{{ form.ville.errors.0 }}</div>
-                                {% endif %}
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Téléphone</label>
-                                {{ form.telephone }}
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Adresse</label>
-                            {{ form.adresse }}
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Compagnie *</label>
-                            {{ form.compagnie }}
-                        </div>
-
-                        <div class="mb-4">
-                            <div class="form-check">
-                                {{ form.active }}
-                                <label class="form-check-label" for="{{ form.active.id_for_label }}">
-                                    Gare active
-                                </label>
-                            </div>
-                        </div>
-
-                        <hr>
-
-                        <div class="d-flex justify-content-end gap-2">
-                            <a href="{% url 'gares:gare_list' %}" class="btn btn-outline-secondary">Annuler</a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-lg me-2"></i>
-                                {% if object %}Enregistrer{% else %}Créer{% endif %}
-                            </button>
-                        </div>
-                    </form>
-                </div>
+            <!-- Contact -->
+            <div class="section-label"><i class="bi bi-telephone"></i> Contact</div>
+            <div class="row mb-2">
+              <div class="col-md-5 mb-3">
+                <label class="form-label-sm">Téléphone</label>
+                {{ form.telephone }}
+                {% if form.telephone.errors %}<div class="invalid-feedback d-block">{{ form.telephone.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-7 mb-3">
+                <label class="form-label-sm">Adresse</label>
+                {{ form.adresse }}
+                {% if form.adresse.errors %}<div class="invalid-feedback d-block">{{ form.adresse.errors.0 }}</div>{% endif %}
+              </div>
             </div>
-        </div>
+
+            <hr class="section-divider">
+
+            <!-- Rattachement -->
+            <div class="section-label"><i class="bi bi-diagram-3"></i> Rattachement</div>
+            <div class="row mb-2">
+              <div class="col-md-6 mb-3">
+                <label class="form-label-sm">Compagnie <span class="text-danger">*</span></label>
+                {{ form.compagnie }}
+                {% if form.compagnie.errors %}<div class="invalid-feedback d-block">{{ form.compagnie.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label-sm">{{ form.chef_gare.label }}</label>
+                {{ form.chef_gare }}
+                <div class="field-hint"><i class="bi bi-info-circle me-1"></i>{{ form.chef_gare.help_text }}</div>
+                {% if form.chef_gare.errors %}<div class="invalid-feedback d-block">{{ form.chef_gare.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+
+            <hr class="section-divider">
+
+            <!-- Statut -->
+            <div class="section-label"><i class="bi bi-toggle-on"></i> Statut</div>
+            <div class="toggle-zone">
+              {{ form.active }}
+              <div>
+                <div class="toggle-label">Gare active</div>
+                <div class="toggle-hint">Une gare inactive n'apparaît plus dans les listes de vente et de programmation.</div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="form-footer">
+            <a href="{% url 'gares:gare_list' %}" class="btn btn-danger text-white fw-bold">
+              <i class="bi bi-x-circle me-1"></i>Annuler
+            </a>
+            <button type="submit" class="btn-submit">
+              <i class="bi bi-check-circle"></i>{% if object %}Enregistrer{% else %}Créer la gare{% endif %}
+            </button>
+          </div>
+        </form>
+      </div>
+
     </div>
+  </div>
 </div>
 {% endblock %}

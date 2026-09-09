@@ -3,6 +3,8 @@ import uuid
 from django.db import models
 from django.core.exceptions import ValidationError
 
+from core.models import SyncableModel
+
 
 class TypeDepense(models.Model):
     """
@@ -66,7 +68,7 @@ class TypeDepense(models.Model):
         super().delete(*args, **kwargs)
 
 
-class Depense(models.Model):
+class Depense(SyncableModel):
     """
     Modèle représentant une dépense liée à un voyage.
     Permet de suivre toutes les sorties de caisse pour chaque voyage.

@@ -19,7 +19,7 @@ from core.mixins import GestionRequiredMixin, SuperAdminRequiredMixin, AdminRequ
 from core.utils import render_paginated_partial
 from apps.gares.models import Gare
 from apps.lignes.models import Ligne
-from .models import Destination
+from .models import Destination, cle_ville
 from .forms import DestinationForm
 
 # En-têtes attendus dans le fichier Excel d'import/export.
@@ -197,9 +197,10 @@ class DestinationExportView(AdminRequiredMixin, View):
 class DestinationImportView(AdminRequiredMixin, View):
     """
     Importe des destinations depuis un fichier Excel (même format que l'export).
-    Upsert sur la clé (gare, ligne, ville_arrivee) : une combinaison déjà
-    existante est mise à jour (montant/statut), une nouvelle combinaison
-    (typiquement une gare différente) est créée.
+    Upsert sur la clé (gare, ligne, ville_arrivee, montant), la ville étant
+    comparée sans casse / accents / espaces : une combinaison identique voit
+    seulement son statut actif/inactif rafraîchi, toute autre combinaison
+    (gare différente, ou surtout montant différent) crée une nouvelle ligne.
     """
     template_name = 'destinations/destination_import.html'
 
@@ -246,7 +247,7 @@ class DestinationImportView(AdminRequiredMixin, View):
 
             code_gare = str(row[idx_gare]).strip() if row[idx_gare] is not None else ''
             nom_ligne = str(row[idx_ligne]).strip() if row[idx_ligne] is not None else ''
-            ville = str(row[idx_ville]).strip() if row[idx_ville] is not None else ''
+            ville = ' '.join(str(row[idx_ville]).split()) if row[idx_ville] is not None else ''
             montant_brut = row[idx_montant]
             active_brut = str(row[idx_active]).strip().lower() if row[idx_active] is not None else 'oui'
 
@@ -274,15 +275,21 @@ class DestinationImportView(AdminRequiredMixin, View):
 
             active = active_brut in ('oui', 'yes', 'true', '1', 'actif', 'active')
 
-            # Comparaison insensible à la casse pour éviter les doublons
-            # (ex: "Kindia" et "KINDIA" doivent être vus comme la même destination).
-            existante = Destination.objects.filter(
-                gare=gare, ligne=ligne, ville_arrivee__iexact=ville
-            ).first()
+            # Identité d'une destination = gare + ligne + ville d'arrivée + montant,
+            # la ville étant comparée sans casse / accents / espaces (cle_ville).
+            # LOWER() de SQLite ne gérant que l'ASCII, la comparaison se fait en Python.
+            cible = cle_ville(ville)
+            existante = next(
+                (
+                    d for d in Destination.objects.filter(gare=gare, ligne=ligne, montant=montant)
+                    if cle_ville(d.ville_arrivee) == cible
+                ),
+                None,
+            )
             if existante:
-                existante.montant = montant
-                existante.active = active
-                existante.save(update_fields=['montant', 'active'])
+                if existante.active != active:
+                    existante.active = active
+                    existante.save(update_fields=['active'])
                 nb_maj += 1
             else:
                 Destination.objects.create(

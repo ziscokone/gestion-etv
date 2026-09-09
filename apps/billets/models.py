@@ -4,8 +4,10 @@ from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 
+from core.models import SyncableModel
 
-class Billet(models.Model):
+
+class Billet(SyncableModel):
     """
     Modèle représentant un billet de transport.
     """

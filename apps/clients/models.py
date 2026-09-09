@@ -2,8 +2,10 @@ import uuid
 
 from django.db import models
 
+from core.models import SyncableModel
 
-class Client(models.Model):
+
+class Client(SyncableModel):
     CATEGORIE_CHOICES = [
         ('particulier', 'Particulier'),
         ('societe', 'Société'),

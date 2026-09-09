@@ -1,104 +1,108 @@
-<div class="card">
-    <div class="card-body">
-        {% if programmes %}
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Gare</th>
-                            <th>Ligne</th>
-                            <th>Destination</th>
-                            <th>Période</th>
-                            <th>Heure</th>
-                            <th>N° Départ</th>
-                            <th>Véhicule</th>
-                            <th>Jours actifs</th>
-                            <th>Statut</th>
-                            <th class="text-end">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for programme in programmes %}
-                            <tr>
-                                <td><strong>{{ programme.gare.code }}</strong></td>
-                                <td>{{ programme.ligne.nom }}</td>
-                                <td>{{ programme.destination.ville_arrivee }}</td>
-                                <td>
-                                    <span class="badge {% if programme.periode == 'matin' %}bg-info{% else %}bg-dark{% endif %}">
-                                        {{ programme.get_periode_display }}
-                                    </span>
-                                </td>
-                                <td>{{ programme.heure_depart|time:"H:i" }}</td>
-                                <td><span class="badge bg-primary">{{ programme.numero_depart }}</span></td>
-                                <td>
-                                    {% if programme.vehicule_defaut %}
-                                        {{ programme.vehicule_defaut.display_immat }}
-                                    {% else %}
-                                        <span class="text-muted">—</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <small>
-                                        {% for jour in programme.jours_actifs %}
-                                            <span class="badge bg-secondary">{{ jour|upper }}</span>
-                                        {% endfor %}
-                                    </small>
-                                </td>
-                                <td>
-                                    {% if programme.actif %}
-                                        <span class="badge bg-success">Actif</span>
-                                    {% else %}
-                                        <span class="badge bg-secondary">Inactif</span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-end">
-                                    <form method="post" action="{% url 'programmes:generer_voyages' programme.pk %}" class="d-inline">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="jours_avance" value="7">
-                                        <button type="submit"
-                                                class="btn btn-sm btn-success"
-                                                title="Générer les voyages"
-                                                {% if not programme.actif %}disabled{% endif %}>
-                                            <i class="bi bi-arrow-repeat"></i>
-                                        </button>
-                                    </form>
-                                    <a href="{% url 'programmes:programme_update' programme.pk %}"
-                                       class="btn btn-sm btn-outline-primary"
-                                       title="Modifier">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                    <a href="{% url 'programmes:programme_delete' programme.pk %}"
-                                       class="btn btn-sm btn-outline-danger"
-                                       title="Supprimer">
-                                        <i class="bi bi-trash"></i>
-                                    </a>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% else %}
-            <div class="text-center py-5">
-                <i class="bi bi-calendar-week" style="font-size: 3rem; color: var(--color-text-muted);"></i>
-                <p class="mt-3 text-muted">
-                    {% if search_query %}
-                        Aucun programme trouvé pour "{{ search_query }}".
-                    {% else %}
-                        Aucun programme de départ enregistré.
-                    {% endif %}
-                </p>
-                <a href="{% url 'programmes:programme_create' %}" class="btn btn-primary mt-2">
-                    Créer le premier programme
-                </a>
-            </div>
-        {% endif %}
-    </div>
+<div class="pg-card">
+  {% if programmes %}
+  <div class="table-responsive">
+    <table class="pg-table">
+      <thead>
+        <tr>
+          <th>Gare</th>
+          <th>Ligne</th>
+          <th>Période</th>
+          <th>Heure</th>
+          <th>N°</th>
+          <th>Véhicule</th>
+          <th>Jours actifs</th>
+          <th>Statut</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for programme in programmes %}
+        <tr>
+          <td><span class="pg-gare">{{ programme.gare.code }}</span></td>
+          <td>
+            <span class="pg-ligne"><i class="bi bi-signpost-split"></i>{{ programme.ligne.nom }}</span>
+            {% if programme.destination and programme.destination.ville_arrivee != programme.ligne.ville_arrivee %}
+              <div style="font-size:11px;color:#9ca3af;">→ {{ programme.destination.ville_arrivee }}</div>
+            {% endif %}
+          </td>
+          <td>
+            <span class="pg-periode {% if programme.periode == 'matin' %}matin{% else %}soir{% endif %}">
+              <i class="bi {% if programme.periode == 'matin' %}bi-sunrise{% else %}bi-sunset{% endif %}"></i>
+              {{ programme.get_periode_display }}
+            </span>
+          </td>
+          <td><span class="pg-heure"><i class="bi bi-clock"></i>{{ programme.heure_depart|time:"H:i" }}</span></td>
+          <td><span class="pg-num">{{ programme.numero_depart }}</span></td>
+          <td>
+            {% if programme.vehicule_defaut %}
+              <span style="font-weight:600;color:#374151;">{{ programme.vehicule_defaut.display_immat }}</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="pg-week">
+              <span class="{% if 'lun' in programme.jours_actifs %}on{% endif %}" title="Lundi">L</span>
+              <span class="{% if 'mar' in programme.jours_actifs %}on{% endif %}" title="Mardi">M</span>
+              <span class="{% if 'mer' in programme.jours_actifs %}on{% endif %}" title="Mercredi">M</span>
+              <span class="{% if 'jeu' in programme.jours_actifs %}on{% endif %}" title="Jeudi">J</span>
+              <span class="{% if 'ven' in programme.jours_actifs %}on{% endif %}" title="Vendredi">V</span>
+              <span class="{% if 'sam' in programme.jours_actifs %}on{% endif %}" title="Samedi">S</span>
+              <span class="{% if 'dim' in programme.jours_actifs %}on{% endif %}" title="Dimanche">D</span>
+            </span>
+          </td>
+          <td>
+            {% if programme.actif %}
+              <span class="pg-statut actif"><i class="bi bi-check-circle-fill"></i>Actif</span>
+            {% else %}
+              <span class="pg-statut inactif"><i class="bi bi-pause-circle-fill"></i>Inactif</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <span class="pg-actions">
+              <form method="post" action="{% url 'programmes:generer_voyages' programme.pk %}" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="jours_avance" value="7">
+                <button type="submit" class="btn btn-sm btn-success" title="Générer les voyages (7 jours)"
+                        {% if not programme.actif %}disabled{% endif %}>
+                  <i class="bi bi-arrow-repeat"></i>
+                </button>
+              </form>
+              <a href="{% url 'programmes:programme_update' programme.pk %}"
+                 class="btn btn-sm btn-outline-primary" title="Modifier">
+                <i class="bi bi-pencil"></i>
+              </a>
+              <a href="{% url 'programmes:programme_delete' programme.pk %}"
+                 class="btn btn-sm btn-outline-danger" title="Supprimer">
+                <i class="bi bi-trash"></i>
+              </a>
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="pg-empty">
+    <i class="bi bi-calendar-week"></i>
+    <p class="mb-3">
+      {% if search_query %}
+        Aucun programme trouvé pour « {{ search_query }} ».
+      {% else %}
+        Aucun programme de départ enregistré.
+      {% endif %}
+    </p>
+    <a href="{% url 'programmes:programme_create' %}" class="btn btn-primary">
+      <i class="bi bi-plus-circle me-1"></i>Créer le premier programme
+    </a>
+  </div>
+  {% endif %}
 </div>
 
 {% if programmes %}
-    <div class="alert alert-info mt-4">
-        <i class="bi bi-info-circle"></i>
-        <strong>Info:</strong> Les programmes actifs génèrent automatiquement des voyages pour les 7 prochains jours selon les jours configurés.
-    </div>
+<div class="pg-note">
+  <i class="bi bi-info-circle"></i>
+  Les programmes <strong>actifs</strong> génèrent automatiquement des voyages pour les 7 prochains jours selon les jours configurés.
+</div>
 {% endif %}

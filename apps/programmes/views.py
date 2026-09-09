@@ -42,6 +42,12 @@ class ProgrammeDepartListView(GestionRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['search_query'] = self.request.GET.get('q', '')
+        base = ProgrammeDepart.objects.all()
+        if not self.request.user.has_global_access and self.request.user.gare:
+            base = base.filter(gare=self.request.user.gare)
+        context['nb_total'] = base.count()
+        context['nb_actifs'] = base.filter(actif=True).count()
+        context['nb_inactifs'] = base.filter(actif=False).count()
         return context
 
 

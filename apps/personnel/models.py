@@ -145,6 +145,12 @@ class Utilisateur(AbstractUser):
         """Vérifie si l'utilisateur a accès à toutes les gares."""
         return self.role in self.ROLES_ACCES_GLOBAL
 
+    @property
+    def peut_vendre(self):
+        """La vente de billets est réservée aux guichetiers et au super admin.
+        Chef de gare, comptable, manager et PDG en sont exclus (demande client)."""
+        return self.is_superuser or self.role in ('super_admin', 'guichetier')
+
     def get_gares_accessibles(self):
         """Retourne les gares accessibles par l'utilisateur."""
         from apps.gares.models import Gare

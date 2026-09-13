@@ -270,7 +270,7 @@
     </button>
     {% endif %}
     {% endif %}
-    {% if voyage.get_nb_places_disponibles > 0 and voyage.statut != 'termine' %}
+    {% if request.user.peut_vendre and voyage.get_nb_places_disponibles > 0 and voyage.statut != 'termine' %}
     <a href="{% url 'guichet:vente' voyage.public_id %}" class="btn-act-primary act-vendre">
       <i class="bi bi-cart-plus"></i>Vendre des billets
     </a>
@@ -1230,6 +1230,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="ticket-row"><span>Destination:</span><strong>${billet.destination || 'N/A'}</strong></div>
                         <div class="ticket-row"><span>Date:</span><span>${billet.date_depart}</span></div>
                         <div class="ticket-row"><span>Heure:</span><span>${billet.heure_depart}</span></div>
+                        <div class="ticket-row"><span>Imprimé le:</span><span>${billet.date_impression || ''}</span></div>
                         <hr>
                         <div class="ticket-row ticket-montant">
                             <span>Montant:</span>
@@ -1281,6 +1282,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="ticket-row">
                             <span>Heure:</span>
                             <span>${billet.heure_depart}</span>
+                        </div>
+                        <div class="ticket-row">
+                            <span>Imprimé le:</span>
+                            <span>${billet.date_impression || ''}</span>
                         </div>
                     </div>
             `;

@@ -45,6 +45,17 @@ def _peut_voir_utilisateurs(user):
     return user.has_global_access or user.is_chef_gare
 
 
+def _est_super_admin(user):
+    return user.is_superuser or user.role == 'super_admin'
+
+
+def _est_compte_protege(utilisateur):
+    """PDG et Super Admin ne sont modifiables/supprimables que par un Super Admin —
+    empêche un Manager/Comptable/PDG de s'auto-promouvoir ou de neutraliser un compte
+    de ce niveau."""
+    return utilisateur.is_superuser or utilisateur.role in ('super_admin', 'pdg')
+
+
 class UtilisateurListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     """
     Liste des utilisateurs.
@@ -116,6 +127,13 @@ class UtilisateurUpdateView(AdminRequiredMixin, UpdateView):
     template_name = 'personnel/utilisateur_form.html'
     success_url = reverse_lazy('personnel:utilisateur_list')
 
+    def test_func(self):
+        if not super().test_func():
+            return False
+        if _est_compte_protege(self.get_object()):
+            return _est_super_admin(self.request.user)
+        return True
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['current_user'] = self.request.user
@@ -133,7 +151,7 @@ class UtilisateurDeleteView(AdminRequiredMixin, DeleteView):
     success_url = reverse_lazy('personnel:utilisateur_list')
 
     def dispatch(self, request, *args, **kwargs):
-        if not (request.user.is_superuser or request.user.role == 'super_admin'):
+        if not _est_super_admin(request.user):
             messages.error(request, "Seul le super administrateur peut supprimer un utilisateur.")
             return redirect('personnel:utilisateur_list')
         return super().dispatch(request, *args, **kwargs)
@@ -147,7 +165,7 @@ class ModulesUtilisateurView(LoginRequiredMixin, View):
     """Gestion des modules autorisés pour un utilisateur. Réservé au super_admin."""
 
     def _check_permission(self, request):
-        if not (request.user.is_superuser or request.user.role == 'super_admin'):
+        if not _est_super_admin(request.user):
             raise PermissionDenied
 
     def get(self, request, pk):

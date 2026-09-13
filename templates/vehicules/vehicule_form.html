@@ -357,6 +357,14 @@ textarea.form-control { resize: vertical; min-height: 90px; }
                     <span class="tab-badge warn">{{ nb_alertes_entretien }}</span>
                 {% endif %}
             </button>
+            <button class="veh-tab-btn" data-target="tab-documents">
+                <i class="bi bi-folder2-open"></i> Documents
+                {% if nb_documents_alerte > 0 %}
+                    <span class="tab-badge {% if not nb_documents_expires %}warn{% endif %}">{{ nb_documents_alerte }}</span>
+                {% elif documents %}
+                    <span class="tab-badge" style="background:#e5e7eb;color:#4b5563">{{ documents|length }}</span>
+                {% endif %}
+            </button>
         </div>
         {% endif %}
 
@@ -545,6 +553,149 @@ textarea.form-control { resize: vertical; min-height: 90px; }
         <div id="tab-entretien" style="display:none;">
             {% include 'vehicules/partials/suivi_entretien.html' %}
         </div>
+
+        <!-- ══ Onglet : Documents ══ -->
+        <div id="tab-documents" style="display:none;">
+            <div class="veh-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-folder2-open me-2 text-primary"></i>Dossier du véhicule</h6>
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadDocVehiculeModal">
+                        <i class="bi bi-upload me-1"></i> Ajouter un document
+                    </button>
+                </div>
+
+                {% if documents %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle" id="table-documents-vehicule">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="font-size:12px;text-transform:uppercase;letter-spacing:.4px">Type</th>
+                                <th style="font-size:12px;text-transform:uppercase;letter-spacing:.4px">Nom</th>
+                                <th style="font-size:12px;text-transform:uppercase;letter-spacing:.4px">Date d'ajout</th>
+                                <th style="font-size:12px;text-transform:uppercase;letter-spacing:.4px">Expiration</th>
+                                <th style="font-size:12px;text-transform:uppercase;letter-spacing:.4px">Ajouté par</th>
+                                <th style="font-size:12px;text-transform:uppercase;letter-spacing:.4px">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for doc in documents %}
+                            <tr id="doc-veh-row-{{ doc.id }}">
+                                <td>
+                                    <span class="badge bg-secondary-subtle text-secondary-emphasis">
+                                        <i class="bi bi-file-earmark me-1"></i>{{ doc.type_document.nom }}
+                                    </span>
+                                </td>
+                                <td class="fw-semibold" style="font-size:13px">{{ doc.nom }}</td>
+                                <td style="font-size:13px">{{ doc.date_ajout|date:"d/m/Y" }}</td>
+                                <td style="font-size:13px">
+                                    {% if doc.date_expiration %}
+                                        {% if doc.est_expire %}
+                                            <span class="badge bg-danger"><i class="bi bi-exclamation-triangle me-1"></i>{{ doc.date_expiration|date:"d/m/Y" }} — Expiré</span>
+                                        {% elif doc.expire_bientot %}
+                                            <span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>{{ doc.date_expiration|date:"d/m/Y" }} — Bientôt</span>
+                                        {% else %}
+                                            <span class="text-success">{{ doc.date_expiration|date:"d/m/Y" }}</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td style="font-size:13px">{{ doc.ajoute_par.nom_complet|default:doc.ajoute_par.username|default:"—" }}</td>
+                                <td>
+                                    <a href="{% url 'vehicules:telecharger_document_vehicule' doc.id %}"
+                                       class="btn btn-sm btn-outline-primary me-1" title="Télécharger">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                    {% if request.user.is_superuser %}
+                                    <button class="btn btn-sm btn-outline-danger btn-supprimer-doc-veh"
+                                            data-doc-id="{{ doc.id }}" data-doc-nom="{{ doc.nom }}" title="Supprimer">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5" id="dossier-veh-vide">
+                    <i class="bi bi-folder2-open display-4 text-muted mb-3 d-block"></i>
+                    <p class="text-muted">Aucun document enregistré pour ce véhicule.</p>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadDocVehiculeModal">
+                        <i class="bi bi-upload me-1"></i> Ajouter le premier document
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- ── Modal Upload Document Véhicule ─────────────────────────────── -->
+        <div class="modal fade" id="uploadDocVehiculeModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="bi bi-upload me-2"></i>Ajouter un document</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="upload-veh-alert" class="alert d-none"></div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Type de document <span class="text-danger">*</span></label>
+                            <select class="form-select" id="upload-veh-type">
+                                <option value="">-- Choisir --</option>
+                                {% for t in types_document %}
+                                <option value="{{ t.pk }}" data-expiration="{% if t.a_date_expiration %}1{% else %}0{% endif %}">{{ t.nom }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Nom du document</label>
+                            <input type="text" class="form-control" id="upload-veh-nom" placeholder="Ex: Assurance — 2026">
+                            <div class="form-text">Laissez vide pour utiliser le nom du fichier.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Fichier <span class="text-danger">*</span></label>
+                            <input type="file" class="form-control" id="upload-veh-fichier" accept=".pdf,.jpg,.jpeg,.png">
+                            <div class="form-text">PDF, JPG ou PNG — max 10 Mo</div>
+                        </div>
+                        <div class="mb-3 d-none" id="upload-veh-expiration-group">
+                            <label class="form-label fw-semibold">Date d'expiration <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="upload-veh-expiration">
+                            <div class="form-text">Ce type de document est suivi — une alerte apparaîtra à l'approche de l'échéance.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="button" class="btn btn-primary" id="btn-upload-veh-confirmer">
+                            <span id="upload-veh-spinner" class="spinner-border spinner-border-sm d-none me-1"></span>
+                            <i class="bi bi-upload me-1" id="upload-veh-icon"></i> Enregistrer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Modal Confirmation Suppression Document Véhicule ────────────── -->
+        <div class="modal fade" id="supprimerDocVehiculeModal" tabindex="-1">
+            <div class="modal-dialog modal-sm">
+                <div class="modal-content">
+                    <div class="modal-header bg-danger text-white">
+                        <h6 class="modal-title"><i class="bi bi-trash me-2"></i>Supprimer le document</h6>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-1">Voulez-vous supprimer :</p>
+                        <p class="fw-bold" id="suppr-doc-veh-nom"></p>
+                        <p class="text-danger small">Cette action est irréversible.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+                        <button type="button" class="btn btn-danger btn-sm" id="btn-suppr-doc-veh-confirmer">Supprimer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
         {% endif %}
 
     </div><!-- /wrapper -->
@@ -589,7 +740,7 @@ textarea.form-control { resize: vertical; min-height: 90px; }
     tabs.forEach(btn => {
         btn.addEventListener('click', function () {
             tabs.forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('#tab-infos, #tab-reparations, #tab-entretien')
+            document.querySelectorAll('#tab-infos, #tab-reparations, #tab-entretien, #tab-documents')
                     .forEach(p => p.style.display = 'none');
 
             this.classList.add('active');
@@ -607,6 +758,117 @@ textarea.form-control { resize: vertical; min-height: 90px; }
             {% endif %}
         });
     });
+
+    {% if form.instance.pk %}
+    // ── Onglet Documents : afficher/masquer le champ date selon le type choisi ──
+    const uploadVehTypeSelect = document.getElementById('upload-veh-type');
+    const uploadVehExpirationGroup = document.getElementById('upload-veh-expiration-group');
+    if (uploadVehTypeSelect) {
+        uploadVehTypeSelect.addEventListener('change', function () {
+            const option = this.options[this.selectedIndex];
+            const requiert = option && option.dataset.expiration === '1';
+            uploadVehExpirationGroup.classList.toggle('d-none', !requiert);
+            if (!requiert) { document.getElementById('upload-veh-expiration').value = ''; }
+        });
+    }
+
+    // ── Upload document véhicule ──────────────────────────────────────
+    const uploadDocVehModalEl = document.getElementById('uploadDocVehiculeModal');
+    const uploadVehModal = uploadDocVehModalEl ? bootstrap.Modal.getOrCreateInstance(uploadDocVehModalEl) : null;
+
+    const btnUploadVehConfirmer = document.getElementById('btn-upload-veh-confirmer');
+    if (btnUploadVehConfirmer) {
+        btnUploadVehConfirmer.addEventListener('click', function () {
+            const type    = document.getElementById('upload-veh-type').value;
+            const option  = document.getElementById('upload-veh-type').options[document.getElementById('upload-veh-type').selectedIndex];
+            const requiert = option && option.dataset.expiration === '1';
+            const nom     = document.getElementById('upload-veh-nom').value;
+            const fichier = document.getElementById('upload-veh-fichier').files[0];
+            const expir   = document.getElementById('upload-veh-expiration').value;
+            const alertEl = document.getElementById('upload-veh-alert');
+
+            alertEl.className = 'alert d-none';
+            if (!type) { alertEl.className = 'alert alert-warning'; alertEl.textContent = 'Veuillez choisir un type de document.'; return; }
+            if (!fichier) { alertEl.className = 'alert alert-warning'; alertEl.textContent = 'Veuillez sélectionner un fichier.'; return; }
+            if (requiert && !expir) { alertEl.className = 'alert alert-warning'; alertEl.textContent = "Ce type de document requiert une date d'expiration."; return; }
+
+            const spinner = document.getElementById('upload-veh-spinner');
+            const icon    = document.getElementById('upload-veh-icon');
+            spinner.classList.remove('d-none');
+            icon.classList.add('d-none');
+            this.disabled = true;
+
+            const fd = new FormData();
+            fd.append('type_document', type);
+            fd.append('nom', nom);
+            fd.append('fichier', fichier);
+            if (requiert && expir) fd.append('date_expiration', expir);
+            fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+            fetch('/vehicules/' + vehiculeId + '/documents/upload/', { method: 'POST', body: fd })
+                .then(r => r.json())
+                .then(data => {
+                    spinner.classList.add('d-none');
+                    icon.classList.remove('d-none');
+                    btnUploadVehConfirmer.disabled = false;
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        alertEl.className = 'alert alert-danger';
+                        alertEl.textContent = data.error || 'Erreur lors de l\'upload.';
+                    }
+                })
+                .catch(err => {
+                    spinner.classList.add('d-none');
+                    icon.classList.remove('d-none');
+                    btnUploadVehConfirmer.disabled = false;
+                    alertEl.className = 'alert alert-danger';
+                    alertEl.textContent = 'Erreur : ' + (err.message || 'Veuillez réessayer.');
+                });
+        });
+    }
+
+    // ── Suppression document véhicule ───────────────────────────────
+    let docVehIdASupprimer = null;
+    const supprimerDocVehModalEl = document.getElementById('supprimerDocVehiculeModal');
+    const supprimerVehModal = supprimerDocVehModalEl ? bootstrap.Modal.getOrCreateInstance(supprimerDocVehModalEl) : null;
+
+    document.querySelectorAll('.btn-supprimer-doc-veh').forEach(btn => {
+        btn.addEventListener('click', function () {
+            docVehIdASupprimer = this.dataset.docId;
+            document.getElementById('suppr-doc-veh-nom').textContent = this.dataset.docNom;
+            supprimerVehModal.show();
+        });
+    });
+
+    const btnSupprDocVehConfirmer = document.getElementById('btn-suppr-doc-veh-confirmer');
+    if (btnSupprDocVehConfirmer) {
+        btnSupprDocVehConfirmer.addEventListener('click', function () {
+            if (!docVehIdASupprimer) return;
+            this.disabled = true;
+            fetch('/vehicules/documents-vehicule/' + docVehIdASupprimer + '/supprimer/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' }
+            })
+                .then(r => r.json())
+                .then(data => {
+                    btnSupprDocVehConfirmer.disabled = false;
+                    if (data.success) {
+                        supprimerVehModal.hide();
+                        const row = document.getElementById('doc-veh-row-' + docVehIdASupprimer);
+                        if (row) row.remove();
+                        if (!document.querySelector('#table-documents-vehicule tbody tr')) {
+                            window.location.reload();
+                        }
+                        docVehIdASupprimer = null;
+                    } else {
+                        supprimerVehModal.hide();
+                        alert(data.error || 'Erreur lors de la suppression.');
+                    }
+                });
+        });
+    }
+    {% endif %}
 })();
 </script>
 {% endblock %}

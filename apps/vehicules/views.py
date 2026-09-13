@@ -4,11 +4,12 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Q, Sum, Count
 from django.shortcuts import get_object_or_404, redirect, render
-from django.http import JsonResponse, HttpResponseRedirect, HttpResponseForbidden
+from django.http import JsonResponse, HttpResponseRedirect, HttpResponseForbidden, FileResponse, Http404
 from django.views.decorators.http import require_http_methods
 from django.core.paginator import Paginator
 from django.utils import timezone
 import json
+import os
 import logging
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -18,7 +19,8 @@ from core.utils import render_paginated_partial
 
 logger = logging.getLogger(__name__)
 from .models import (ModeleVehicule, Vehicule, ReparationVehicule, LigneIntervention,
-                     TypeReparation, CreditPieceGarage, VersementCredit)
+                     TypeReparation, CreditPieceGarage, VersementCredit,
+                     TypeDocumentVehicule, DocumentVehicule)
 from .forms import (ModeleVehiculeForm, VehiculeForm, ReparationVehiculeForm,
                     LigneInterventionForm, LigneInterventionFormSet, TypeReparationForm,
                     CreditPieceGarageForm, VersementCreditForm,
@@ -270,6 +272,15 @@ class VehiculeUpdateView(AdminRequiredMixin, UpdateView):
 
         # Nombre de réparations pour le badge onglet
         context['nb'] = vehicule.reparations.count()
+
+        # Dossier documents (onglet Documents)
+        documents = vehicule.documents.select_related('type_document').all()
+        context['documents'] = documents
+        context['types_document'] = TypeDocumentVehicule.objects.filter(actif=True)
+        context['nb_documents_expires'] = sum(1 for d in documents if d.est_expire)
+        context['nb_documents_alerte'] = sum(
+            1 for d in documents if d.est_expire or d.expire_bientot
+        )
         return context
 
 
@@ -1153,3 +1164,167 @@ def get_types_reparation(request):
         })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+# ==================== DOCUMENTS VEHICULE ====================
+
+def upload_document_vehicule(request, vehicule_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Non autorisé'}, status=403)
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Méthode non autorisée'}, status=405)
+
+    try:
+        vehicule = get_object_or_404(Vehicule, pk=vehicule_id)
+        fichier = request.FILES.get('fichier')
+        type_doc_id = request.POST.get('type_document')
+        nom = request.POST.get('nom', '').strip()
+        date_expiration = request.POST.get('date_expiration') or None
+
+        if not fichier:
+            return JsonResponse({'success': False, 'error': 'Aucun fichier fourni'}, status=400)
+        if not type_doc_id:
+            return JsonResponse({'success': False, 'error': 'Type de document requis'}, status=400)
+
+        type_doc = get_object_or_404(TypeDocumentVehicule, pk=type_doc_id, actif=True)
+
+        if type_doc.a_date_expiration and not date_expiration:
+            return JsonResponse({'success': False, 'error': "Date d'expiration requise pour ce type de document"}, status=400)
+
+        ext = os.path.splitext(fichier.name)[1].lower()
+        if ext not in ['.pdf', '.jpg', '.jpeg', '.png']:
+            return JsonResponse({'success': False, 'error': 'Format non accepté (PDF, JPG, PNG uniquement)'}, status=400)
+
+        if fichier.size > 10 * 1024 * 1024:
+            return JsonResponse({'success': False, 'error': 'Fichier trop volumineux (max 10 Mo)'}, status=400)
+
+        DocumentVehicule.objects.create(
+            vehicule=vehicule,
+            type_document=type_doc,
+            nom=nom or fichier.name,
+            fichier=fichier,
+            date_expiration=date_expiration if (date_expiration and type_doc.a_date_expiration) else None,
+            ajoute_par=request.user,
+        )
+
+        return JsonResponse({'success': True})
+
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Une erreur est survenue.'}, status=500)
+
+
+def telecharger_document_vehicule(request, doc_id):
+    if not request.user.is_authenticated:
+        raise Http404
+    doc = get_object_or_404(DocumentVehicule, pk=doc_id)
+    if not doc.fichier:
+        raise Http404
+    try:
+        response = FileResponse(doc.fichier.open('rb'), as_attachment=True, filename=os.path.basename(doc.fichier.name))
+        return response
+    except FileNotFoundError:
+        raise Http404
+
+
+def supprimer_document_vehicule(request, doc_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Non autorisé'}, status=403)
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Action réservée au super administrateur'}, status=403)
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Méthode non autorisée'}, status=405)
+
+    doc = get_object_or_404(DocumentVehicule, pk=doc_id)
+    vehicule_id = doc.vehicule_id
+    if doc.fichier and os.path.isfile(doc.fichier.path):
+        os.remove(doc.fichier.path)
+    doc.delete()
+    return JsonResponse({'success': True, 'vehicule_id': vehicule_id})
+
+
+# Vues pour les types de document véhicule
+def _types_document_vehicule_filtres(search):
+    queryset = TypeDocumentVehicule.objects.all()
+    if search:
+        queryset = queryset.filter(nom__icontains=search)
+    return queryset.order_by('nom')
+
+
+class TypeDocumentVehiculeListView(LoginRequiredMixin, ListView):
+    model = TypeDocumentVehicule
+    template_name = 'vehicules/type_document_vehicule_list.html'
+    context_object_name = 'types_document'
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            messages.error(request, "Accès réservé au super administrateur.")
+            return redirect('vehicules:vehicule_list')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return _types_document_vehicule_filtres(self.request.GET.get('q'))
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['search_query'] = self.request.GET.get('q', '')
+        return context
+
+
+@require_http_methods(["GET"])
+@login_required
+def type_document_vehicule_list_ajax(request):
+    """Filtrage en direct des types de document véhicule — réservé au super administrateur."""
+    if not request.user.is_superuser:
+        return HttpResponseForbidden()
+    queryset = _types_document_vehicule_filtres(request.GET.get('q'))
+    return render(request, 'vehicules/partials/type_document_vehicule_table.html', {'types_document': queryset})
+
+
+class TypeDocumentVehiculeCreateView(LoginRequiredMixin, CreateView):
+    model = TypeDocumentVehicule
+    fields = ['nom', 'a_date_expiration', 'actif']
+    template_name = 'vehicules/type_document_vehicule_form.html'
+    success_url = reverse_lazy('vehicules:type_document_vehicule_list')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            messages.error(request, "Accès réservé au super administrateur.")
+            return redirect('vehicules:vehicule_list')
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Type de document créé avec succès.')
+        return super().form_valid(form)
+
+
+class TypeDocumentVehiculeUpdateView(LoginRequiredMixin, UpdateView):
+    model = TypeDocumentVehicule
+    fields = ['nom', 'a_date_expiration', 'actif']
+    template_name = 'vehicules/type_document_vehicule_form.html'
+    success_url = reverse_lazy('vehicules:type_document_vehicule_list')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            messages.error(request, "Accès réservé au super administrateur.")
+            return redirect('vehicules:vehicule_list')
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Type de document modifié avec succès.')
+        return super().form_valid(form)
+
+
+class TypeDocumentVehiculeDeleteView(LoginRequiredMixin, DeleteView):
+    model = TypeDocumentVehicule
+    template_name = 'vehicules/type_document_vehicule_confirm_delete.html'
+    success_url = reverse_lazy('vehicules:type_document_vehicule_list')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            messages.error(request, "Accès réservé au super administrateur.")
+            return redirect('vehicules:vehicule_list')
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Type de document supprimé.')
+        return super().form_valid(form)

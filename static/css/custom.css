@@ -914,6 +914,18 @@ small, .small {
     background: rgba(255,255,255,0.22) !important;
 }
 
+/* Bouton "Direction" — même gabarit que Modules, accent distinct pour rester
+   repérable en un coup d'œil sur toutes les pages (PDG/Manager/Comptable). */
+.direction-btn {
+    background: rgba(230,126,34,0.22) !important;
+    border-color: rgba(230,126,34,0.55) !important;
+}
+
+.direction-btn:hover,
+.direction-btn.active {
+    background: rgba(230,126,34,0.38) !important;
+}
+
 /* Scrollbar personnalisée */
 ::-webkit-scrollbar {
     width: 8px;

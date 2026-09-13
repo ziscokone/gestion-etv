@@ -15,3 +15,6 @@ django-ratelimit>=4.1
 
 # Cache (requis en prod pour CACHE_URL=redis://... — voir config/settings.py)
 redis>=5.0
+
+# Pilote PostgreSQL (requis dès que DB_NAME est défini — voir config/settings.py)
+psycopg2-binary>=2.9

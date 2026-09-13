@@ -3,13 +3,15 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from core.views import hub
+from core.views import hub, DashboardExecutifView, dashboard_executif_data
 
 ADMIN_URL = os.environ.get('ADMIN_URL', 'otci-admin-panel/')
 
 urlpatterns = [
     path(ADMIN_URL, admin.site.urls),
     path('hub/', hub, name='hub'),
+    path('dashboard-executif/', DashboardExecutifView.as_view(), name='dashboard_executif'),
+    path('dashboard-executif/data/', dashboard_executif_data, name='dashboard_executif_data'),
     path('', include('apps.guichet.urls')),
     path('clients/', include('apps.clients.urls')),
     path('personnel/', include('apps.personnel.urls')),

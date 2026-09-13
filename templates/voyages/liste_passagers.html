@@ -269,6 +269,10 @@
                     <span class="info-value">{{ voyage.date_depart|date:"l d F Y" }}</span>
                 </div>
                 <div class="info-row">
+                    <span class="info-label">Imprimé le :</span>
+                    <span class="info-value">{{ date_impression|date:"d/m/Y" }} à {{ date_impression|time:"H:i" }}</span>
+                </div>
+                <div class="info-row">
                     <span class="info-label">Gare :</span>
                     <span class="info-value">{{ voyage.gare.nom }}</span>
                 </div>
@@ -377,7 +381,7 @@
         <!-- Pied de page -->
         <div class="footer">
             <div>
-                Document généré le {{ date_impression|date:"d/m/Y à H:i" }}
+                Imprimé le {{ date_impression|date:"d/m/Y" }} à {{ date_impression|time:"H:i" }}
             </div>
             <div>
                 Page 1/1

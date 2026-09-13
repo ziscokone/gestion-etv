@@ -18,6 +18,7 @@ IMPRIMANTE_BACKEND permet de tester sans imprimante physique (voir settings) :
 import logging
 
 from django.conf import settings
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -108,10 +109,12 @@ def imprimer_billets(billets_info, duplicata=False, imprimante=None, largeur=Non
     imprimante = imprimante or get_imprimante()
     if largeur is None:
         _, largeur = _config_imprimante()
+    # Horodatage réel du tirage : identique pour tous les billets d'un même lot.
+    date_impression = timezone.localtime().strftime('%d/%m/%Y %Hh%M')
     try:
         imprimante.charcode('CP858')
         for info in billets_info:
-            _imprimer_un_billet(imprimante, info, duplicata, largeur)
+            _imprimer_un_billet(imprimante, info, duplicata, largeur, date_impression)
             imprimante.cut()
     except ErreurImpression:
         raise
@@ -154,7 +157,9 @@ def _montant_affiche(montant):
     return f"{formate} FCFA"
 
 
-def _imprimer_un_billet(p, info, duplicata, largeur):
+def _imprimer_un_billet(p, info, duplicata, largeur, date_impression=None):
+    if date_impression is None:
+        date_impression = timezone.localtime().strftime('%d/%m/%Y %Hh%M')
     # font explicite ici : p.set() n'envoie que ce qui est précisé (voir python-escpos),
     # donc sans ce rappel un billet précédent laissé en font 'b' (message_bas_ticket
     # ci-dessous) contaminerait le début de CE billet.
@@ -198,6 +203,7 @@ def _imprimer_un_billet(p, info, duplicata, largeur):
     p.set(bold=True)
     p.text(_ligne('Heure', info['heure_depart'], largeur))
     p.set(bold=False)
+    p.text(_ligne('Imprime le', date_impression, largeur))
     p.line_spacing()  # retour au pas par défaut pour la suite du ticket
     p.textln('')
 
@@ -255,3 +261,4 @@ def _imprimer_un_billet(p, info, duplicata, largeur):
         p.set(bold=True)
         p.text(_ligne('Heure', info['heure_depart'], largeur))
         p.set(bold=False)
+        p.text(_ligne('Imprime le', date_impression, largeur))

@@ -666,22 +666,51 @@ class BilanMensuelView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Liste de tous les mois ayant des voyages, du plus récent au plus ancien
-        mois_disponibles = (
-            Voyage.objects
-            .dates('date_depart', 'month', order='DESC')
+        # Liste de toutes les années ayant des voyages, de la plus récente à la
+        # plus ancienne — permet de remonter sur les exercices passés sans que
+        # la liste des mois devienne interminable au fil des années.
+        annees_disponibles = list(
+            Voyage.objects.dates('date_depart', 'year', order='DESC')
         )
-        context['mois_disponibles'] = mois_disponibles
+        context['annees_disponibles'] = annees_disponibles
 
-        # Mois sélectionné (paramètre ?mois=2026-03)
+        # Mois explicitement demandé (paramètre ?mois=2026-03, ex: lien historique)
         mois_str = self.request.GET.get('mois')
         mois_selectionne = None
-
         if mois_str:
             try:
                 mois_selectionne = datetime.strptime(mois_str, '%Y-%m').date()
             except ValueError:
                 pass
+
+        if mois_selectionne:
+            # Un mois précis prime : l'année affichée en découle.
+            annee_selectionnee = mois_selectionne.year
+        else:
+            # Sinon, année explicitement demandée (paramètre ?annee=2026)...
+            annee_str = self.request.GET.get('annee')
+            annee_selectionnee = None
+            if annee_str and annee_str.isdigit():
+                annee_candidate = int(annee_str)
+                if annee_candidate in [a.year for a in annees_disponibles]:
+                    annee_selectionnee = annee_candidate
+            # ... ou par défaut la plus récente ayant de l'activité (= année en
+            # cours dès qu'un voyage y a été saisi).
+            if annee_selectionnee is None and annees_disponibles:
+                annee_selectionnee = annees_disponibles[0].year
+
+        context['annee_selectionnee'] = annee_selectionnee
+
+        if annee_selectionnee is None:
+            return context
+
+        # Mois ayant des voyages, restreints à l'année sélectionnée.
+        mois_disponibles = (
+            Voyage.objects
+            .filter(date_depart__year=annee_selectionnee)
+            .dates('date_depart', 'month', order='DESC')
+        )
+        context['mois_disponibles'] = mois_disponibles
 
         if not mois_selectionne:
             premier = list(mois_disponibles[:1])

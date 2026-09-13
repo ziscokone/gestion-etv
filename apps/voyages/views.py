@@ -1580,6 +1580,8 @@ def creer_ticket_gratuit(request, voyage_id):
     """Crée un billet gratuit (en attente d'approbation) + la demande associée."""
     if not request.user.is_authenticated:
         return JsonResponse({'success': False, 'error': 'Non autorisé'}, status=403)
+    if not request.user.peut_vendre:
+        return JsonResponse({'success': False, 'error': 'La vente de billets est réservée aux guichetiers.'}, status=403)
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Méthode non autorisée'}, status=405)
 

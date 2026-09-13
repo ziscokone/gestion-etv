@@ -11,6 +11,7 @@ from django.views.decorators.http import require_http_methods
 from django_ratelimit.decorators import ratelimit
 
 from core.utils import render_paginated_partial
+from core.mixins import VenteRequiredMixin
 
 from apps.billets.models import Billet
 from apps.clients.models import Client
@@ -166,8 +167,9 @@ def voyage_list_ajax(request):
     )
 
 
-class VenteView(LoginRequiredMixin, DetailView):
-    """Interface de vente de billets pour un voyage."""
+class VenteView(VenteRequiredMixin, DetailView):
+    """Interface de vente de billets pour un voyage.
+    Réservée aux guichetiers et au super admin (voir VenteRequiredMixin)."""
     model = Voyage
     template_name = 'guichet/vente.html'
     context_object_name = 'voyage'
@@ -214,6 +216,9 @@ def creer_billet(request, voyage_id):
 
     voyage = get_object_or_404(Voyage, public_id=voyage_id)
     user = request.user
+
+    if not user.peut_vendre:
+        return JsonResponse({'success': False, 'error': 'La vente de billets est réservée aux guichetiers.'}, status=403)
 
     # Vérifier les droits d'accès
     if not user.has_global_access and voyage.gare != user.gare:
@@ -372,6 +377,9 @@ def payer_reservation(request, billet_id):
     billet = get_object_or_404(Billet, public_id=billet_id)
     user = request.user
 
+    if not user.peut_vendre:
+        return JsonResponse({'success': False, 'error': 'La vente de billets est réservée aux guichetiers.'}, status=403)
+
     # Vérifier les droits d'accès
     if not user.has_global_access and billet.voyage.gare != user.gare:
         return JsonResponse({'success': False, 'error': 'Accès non autorisé'}, status=403)
@@ -422,6 +430,9 @@ def vendre_a_autre_client(request, billet_id):
 
     billet = get_object_or_404(Billet, public_id=billet_id)
     user = request.user
+
+    if not user.peut_vendre:
+        return JsonResponse({'success': False, 'error': 'La vente de billets est réservée aux guichetiers.'}, status=403)
 
     if not user.has_global_access and billet.voyage.gare != user.gare:
         return JsonResponse({'success': False, 'error': 'Accès non autorisé'})

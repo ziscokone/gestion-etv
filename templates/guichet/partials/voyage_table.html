@@ -71,12 +71,14 @@
                                class="btn-action view" title="Voir le point du voyage">
                                 <i class="bi bi-eye"></i>
                             </a>
+                            {% if request.user.peut_vendre %}
                             {% if voyage.vehicule and voyage.get_nb_places_disponibles > 0 %}
                             <a href="{% url 'guichet:vente' voyage.public_id %}" class="btn-vendre">
                                 <i class="bi bi-cart-plus"></i> Vendre
                             </a>
                             {% elif not voyage.vehicule %}
                             <span style="font-size:11px;color:#9ca3af;">Véhicule requis</span>
+                            {% endif %}
                             {% endif %}
                         </div>
                     </td>

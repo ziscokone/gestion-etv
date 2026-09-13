@@ -650,3 +650,74 @@ class VersementCredit(models.Model):
         credit = self.credit
         super().delete(*args, **kwargs)
         credit.recalculer_statut()
+
+
+class TypeDocumentVehicule(models.Model):
+    nom = models.CharField(max_length=100, unique=True, verbose_name="Nom")
+    a_date_expiration = models.BooleanField(
+        default=False,
+        verbose_name="Date d'expiration requise",
+        help_text="Si coché, le champ date d'expiration sera demandé/affiché lors de l'ajout d'un document de ce type."
+    )
+    actif = models.BooleanField(default=True, verbose_name="Actif")
+
+    class Meta:
+        verbose_name = "Type de document véhicule"
+        verbose_name_plural = "Types de documents véhicule"
+        ordering = ['nom']
+
+    def __str__(self):
+        return self.nom
+
+
+class DocumentVehicule(models.Model):
+    vehicule = models.ForeignKey(
+        Vehicule, on_delete=models.CASCADE, related_name='documents'
+    )
+    type_document = models.ForeignKey(
+        TypeDocumentVehicule, on_delete=models.PROTECT,
+        verbose_name="Type de document", related_name='documents'
+    )
+    nom = models.CharField(max_length=200, verbose_name="Nom du document", blank=True)
+    fichier = models.FileField(upload_to='vehicules/documents/', verbose_name="Fichier")
+    date_expiration = models.DateField(null=True, blank=True, verbose_name="Date d'expiration")
+    date_ajout = models.DateTimeField(auto_now_add=True)
+    ajoute_par = models.ForeignKey(
+        'personnel.Utilisateur', on_delete=models.SET_NULL, null=True,
+        related_name='documents_vehicules_ajoutes'
+    )
+
+    class Meta:
+        verbose_name = "Document véhicule"
+        verbose_name_plural = "Documents véhicule"
+        ordering = ['type_document__nom', '-date_ajout']
+
+    def __str__(self):
+        return f"{self.type_document.nom} — {self.vehicule.immatriculation}"
+
+    @property
+    def type_nom(self):
+        return self.type_document.nom if self.type_document else ''
+
+    @property
+    def est_expire(self):
+        if self.date_expiration:
+            from datetime import date
+            return self.date_expiration < date.today()
+        return False
+
+    @property
+    def expire_bientot(self):
+        if self.date_expiration:
+            from datetime import date, timedelta
+            return date.today() <= self.date_expiration <= date.today() + timedelta(days=30)
+        return False
+
+    @property
+    def extension(self):
+        import os
+        return os.path.splitext(self.fichier.name)[1].lower()
+
+    @property
+    def est_image(self):
+        return self.extension in ['.jpg', '.jpeg', '.png', '.gif', '.webp']

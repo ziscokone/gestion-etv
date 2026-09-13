@@ -1,6 +1,15 @@
 from django.contrib import admin
 from .models import (ModeleVehicule, Vehicule, TypeReparation, ReparationVehicule,
-                     LigneIntervention, CreditPieceGarage, VersementCredit)
+                     LigneIntervention, CreditPieceGarage, VersementCredit,
+                     TypeDocumentVehicule, DocumentVehicule)
+
+
+@admin.register(TypeDocumentVehicule)
+class TypeDocumentVehiculeAdmin(admin.ModelAdmin):
+    list_display = ('nom', 'a_date_expiration', 'actif')
+    list_filter = ('a_date_expiration', 'actif')
+    search_fields = ('nom',)
+    ordering = ('nom',)
 
 
 @admin.register(TypeReparation)

@@ -60,6 +60,10 @@
                     <td class="text-end pe-4">
                         <div class="d-flex gap-2 justify-content-end">
                             <a href="{% url 'vehicules:vehicule_update' vehicule.pk %}"
+                               class="btn-action view" title="Voir la fiche">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{% url 'vehicules:vehicule_update' vehicule.pk %}"
                                class="btn-action edit" title="Modifier">
                                 <i class="bi bi-pencil"></i>
                             </a>

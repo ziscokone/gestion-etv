@@ -35,6 +35,21 @@ class SuperAdminRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
         return super().handle_no_permission()
 
 
+class VenteRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    """
+    Mixin réservé à la vente de billets : guichetiers et super admin uniquement.
+    Chef de gare, comptable, manager et PDG en sont exclus (demande client).
+    """
+
+    def test_func(self):
+        return self.request.user.peut_vendre
+
+    def handle_no_permission(self):
+        if self.request.user.is_authenticated:
+            raise PermissionDenied("La vente de billets est réservée aux guichetiers.")
+        return super().handle_no_permission()
+
+
 class GestionRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
     """
     Mixin qui requiert que l'utilisateur soit PDG, Super Admin, Chef de Gare ou Guichetier.

@@ -8,7 +8,7 @@
 
     <link href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
     <link href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}" rel="stylesheet">
-    <link href="{% static 'css/custom.css' %}?v=20260907b" rel="stylesheet">
+    <link href="{% static 'css/custom.css' %}?v=20260913" rel="stylesheet">
 
     {% block extra_css %}{% endblock %}
 </head>
@@ -296,8 +296,16 @@
 
             </ul>
 
-            <!-- Droite : bouton Modules + user dropdown -->
+            <!-- Droite : Direction (si autorisé) + bouton Modules + user dropdown -->
             <ul class="navbar-nav align-items-center">
+                {% if user.has_global_access %}
+                <li class="nav-item me-1">
+                    <a class="nav-link modules-btn direction-btn {% if request.resolver_match.url_name == 'dashboard_executif' %}active{% endif %}"
+                       href="{% url 'dashboard_executif' %}" title="Tableau de bord Direction">
+                        <i class="bi bi-graph-up-arrow me-1"></i> Direction
+                    </a>
+                </li>
+                {% endif %}
                 <li class="nav-item me-1">
                     <a class="nav-link modules-btn" href="{% url 'hub' %}" title="Retour aux modules">
                         <i class="bi bi-grid-3x3-gap-fill me-1"></i> Modules

@@ -227,6 +227,9 @@ class Billet(SyncableModel):
             'destination': self.destination.ville_arrivee if self.destination else 'N/A',
             'date_depart': self.voyage.date_depart.strftime('%d/%m/%Y'),
             'heure_depart': self.voyage.heure_depart.strftime('%H:%M'),
+            # Horodatage de l'aperçu (l'impression thermique recalcule le sien
+            # au moment réel du tirage — voir apps/guichet/impression.py).
+            'date_impression': timezone.localtime().strftime('%d/%m/%Y à %H:%M'),
             'periode': self.voyage.get_periode_display(),
             'montant': self.montant,
             'remise': self.remise,

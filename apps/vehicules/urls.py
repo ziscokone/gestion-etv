@@ -51,6 +51,18 @@ urlpatterns = [
     path('<int:pk>/reparations-ajax/', views.reparations_vehicule_ajax, name='reparations_ajax'),
     path('<int:pk>/entretien-ajax/', views.entretien_historique_ajax, name='entretien_ajax'),
 
+    # Documents véhicule (onglet fiche véhicule)
+    path('<int:vehicule_id>/documents/upload/', views.upload_document_vehicule, name='upload_document_vehicule'),
+    path('documents-vehicule/<int:doc_id>/telecharger/', views.telecharger_document_vehicule, name='telecharger_document_vehicule'),
+    path('documents-vehicule/<int:doc_id>/supprimer/', views.supprimer_document_vehicule, name='supprimer_document_vehicule'),
+
+    # Types de document véhicule
+    path('types-document-vehicule/', views.TypeDocumentVehiculeListView.as_view(), name='type_document_vehicule_list'),
+    path('types-document-vehicule/ajax/', views.type_document_vehicule_list_ajax, name='type_document_vehicule_list_ajax'),
+    path('types-document-vehicule/ajouter/', views.TypeDocumentVehiculeCreateView.as_view(), name='type_document_vehicule_create'),
+    path('types-document-vehicule/<int:pk>/modifier/', views.TypeDocumentVehiculeUpdateView.as_view(), name='type_document_vehicule_update'),
+    path('types-document-vehicule/<int:pk>/supprimer/', views.TypeDocumentVehiculeDeleteView.as_view(), name='type_document_vehicule_delete'),
+
     # API AJAX
     path('api/types-reparation/', views.get_types_reparation, name='api_types_reparation'),
     path('api/vehicule/<int:pk>/km/', views.get_vehicule_km, name='api_vehicule_km'),

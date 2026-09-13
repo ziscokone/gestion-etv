@@ -1,0 +1,562 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}Tableau de bord — Direction{% endblock %}
+
+{% block extra_css %}
+<style>
+:root {
+    --color-hover: #E67E22;
+    --color-hover-dark: #c2660f;
+}
+.num { font-variant-numeric: tabular-nums; }
+
+.card-head-title { display: flex; align-items: center; gap: 10px; }
+.card-head-icon { width: 18px; height: 18px; flex-shrink: 0; color: var(--color-accent); }
+.card-head-icon.tone-attn { color: var(--color-hover); }
+
+/* ---------- Hero (mêmes couleurs que la bannière du tableau de bord Voyages) ---------- */
+.hero-banner {
+    background: linear-gradient(135deg, #1e3260 0%, var(--color-accent) 100%);
+    border-radius: 14px;
+    padding: 22px 26px;
+    color: #fff;
+    display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+    margin-bottom: 22px;
+    position: relative;
+    overflow: hidden;
+}
+.hero-banner .eyebrow { font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: rgba(255,255,255,.75); margin-bottom: 8px; }
+.hero-headline { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-bottom: 12px; }
+.hero-lead { font-size: 1.05rem; font-weight: 800; margin-right: 2px; }
+.hero-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(255,255,255,0.15);
+    font-size: .78rem; font-weight: 600; padding: 5px 12px; border-radius: 20px; white-space: nowrap;
+}
+
+.hero-money { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: .92rem; opacity: .9; font-weight: 500; }
+.hero-money-value { font-size: 1.5rem; font-weight: 800; letter-spacing: -.01em; }
+.hero-money-sep { font-size: .8rem; opacity: .7; font-weight: 500; margin: 0 2px; }
+
+.hero-date { font-size: .82rem; opacity: .82; text-align: right; white-space: nowrap; align-self: flex-start; }
+.hero-date strong { display: block; font-size: 1.25rem; margin-top: 2px; }
+.hero-date strong.positive { color: #8ee6ab; }
+.hero-date strong.negative { color: #ffb0a8; }
+
+/* ---------- KPI strip (identique au tableau de bord Voyages) ---------- */
+.kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 24px; }
+@media (max-width: 1080px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 620px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.kpi-card {
+    background: #fff;
+    border: none;
+    border-radius: 13px;
+    border-top: 4px solid #e5e7eb;
+    padding: 18px 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex; align-items: center; gap: 14px;
+}
+.kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+.kpi-ico {
+    width: 46px; height: 46px; border-radius: 11px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.kpi-ico svg { width: 20px; height: 20px; }
+.kpi-value { font-size: 1.25rem; font-weight: 700; line-height: 1.15; color: #111827; }
+.kpi-label { font-size: .72rem; color: #6b7280; margin-top: 2px; font-weight: 500; }
+.kpi-sub { font-size: .72rem; color: #9ca3af; margin-top: 3px; }
+.kpi-sub.is-up { color: #27ae60; font-weight: 600; }
+.kpi-sub.is-down { color: #C45C5C; font-weight: 600; }
+
+.kpi-blue   { border-top-color: #1e3260; } .kpi-blue   .kpi-ico { background: #eef1f8; color: #1e3260; } .kpi-blue   .kpi-value { color: #1e3260; }
+.kpi-green  { border-top-color: #27ae60; } .kpi-green  .kpi-ico { background: #f0fdf4; color: #27ae60; } .kpi-green  .kpi-value { color: #27ae60; }
+.kpi-orange { border-top-color: #E67E22; } .kpi-orange .kpi-ico { background: #fff7ed; color: #E67E22; } .kpi-orange .kpi-value { color: #E67E22; }
+.kpi-indigo { border-top-color: #4338ca; } .kpi-indigo .kpi-ico { background: #eef2ff; color: #4338ca; } .kpi-indigo .kpi-value { color: #4338ca; }
+.kpi-red    { border-top-color: #C45C5C; } .kpi-red    .kpi-ico { background: #fdf2f2; color: #C45C5C; } .kpi-red    .kpi-value { color: #C45C5C; }
+
+/* ---------- Workspace ---------- */
+.workspace { display: grid; grid-template-columns: 1.72fr 1fr; gap: 18px; align-items: start; }
+@media (max-width: 980px) { .workspace { grid-template-columns: 1fr; } }
+.col { display: flex; flex-direction: column; gap: 18px; }
+
+.workspace .card { border: none; border-radius: 13px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+
+.card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 4px 4px 0; }
+.card-head h2 { margin: 0; font-size: .95rem; font-weight: 700; color: var(--color-accent); }
+.card-head .card-meta { font-size: .76rem; color: #9ca3af; }
+.card-link { font-size: .78rem; font-weight: 600; color: var(--color-accent); text-decoration: none; white-space: nowrap; }
+.card-link:hover { text-decoration: underline; }
+
+/* ---------- Weekly trend chart ---------- */
+.trend-total { font-size: 1.4rem; font-weight: 800; }
+.trend-total-label { font-size: .76rem; color: var(--color-text-secondary); font-weight: 600; }
+.trend-chart { width: 100%; height: auto; margin-top: 6px; }
+.trend-day-labels { display: flex; justify-content: space-between; padding: 2px 4px 0; font-size: .7rem; color: #9ca3af; font-weight: 600; }
+
+/* ---------- Stacked composition bar ---------- */
+.stack-bar { display: flex; height: 26px; border-radius: 7px; overflow: hidden; gap: 2px; background: #eef0f3; }
+.stack-seg { height: 100%; }
+.stack-seg:first-child { border-radius: 6px 0 0 6px; }
+.stack-seg:last-child { border-radius: 0 6px 6px 0; }
+.stack-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 14px; }
+.stack-legend-item { display: flex; align-items: center; gap: 7px; font-size: .8rem; }
+.stack-legend-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+.stack-legend-item .muted { color: #9ca3af; }
+.insight-box { margin-top: 14px; font-size: .82rem; color: var(--color-text-secondary); background: #f4f5f7; border-radius: 10px; padding: 10px 12px; display: flex; gap: 8px; align-items: flex-start; }
+.insight-box svg { width: 15px; height: 15px; color: var(--color-hover); flex-shrink: 0; margin-top: 1px; }
+
+/* ---------- Donut ---------- */
+.donut-row { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.donut-shell { width: 128px; height: 128px; flex-shrink: 0; position: relative; }
+.donut-shell svg { width: 100%; height: 100%; }
+.donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.donut-center b { font-size: 1.05rem; font-weight: 800; }
+.donut-center span { font-size: .62rem; color: #9ca3af; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; }
+.donut-legend { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 8px; }
+.donut-legend-row { display: flex; align-items: center; gap: 9px; font-size: .82rem; }
+.donut-legend-row .dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+.donut-legend-row .name { flex: 1; }
+.donut-legend-row .pct { font-weight: 700; }
+
+/* ---------- Attention list ---------- */
+.attn-group + .attn-group { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--color-border); }
+.attn-group-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #9ca3af; margin-bottom: 9px; display: flex; align-items: center; justify-content: space-between; }
+.attn-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
+.attn-row .who { flex: 1; min-width: 0; }
+.attn-row .who .name { font-size: .85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.attn-row .who .detail { font-size: .74rem; color: #9ca3af; }
+.pill { font-size: .70rem; font-weight: 700; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+.pill-attn { background: #fdf0e2; color: var(--color-hover-dark); }
+.pill-crit { background: var(--color-danger-light); color: #b52b22; }
+.attn-empty { font-size: .82rem; color: #9ca3af; padding: 4px 0; }
+
+/* ---------- Activity feed ---------- */
+.feed-row { display: flex; gap: 11px; padding: 8px 0; }
+.feed-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+.feed-text { font-size: .84rem; line-height: 1.4; }
+.feed-time { font-size: .72rem; color: #9ca3af; margin-top: 1px; }
+
+/* ---------- Leaderboard ---------- */
+.lead-row { display: flex; align-items: center; gap: 11px; padding: 8px 0; }
+.lead-rank { width: 20px; font-size: .78rem; font-weight: 800; color: #9ca3af; flex-shrink: 0; }
+.lead-avatar { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: .68rem; font-weight: 800; color: #fff; }
+.lead-name { flex: 1; font-size: .85rem; font-weight: 600; }
+.lead-value { font-size: .8rem; font-weight: 700; color: var(--color-text-secondary); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+
+    <div class="hero-banner">
+        <div>
+            <div class="eyebrow">{{ d.today|date:"l j F Y"|capfirst }}</div>
+            <div class="hero-headline">
+                <span class="hero-lead">Aujourd'hui —</span>
+                <span class="hero-chip">{{ d.hero.nb_voyages }} voyage{{ d.hero.nb_voyages|pluralize }}</span>
+                <span class="hero-chip">{{ d.hero.nb_billets }} billet{{ d.hero.nb_billets|pluralize }} vendu{{ d.hero.nb_billets|pluralize }}</span>
+                <span class="hero-chip">{{ d.hero.nb_gares_actives }} gare{{ d.hero.nb_gares_actives|pluralize }} active{{ d.hero.nb_gares_actives|pluralize }}</span>
+            </div>
+            <div class="hero-money">
+                <span class="hero-money-value num">{{ d.hero.recettes|format_montant }} F</span>
+                <span>de recettes</span>
+                <span class="hero-money-sep">contre</span>
+                <span class="hero-money-value num">{{ d.hero.depenses|format_montant }} F</span>
+                <span>de dépenses</span>
+            </div>
+        </div>
+        <div class="hero-date">
+            Bénéfice net du jour
+            <strong class="num {% if d.hero.benefice >= 0 %}positive{% else %}negative{% endif %}">{{ d.hero.benefice|format_montant }} F</strong>
+        </div>
+    </div>
+
+    <!-- ============ KPI STRIP ============ -->
+    <div class="kpi-grid">
+
+        <div class="kpi-card kpi-blue">
+            <div class="kpi-ico"><i class="bi bi-cash-stack"></i></div>
+            <div>
+                <div class="kpi-value num">{{ d.kpi.recettes_jour|format_montant }} F</div>
+                <div class="kpi-label">Recettes du jour</div>
+                {% if d.kpi.delta_recette_jour != None %}
+                <div class="kpi-sub {% if d.kpi.delta_recette_jour >= 0 %}is-up{% else %}is-down{% endif %}">{{ d.kpi.delta_recette_jour }}&nbsp;% vs hier</div>
+                {% else %}
+                <div class="kpi-sub">Pas de recette hier</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="kpi-card kpi-green">
+            <div class="kpi-ico"><i class="bi bi-ticket-perforated"></i></div>
+            <div>
+                <div class="kpi-value num">{{ d.kpi.nb_billets_jour }}</div>
+                <div class="kpi-label">Billets vendus</div>
+                <div class="kpi-sub">{{ d.kpi.nb_voyages_jour }} voyage{{ d.kpi.nb_voyages_jour|pluralize }} au total</div>
+            </div>
+        </div>
+
+        <div class="kpi-card kpi-indigo">
+            <div class="kpi-ico"><i class="bi bi-graph-up-arrow"></i></div>
+            <div>
+                <div class="kpi-value num">{{ d.kpi.benefice_jour|format_montant }} F</div>
+                <div class="kpi-label">Bénéfice net du jour</div>
+                <div class="kpi-sub">Recettes − dépenses</div>
+            </div>
+        </div>
+
+        <div class="kpi-card kpi-orange">
+            <div class="kpi-ico"><i class="bi bi-cash-coin"></i></div>
+            <div>
+                <div class="kpi-value num">{{ d.kpi.depenses_mois|format_montant }} F</div>
+                <div class="kpi-label">Dépenses du mois</div>
+                {% if d.kpi.delta_depense_mois != None %}
+                <div class="kpi-sub {% if d.kpi.delta_depense_mois > 0 %}is-down{% else %}is-up{% endif %}">{{ d.kpi.delta_depense_mois }}&nbsp;% vs le mois dernier</div>
+                {% else %}
+                <div class="kpi-sub">Pas de dépense le mois dernier</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="kpi-card kpi-orange">
+            <div class="kpi-ico"><i class="bi bi-tools"></i></div>
+            <div>
+                <div class="kpi-value num">{{ d.kpi.nb_vehicules_reparation }} véhicule{{ d.kpi.nb_vehicules_reparation|pluralize }}</div>
+                <div class="kpi-label">En réparation</div>
+                <div class="kpi-sub">{% if d.kpi.taux_disponibilite != None %}{{ d.kpi.taux_disponibilite|floatformat:0 }}% de la flotte disponible{% else %}—{% endif %}</div>
+            </div>
+        </div>
+
+        <div class="kpi-card kpi-red">
+            <div class="kpi-ico"><i class="bi bi-exclamation-triangle"></i></div>
+            <div>
+                <div class="kpi-value num">{{ d.kpi.nb_alertes_docs }} document{{ d.kpi.nb_alertes_docs|pluralize }}</div>
+                <div class="kpi-label">Alertes documents</div>
+                <div class="kpi-sub">Expirés ou bientôt expirés</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ============ WORKSPACE ============ -->
+    <div class="workspace">
+
+        <!-- LEFT COLUMN -->
+        <div class="col">
+
+            <div class="card">
+                <div class="card-head">
+                    <div class="card-head-title">
+                        <svg class="card-head-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l5-5 4 4 8-9"/><path d="M14 7h6v6"/></svg>
+                        <div>
+                            <h2>Recettes — 7 derniers jours</h2>
+                            <div class="card-meta">Billets payés, toutes gares confondues</div>
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div class="trend-total num">{{ d.recettes_periode|format_montant }} F</div>
+                        <div class="trend-total-label">cette période</div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <svg class="trend-chart" viewBox="0 0 720 200" preserveAspectRatio="none" role="img" aria-label="Évolution des recettes sur 7 jours">
+                        <line x1="0" y1="{{ d.chart_y_base }}" x2="720" y2="{{ d.chart_y_base }}" stroke="var(--color-border)" stroke-width="1"/>
+                        <path d="{{ d.aire_chemin }}" fill="var(--color-accent)" opacity="0.09" stroke="none"/>
+                        <polyline points="{{ d.points_ligne }}" fill="none" stroke="var(--color-accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+                        {% for j in d.tendance %}
+                        <g class="trend-point">
+                            <text x="{{ j.x }}" y="{{ j.y_label }}" text-anchor="{% if forloop.first %}start{% elif forloop.last %}end{% else %}middle{% endif %}" font-size="{% if j.est_aujourdhui %}12{% else %}10{% endif %}" font-weight="{% if j.est_aujourdhui %}700{% else %}600{% endif %}" fill="{% if j.est_aujourdhui %}var(--color-text-primary){% else %}#9ca3af{% endif %}">{{ j.montant|format_montant }} F</text>
+                            <circle cx="{{ j.x }}" cy="{{ j.y }}" r="{% if j.est_aujourdhui %}4.5{% else %}3{% endif %}" fill="var(--color-bg-card)" stroke="var(--color-accent)" stroke-width="2"/>
+                            <circle cx="{{ j.x }}" cy="{{ j.y }}" r="10" fill="transparent">
+                                <title>{{ j.jour|date:"l d/m" }} — {{ j.montant|format_montant }} F</title>
+                            </circle>
+                        </g>
+                        {% endfor %}
+                    </svg>
+                    <div class="trend-day-labels">
+                        {% for j in d.tendance %}
+                        <span {% if j.est_aujourdhui %}style="color:var(--color-accent);font-weight:700;"{% endif %}>{{ j.label }}{% if j.est_aujourdhui %} · Aujourd'hui{% endif %}</span>
+                        {% endfor %}
+                    </div>
+                    {% if d.evolution_recettes_pct != None %}
+                    <div class="insight-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v20M2 12h20"/></svg>
+                        <span>{% if d.evolution_recettes_pct >= 0 %}En hausse de <strong>{{ d.evolution_recettes_pct }}%</strong>{% else %}En baisse de <strong>{{ d.evolution_recettes_pct }}%</strong>{% endif %} par rapport aux 7 jours précédents.{% if d.nb_voyages_annules_periode %} {{ d.nb_voyages_annules_periode }} voyage{{ d.nb_voyages_annules_periode|pluralize }} annulé{{ d.nb_voyages_annules_periode|pluralize }} sur la période.{% endif %}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-head">
+                    <div class="card-head-title">
+                        <svg class="card-head-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l7 4"/></svg>
+                        <div>
+                            <h2>Composition des recettes du jour</h2>
+                            <div class="card-meta">D'où vient l'argent aujourd'hui, gare par gare</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if d.composition_jour %}
+                    <div class="stack-bar">
+                        {% for part in d.composition_jour %}
+                        <div class="stack-seg" style="width:{{ part.pourcentage }}%; background:{{ part.couleur }};" title="{{ part.libelle }} — {{ part.montant|format_montant }} F"></div>
+                        {% endfor %}
+                    </div>
+                    <div class="stack-legend">
+                        {% for part in d.composition_jour %}
+                        <div class="stack-legend-item">
+                            <span class="stack-legend-dot" style="background:{{ part.couleur }};"></span>
+                            {{ part.libelle }} <b class="num">{{ part.montant|format_montant }} F</b> <span class="muted">({{ part.pourcentage }}&nbsp;%)</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted small mb-0">Aucune recette enregistrée aujourd'hui pour le moment.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-head">
+                    <div class="card-head-title">
+                        <svg class="card-head-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="7" width="13" height="9" rx="1"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="6" cy="18" r="1.6"/><circle cx="17.5" cy="18" r="1.6"/></svg>
+                        <div>
+                            <h2>Disponibilité de la flotte</h2>
+                            <div class="card-meta">Véhicules actifs, prêts à rouler ou immobilisés au garage</div>
+                        </div>
+                    </div>
+                    <a class="card-link" href="{% url 'vehicules:vehicule_list' %}">Voir les véhicules →</a>
+                </div>
+                <div class="card-body">
+                    {% if d.flotte.nb_actifs %}
+                    <div class="stack-bar">
+                        <div class="stack-seg" style="width:{{ d.flotte.pct_dispo }}%; background:#27ae60;" title="Disponibles — {{ d.flotte.nb_disponibles }}"></div>
+                        <div class="stack-seg" style="width:{{ d.flotte.pct_reparation }}%; background:var(--color-hover);" title="En réparation — {{ d.flotte.nb_en_reparation }}"></div>
+                    </div>
+                    <div class="stack-legend">
+                        <div class="stack-legend-item"><span class="stack-legend-dot" style="background:#27ae60;"></span>Disponibles <b class="num">{{ d.flotte.nb_disponibles }}</b> <span class="muted">({{ d.flotte.pct_dispo }}&nbsp;%)</span></div>
+                        <div class="stack-legend-item"><span class="stack-legend-dot" style="background:var(--color-hover);"></span>En réparation <b class="num">{{ d.flotte.nb_en_reparation }}</b> <span class="muted">({{ d.flotte.pct_reparation }}&nbsp;%)</span></div>
+                    </div>
+                    {% if d.flotte.nb_en_reparation %}
+                    <div class="insight-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.8 2.8-2-2z"/></svg>
+                        <span><strong>{{ d.flotte.nb_en_reparation }} véhicule{{ d.flotte.nb_en_reparation|pluralize }} sur {{ d.flotte.nb_actifs }}</strong> {{ d.flotte.nb_en_reparation|pluralize:"est,sont" }} actuellement immobilisé{{ d.flotte.nb_en_reparation|pluralize }} au garage ({{ d.flotte.pct_reparation }}% de la flotte).</span>
+                    </div>
+                    {% endif %}
+                    {% if d.flotte.encours_credit_garage %}
+                    <div class="insight-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2.5" y="6" width="19" height="13" rx="2.3"/><path d="M2.5 10h19"/></svg>
+                        <span>Encours crédit garage (pièces restant à payer) : <strong class="num">{{ d.flotte.encours_credit_garage|format_montant }} F</strong></span>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <p class="text-muted small mb-0">Aucun véhicule actif enregistré.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-head">
+                    <div class="card-head-title">
+                        <svg class="card-head-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2c3.9 0 7 3.1 7 7 0 5-7 13-7 13S5 14 5 9c0-3.9 3.1-7 7-7z"/><circle cx="12" cy="9" r="2.4"/></svg>
+                        <div>
+                            <h2>Départs par gare</h2>
+                            <div class="card-meta">Répartition des 7 derniers jours</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if d.donut.parts %}
+                    <div class="donut-row">
+                        <div class="donut-shell">
+                            <svg viewBox="0 0 128 128">
+                                <circle cx="64" cy="64" r="{{ d.donut.rayon }}" fill="none" stroke="#eef0f3" stroke-width="20"/>
+                                <g transform="rotate(-90 64 64)">
+                                    {% for part in d.donut.parts %}
+                                    <circle cx="64" cy="64" r="{{ d.donut.rayon }}" fill="none" stroke="{{ part.couleur }}" stroke-width="20"
+                                        stroke-dasharray="{{ part.dash_len }} {{ d.donut.circonference }}" stroke-dashoffset="{{ part.dash_offset }}">
+                                        <title>{{ part.nom }} — {{ part.nb }} départ{{ part.nb|pluralize }} ({{ part.pourcentage }}%)</title>
+                                    </circle>
+                                    {% endfor %}
+                                </g>
+                            </svg>
+                            <div class="donut-center"><b>{{ d.donut.parts.0.pourcentage }}%</b><span>Top gare</span></div>
+                        </div>
+                        <div class="donut-legend">
+                            {% for part in d.donut.parts %}
+                            <div class="donut-legend-row"><span class="dot" style="background:{{ part.couleur }};"></span><span class="name">{{ part.nom }}</span><span class="pct num">{{ part.pourcentage }}%</span></div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted small mb-0">Aucun voyage sur les 7 derniers jours.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div class="col">
+
+            <div class="card">
+                <div class="card-head">
+                    <div class="card-head-title">
+                        <svg class="card-head-icon tone-attn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l10 18H2z"/><path d="M12 10v4.2"/><circle cx="12" cy="17.3" r="1" fill="currentColor" stroke="none"/></svg>
+                        <h2>À traiter</h2>
+                    </div>
+                    {% if d.personnel.nb_gares_sans_chef %}
+                    <span class="pill pill-attn">{{ d.personnel.nb_gares_sans_chef }} gare{{ d.personnel.nb_gares_sans_chef|pluralize }} sans chef</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+
+                    <div class="attn-group">
+                        <div class="attn-group-title">Remboursements en attente <span>{{ d.a_traiter.nb_remboursements }}</span></div>
+                        {% for demande in d.a_traiter.remboursements %}
+                        <div class="attn-row">
+                            <div class="who"><div class="name">{{ demande.billet.client_nom }}</div><div class="detail">{{ demande.billet.voyage.gare.nom }}</div></div>
+                            <span class="pill pill-crit num">{{ demande.montant|format_montant }} F</span>
+                        </div>
+                        {% empty %}
+                        <p class="attn-empty mb-0">Aucun remboursement en attente.</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="attn-group">
+                        <div class="attn-group-title">Tickets gratuits en attente <span>{{ d.a_traiter.nb_gratuits }}</span></div>
+                        {% for demande in d.a_traiter.gratuits %}
+                        <div class="attn-row">
+                            <div class="who"><div class="name">{{ demande.billet.client_nom }}</div><div class="detail">{{ demande.billet.voyage.gare.nom }}</div></div>
+                            <span class="pill pill-attn">À valider</span>
+                        </div>
+                        {% empty %}
+                        <p class="attn-empty mb-0">Aucun ticket gratuit en attente.</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="attn-group">
+                        <div class="attn-group-title">Documents véhicule <span>{{ d.a_traiter.nb_docs_expires|add:d.a_traiter.nb_docs_bientot }}</span></div>
+                        {% for doc in d.a_traiter.docs %}
+                        <div class="attn-row">
+                            <div class="who"><div class="name">{{ doc.vehicule }}</div><div class="detail">{{ doc.label }}</div></div>
+                            {% if doc.expire %}
+                            <span class="pill pill-crit">Expiré</span>
+                            {% else %}
+                            <span class="pill pill-attn">{{ doc.jours }} j</span>
+                            {% endif %}
+                        </div>
+                        {% empty %}
+                        <p class="attn-empty mb-0">Aucune alerte document.</p>
+                        {% endfor %}
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-head">
+                    <div class="card-head-title">
+                        <svg class="card-head-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l2 7 4-14 2 7h6"/></svg>
+                        <h2>Activité récente</h2>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% for activite in d.activites %}
+                    <div class="feed-row">
+                        <span class="feed-dot" style="background:{{ activite.couleur }};"></span>
+                        <div>
+                            <div class="feed-text">{{ activite.texte }}{% if activite.montant %} — {{ activite.montant|format_montant }} F{% endif %}</div>
+                            <div class="feed-time">Il y a {{ activite.date|timesince }}</div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted small mb-0">Aucune activité récente.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-head">
+                    <div class="card-head-title">
+                        <svg class="card-head-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l2.6 5.6 6.1.6-4.6 4.1 1.3 6-5.4-3.1-5.4 3.1 1.3-6-4.6-4.1 6.1-.6z"/></svg>
+                        <div>
+                            <h2>Top gares</h2>
+                            <div class="card-meta">Par nombre de départs — 7 derniers jours</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% for g in d.top_gares %}
+                    <div class="lead-row">
+                        <span class="lead-rank">{{ forloop.counter }}</span>
+                        <span class="lead-avatar" style="background:{{ g.couleur }};">{{ g.initiales }}</span>
+                        <span class="lead-name">{{ g.gare__nom }}</span>
+                        <span class="lead-value">{{ g.nb }} départ{{ g.nb|pluralize }}</span>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted small mb-0">Aucun départ sur la période.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-head">
+                    <div class="card-head-title">
+                        <svg class="card-head-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.4"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="9" r="2.6"/><path d="M15.7 14.2c2.9.4 4.8 2.5 4.8 5.8"/></svg>
+                        <h2>Personnel &amp; clients</h2>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="attn-row"><div class="who"><div class="name">Chauffeurs actifs</div></div><span class="lead-value num">{{ d.personnel.nb_chauffeurs }}</span></div>
+                    <div class="attn-row"><div class="who"><div class="name">Guichetiers actifs</div></div><span class="lead-value num">{{ d.personnel.nb_guichetiers }}</span></div>
+                    <div class="attn-row"><div class="who"><div class="name">Nouveaux clients ce mois</div></div><span class="lead-value num">{{ d.clients.nb_nouveaux_mois }}</span></div>
+                    <div class="attn-row"><div class="who"><div class="name">Proches d'un voyage offert</div></div><span class="lead-value num">{{ d.clients.nb_proches_fidelite }}</span></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="text-end mt-2">
+        <span class="de-live" style="display:inline-flex;align-items:center;gap:6px;font-size:.75rem;color:var(--color-text-secondary);background:var(--color-bg-card);border:1px solid var(--color-border);border-radius:20px;padding:5px 13px;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#1e9e56;display:inline-block;"></span>
+            Mis à jour à <strong id="de-heure-maj" style="color:var(--color-text-primary)">{{ d.heure_calcul|date:"H:i:s" }}</strong>
+        </span>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    function fmt(n) {
+        n = Math.round(Number(n) || 0);
+        return n.toLocaleString('fr-FR');
+    }
+    function setText(id, text) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+    }
+
+    function refresh() {
+        fetch("{% url 'dashboard_executif_data' %}")
+            .then(r => r.ok ? r.json() : Promise.reject())
+            .then(data => {
+                if (!data.success) return;
+                setText('de-heure-maj', data.heure_calcul);
+            })
+            .catch(function () { /* silencieux : on retentera au prochain cycle */ });
+    }
+
+    setInterval(refresh, 45000);
+})();
+</script>
+{% endblock %}

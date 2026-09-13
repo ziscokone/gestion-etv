@@ -47,6 +47,19 @@ class UtilisateurForm(forms.ModelForm):
         if not (self.current_user and self.current_user.is_superuser):
             self.fields.pop('actif', None)
 
+        # Seul un Super Admin peut attribuer le rôle PDG ou Super Admin — empêche
+        # un Manager/Comptable/PDG de se créer ou de créer un compte à ce niveau.
+        est_super_admin = bool(
+            self.current_user and (
+                self.current_user.is_superuser or self.current_user.role == 'super_admin'
+            )
+        )
+        if not est_super_admin:
+            self.fields['role'].choices = [
+                (valeur, label) for valeur, label in Utilisateur.ROLE_CHOICES
+                if valeur not in ('super_admin', 'pdg')
+            ]
+
     def clean_password2(self):
         password1 = self.cleaned_data.get('password1')
         password2 = self.cleaned_data.get('password2')

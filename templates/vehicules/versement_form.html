@@ -28,11 +28,12 @@
             {% endif %}
 
             {% for field in form %}
-            <div class="mb-3">
+            <div class="mb-3" data-field="{{ field.name }}">
               <label for="{{ field.id_for_label }}" class="form-label fw-semibold" style="font-size:13px;">
                 {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
               </label>
               {{ field }}
+              {% if field.help_text %}<div class="form-text" style="font-size:11px;">{{ field.help_text }}</div>{% endif %}
               {% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors }}</div>{% endif %}
             </div>
             {% endfor %}
@@ -51,4 +52,28 @@
     </div>
   </div>
 </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const MOBILE_MONEY = ['wave', 'orange_money', 'mtn_money', 'moov_money'];
+    const AVEC_REFERENCE = MOBILE_MONEY.concat(['virement']);
+
+    const select = document.getElementById('id_moyen_paiement');
+    const champNumero = document.querySelector('[data-field="numero_beneficiaire"]');
+    const champReference = document.querySelector('[data-field="reference_transaction"]');
+    if (!select || !champNumero || !champReference) return;
+
+    function majAffichage() {
+        const moyen = select.value;
+        champNumero.style.display = MOBILE_MONEY.includes(moyen) ? '' : 'none';
+        champReference.style.display = AVEC_REFERENCE.includes(moyen) ? '' : 'none';
+    }
+
+    select.addEventListener('change', majAffichage);
+    majAffichage();
+})();
+</script>
 {% endblock %}

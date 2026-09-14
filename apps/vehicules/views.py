@@ -579,6 +579,21 @@ class CreditPieceGarageUpdateView(GestionRequiredMixin, UpdateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['reparation'] = self.object.reparation
+
+        # Historique des modifications, crédit et versements confondus, du plus
+        # récent au plus ancien. La création du crédit lui-même n'y figure pas
+        # (déjà affichée séparément via cree_par/date_creation, ci-dessus) —
+        # seule la création d'un versement (qui n'a pas cet en-tête dédié) reste
+        # listée ici.
+        from auditlog.models import LogEntry
+        historique = [
+            log for log in LogEntry.objects.get_for_object(self.object).select_related('actor')
+            if log.action != LogEntry.Action.CREATE
+        ]
+        for versement in self.object.versements.all():
+            historique.extend(LogEntry.objects.get_for_object(versement).select_related('actor'))
+        historique.sort(key=lambda log: log.timestamp, reverse=True)
+        context['historique'] = historique
         return context
 
     def form_valid(self, form):
@@ -592,12 +607,15 @@ class CreditPieceGarageUpdateView(GestionRequiredMixin, UpdateView):
 
 
 class CreditPieceGarageDeleteView(SuperAdminRequiredMixin, DeleteView):
+    """Suppression désactivée : un crédit pièces garde son historique, il ne
+    doit plus pouvoir disparaître une fois créé (voir demande métier)."""
     model = CreditPieceGarage
     template_name = 'vehicules/credit_confirm_delete.html'
 
-    def get_success_url(self):
-        messages.success(self.request, 'Crédit pièces supprimé.')
-        return reverse_lazy('vehicules:reparation_detail', kwargs={'pk': self.object.reparation_id})
+    def dispatch(self, request, *args, **kwargs):
+        self.object = get_object_or_404(CreditPieceGarage, pk=kwargs['pk'])
+        messages.error(request, "La suppression d'un crédit pièces n'est plus autorisée, pour préserver son historique.")
+        return redirect('vehicules:reparation_detail', pk=self.object.reparation_id)
 
 
 class VersementCreditCreateView(GestionRequiredMixin, CreateView):

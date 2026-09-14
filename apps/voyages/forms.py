@@ -60,7 +60,7 @@ class VoyageForm(forms.ModelForm):
             'date_depart': forms.DateInput(attrs={
                 'class': 'form-control',
                 'type': 'date'
-            }),
+            }, format='%Y-%m-%d'),
             'heure_depart': forms.TimeInput(attrs={
                 'class': 'form-control',
                 'type': 'time',

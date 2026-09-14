@@ -236,9 +236,6 @@
                               </a>
                               {% endif %}
                               <a href="{% url 'vehicules:credit_update' c.pk %}" class="btn btn-sm btn-outline-secondary" title="Modifier"><i class="bi bi-pencil"></i></a>
-                              {% if user.is_super_admin %}
-                              <a href="{% url 'vehicules:credit_delete' c.pk %}" class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></a>
-                              {% endif %}
                               {% if c.versements.all %}
                               <details class="mt-1 text-start">
                                 <summary style="font-size:11px;color:#6b7280;cursor:pointer;">{{ c.versements.count }} versement{{ c.versements.count|pluralize }}</summary>

@@ -9,7 +9,7 @@
             <i class="bi bi-building me-2 text-accent"></i>
             Gestion des Gares
         </h2>
-        {% if user.has_global_access %}
+        {% if user.is_super_admin %}
         <a href="{% url 'gares:gare_create' %}" class="btn btn-primary">
             <i class="bi bi-plus-lg me-2"></i>Nouvelle gare
         </a>
@@ -56,9 +56,11 @@
                                 {% endif %}
                             </td>
                             <td class="text-end">
+                                {% if user.is_super_admin %}
                                 <a href="{% url 'gares:gare_update' gare.pk %}" class="btn btn-sm btn-outline-primary">
                                     <i class="bi bi-pencil"></i>
                                 </a>
+                                {% endif %}
                                 {% if user.is_super_admin and gare.active %}
                                 <button type="button" class="btn btn-sm btn-outline-danger" title="Désactiver"
                                         data-bs-toggle="modal" data-bs-target="#deactivateGareModal{{ gare.pk }}">
@@ -107,7 +109,7 @@
             <div class="text-center py-5 text-muted">
                 <i class="bi bi-building display-4"></i>
                 <p class="mt-3">Aucune gare enregistrée</p>
-                {% if user.has_global_access %}
+                {% if user.is_super_admin %}
                 <a href="{% url 'gares:gare_create' %}" class="btn btn-primary">
                     <i class="bi bi-plus-lg me-2"></i>Créer une gare
                 </a>

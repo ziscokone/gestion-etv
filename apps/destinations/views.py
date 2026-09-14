@@ -68,8 +68,8 @@ def destination_list_ajax(request):
     )
 
 
-class DestinationCreateView(GestionRequiredMixin, CreateView):
-    """Créer une nouvelle destination."""
+class DestinationCreateView(SuperAdminRequiredMixin, CreateView):
+    """Créer une nouvelle destination — réservé au super admin."""
     model = Destination
     form_class = DestinationForm
     template_name = 'destinations/destination_form.html'
@@ -85,22 +85,12 @@ class DestinationCreateView(GestionRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class DestinationUpdateView(GestionRequiredMixin, UpdateView):
-    """Modifier une destination."""
+class DestinationUpdateView(SuperAdminRequiredMixin, UpdateView):
+    """Modifier une destination — réservé au super admin."""
     model = Destination
     form_class = DestinationForm
     template_name = 'destinations/destination_form.html'
     success_url = reverse_lazy('destinations:destination_list')
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        user = self.request.user
-
-        # Filtrer par gare pour les chefs de gare et guichetiers
-        if not user.has_global_access and user.gare:
-            queryset = queryset.filter(gare=user.gare)
-
-        return queryset
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -194,9 +184,10 @@ class DestinationExportView(AdminRequiredMixin, View):
         return response
 
 
-class DestinationImportView(AdminRequiredMixin, View):
+class DestinationImportView(SuperAdminRequiredMixin, View):
     """
-    Importe des destinations depuis un fichier Excel (même format que l'export).
+    Importe des destinations depuis un fichier Excel (même format que l'export)
+    — réservé au super admin (opération d'écriture en masse).
     Upsert sur la clé (gare, ligne, ville_arrivee, montant), la ville étant
     comparée sans casse / accents / espaces : une combinaison identique voit
     seulement son statut actif/inactif rafraîchi, toute autre combinaison

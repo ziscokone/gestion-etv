@@ -37,10 +37,12 @@
                 <td style="color:#9ca3af;font-size:12px;">{{ destination.date_creation|date:"d/m/Y" }}</td>
                 <td class="text-end pe-4">
                     <div class="d-flex gap-1 justify-content-end">
+                        {% if request.user.is_super_admin %}
                         <a href="{% url 'destinations:destination_update' destination.pk %}"
                            class="btn-action edit" title="Modifier">
                             <i class="bi bi-pencil"></i>
                         </a>
+                        {% endif %}
                         {% if request.user.is_super_admin and destination.active %}
                         <button type="button" class="btn-action del" title="Désactiver"
                                 data-bs-toggle="modal" data-bs-target="#deactivateModal{{ destination.pk }}">
@@ -127,7 +129,7 @@
     <a href="{% url 'destinations:destination_list' %}" class="btn btn-sm btn-outline-secondary mt-2">
         <i class="bi bi-x me-1"></i>Réinitialiser
     </a>
-    {% else %}
+    {% elif request.user.is_super_admin %}
     <a href="{% url 'destinations:destination_create' %}" class="btn btn-sm btn-primary mt-2">
         <i class="bi bi-plus-circle me-1"></i>Créer la première destination
     </a>

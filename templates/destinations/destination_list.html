@@ -221,14 +221,16 @@
                class="btn-header export">
                 <i class="bi bi-file-earmark-excel"></i> Exporter Excel
             </a>
+            {% endif %}
+            {% if request.user.is_super_admin %}
             <a href="{% url 'destinations:destination_import' %}"
                class="btn-header import">
                 <i class="bi bi-file-earmark-arrow-up"></i> Importer Excel
             </a>
-            {% endif %}
             <a href="{% url 'destinations:destination_create' %}" class="btn-header success">
                 <i class="bi bi-plus-circle"></i> Nouvelle Destination
             </a>
+            {% endif %}
         </div>
     </div>
 

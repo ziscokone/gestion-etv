@@ -183,32 +183,42 @@
 
             <!-- KPIs -->
             <div class="row g-3 mb-4">
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-lg">
                     <div class="kpi-card">
                         <div class="kpi-value text-primary">{{ totaux.nb_voyages }}</div>
                         <div class="kpi-label">Voyage{{ totaux.nb_voyages|pluralize }}</div>
                     </div>
                 </div>
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-lg">
                     <div class="kpi-card">
                         <div class="kpi-value text-success">{{ totaux.nb_billets_payes }}</div>
                         <div class="kpi-label">Billets payés</div>
                     </div>
                 </div>
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-lg">
                     <div class="kpi-card kpi-recettes">
-                        <div class="kpi-value text-info" style="font-size:1.4rem;">{{ totaux.recettes_totales|intcomma }}</div>
+                        <div class="kpi-value text-info" style="font-size:1.4rem;">{{ totaux.recettes_totales|floatformat:0|intcomma }}</div>
                         <div class="kpi-label">Recettes totales (FCFA)</div>
                     </div>
                 </div>
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-lg">
                     <div class="kpi-card {% if totaux.benefice_net >= 0 %}kpi-benefice-pos{% else %}kpi-benefice-neg{% endif %}">
                         <div class="kpi-value {% if totaux.benefice_net >= 0 %}text-success{% else %}text-danger{% endif %}" style="font-size:1.4rem;">
-                            {{ totaux.benefice_net|intcomma }}
+                            {{ totaux.benefice_net|floatformat:0|intcomma }}
                         </div>
                         <div class="kpi-label">Recette net (FCFA)</div>
                     </div>
                 </div>
+                {% if credit_garage %}
+                <div class="col-6 col-lg">
+                    <div class="kpi-card {% if credit_garage.benefice_apres_credits >= 0 %}kpi-benefice-pos{% else %}kpi-benefice-neg{% endif %}" style="border-top-color:#0e7490;">
+                        <div class="kpi-value {% if credit_garage.benefice_apres_credits >= 0 %}text-success{% else %}text-danger{% endif %}" style="font-size:1.4rem;">
+                            {{ credit_garage.benefice_apres_credits|floatformat:0|intcomma }}
+                        </div>
+                        <div class="kpi-label">Net après crédits garage (FCFA)</div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
 
             <!-- Tableau détaillé par gare -->
@@ -248,23 +258,23 @@
                                     <span class="text-muted">—</span>
                                     {% endif %}
                                 </td>
-                                <td class="montant">{{ ligne.recettes_billets|intcomma }}</td>
+                                <td class="montant">{{ ligne.recettes_billets|floatformat:0|intcomma }}</td>
                                 <td class="montant">
-                                    {% if ligne.recettes_bagages %}{{ ligne.recettes_bagages|intcomma }}
+                                    {% if ligne.recettes_bagages %}{{ ligne.recettes_bagages|floatformat:0|intcomma }}
                                     {% else %}<span class="text-muted">—</span>{% endif %}
                                 </td>
-                                <td class="montant fw-bold text-success">{{ ligne.recettes_totales|intcomma }}</td>
+                                <td class="montant fw-bold text-success">{{ ligne.recettes_totales|floatformat:0|intcomma }}</td>
                                 <td class="montant text-danger">
-                                    {% if ligne.depenses_exploitation %}{{ ligne.depenses_exploitation|intcomma }}
+                                    {% if ligne.depenses_exploitation %}{{ ligne.depenses_exploitation|floatformat:0|intcomma }}
                                     {% else %}<span class="text-muted">—</span>{% endif %}
                                 </td>
                                 <td class="montant text-danger">
-                                    {% if ligne.depenses_reparations %}{{ ligne.depenses_reparations|intcomma }}
+                                    {% if ligne.depenses_reparations %}{{ ligne.depenses_reparations|floatformat:0|intcomma }}
                                     {% else %}<span class="text-muted">—</span>{% endif %}
                                 </td>
-                                <td class="montant fw-bold text-danger">{{ ligne.total_depenses|intcomma }}</td>
+                                <td class="montant fw-bold text-danger">{{ ligne.total_depenses|floatformat:0|intcomma }}</td>
                                 <td class="montant fw-bold {% if ligne.benefice_net >= 0 %}text-success{% else %}text-danger{% endif %}">
-                                    {{ ligne.benefice_net|intcomma }}
+                                    {{ ligne.benefice_net|floatformat:0|intcomma }}
                                 </td>
                             </tr>
                             {% endfor %}
@@ -275,14 +285,14 @@
                                 <td>{{ totaux.nb_voyages }}</td>
                                 <td>{{ totaux.nb_billets_payes }}</td>
                                 <td>{{ totaux.nb_billets_reportes }}</td>
-                                <td class="montant">{{ totaux.recettes_billets|intcomma }}</td>
-                                <td class="montant">{{ totaux.recettes_bagages|intcomma }}</td>
-                                <td class="montant" style="color:#6fffa0;">{{ totaux.recettes_totales|intcomma }}</td>
-                                <td class="montant" style="color:#ffaaaa;">{{ totaux.depenses_exploitation|intcomma }}</td>
-                                <td class="montant" style="color:#ffaaaa;">{{ totaux.depenses_reparations|intcomma }}</td>
-                                <td class="montant" style="color:#ffaaaa;">{{ totaux.total_depenses|intcomma }}</td>
+                                <td class="montant">{{ totaux.recettes_billets|floatformat:0|intcomma }}</td>
+                                <td class="montant">{{ totaux.recettes_bagages|floatformat:0|intcomma }}</td>
+                                <td class="montant" style="color:#6fffa0;">{{ totaux.recettes_totales|floatformat:0|intcomma }}</td>
+                                <td class="montant" style="color:#ffaaaa;">{{ totaux.depenses_exploitation|floatformat:0|intcomma }}</td>
+                                <td class="montant" style="color:#ffaaaa;">{{ totaux.depenses_reparations|floatformat:0|intcomma }}</td>
+                                <td class="montant" style="color:#ffaaaa;">{{ totaux.total_depenses|floatformat:0|intcomma }}</td>
                                 <td class="montant" style="color:{% if totaux.benefice_net >= 0 %}#6fffa0{% else %}#ffaaaa{% endif %};">
-                                    {{ totaux.benefice_net|intcomma }} FCFA
+                                    {{ totaux.benefice_net|floatformat:0|intcomma }} FCFA
                                 </td>
                             </tr>
                         </tfoot>
@@ -301,21 +311,21 @@
                         <div class="col-md-4">
                             <div class="p-3" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
                                 <div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#64748b;">Contracté dans le mois</div>
-                                <div style="font-size:1.35rem;font-weight:800;color:#1e3260;">{{ credit_garage.contracte_mois|intcomma }} F</div>
+                                <div style="font-size:1.35rem;font-weight:800;color:#1e3260;">{{ credit_garage.contracte_mois|floatformat:0|intcomma }} F</div>
                                 <div style="font-size:11px;color:#94a3b8;">Engagement — pas encore décaissé</div>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="p-3" style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;">
                                 <div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#b91c1c;">Versé dans le mois</div>
-                                <div style="font-size:1.35rem;font-weight:800;color:#b91c1c;">{{ credit_garage.verse_mois|intcomma }} F</div>
+                                <div style="font-size:1.35rem;font-weight:800;color:#b91c1c;">{{ credit_garage.verse_mois|floatformat:0|intcomma }} F</div>
                                 <div style="font-size:11px;color:#f87171;">Sortie de caisse réelle du mois</div>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="p-3" style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;">
                                 <div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#92400e;">Encours au 31 du mois</div>
-                                <div style="font-size:1.35rem;font-weight:800;color:#92400e;">{{ credit_garage.encours_fin_mois|intcomma }} F</div>
+                                <div style="font-size:1.35rem;font-weight:800;color:#92400e;">{{ credit_garage.encours_fin_mois|floatformat:0|intcomma }} F</div>
                                 <div style="font-size:11px;color:#d97706;">Reste dû aux fournisseurs</div>
                             </div>
                         </div>
@@ -336,9 +346,9 @@
                                 {% for nom, d in credit_garage.detail_fournisseurs %}
                                 <tr>
                                     <td>{{ nom }}</td>
-                                    <td class="text-end">{{ d.contracte|intcomma }}</td>
-                                    <td class="text-end text-danger">{{ d.verse|intcomma }}</td>
-                                    <td class="text-end fw-bold">{{ d.reste|intcomma }}</td>
+                                    <td class="text-end">{{ d.contracte|floatformat:0|intcomma }}</td>
+                                    <td class="text-end text-danger">{{ d.verse|floatformat:0|intcomma }}</td>
+                                    <td class="text-end fw-bold">{{ d.reste|floatformat:0|intcomma }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -350,7 +360,7 @@
                          style="background:#1e3260;color:#fff;border-radius:10px;">
                         <span style="font-weight:600;">Bénéfice net compagnie après versements crédits garage du mois</span>
                         <span style="font-size:1.2rem;font-weight:800;color:{% if credit_garage.benefice_apres_credits >= 0 %}#6fffa0{% else %}#ffaaaa{% endif %};">
-                            {{ credit_garage.benefice_apres_credits|intcomma }} FCFA
+                            {{ credit_garage.benefice_apres_credits|floatformat:0|intcomma }} FCFA
                         </span>
                     </div>
                     <div class="text-muted mt-1" style="font-size:11px;">

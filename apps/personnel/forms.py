@@ -107,7 +107,7 @@ class ChauffeurForm(forms.ModelForm):
             'lieu_habitation': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Quartier / Ville'}),
             'personne_urgence': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nom de la personne'}),
             'telephone_urgence': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Téléphone de la personne'}),
-            'date_embauche': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'date_embauche': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}, format='%Y-%m-%d'),
             'salaire': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Salaire en FCFA'}),
             'cv': forms.FileInput(attrs={'class': 'form-control'}),
             'actif': forms.CheckboxInput(attrs={'class': 'form-check-input'}),

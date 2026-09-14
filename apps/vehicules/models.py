@@ -627,6 +627,14 @@ class VersementCredit(models.Model):
         default='cash',
         verbose_name="Moyen de paiement",
     )
+    numero_beneficiaire = models.CharField(
+        max_length=30, blank=True, verbose_name="Numéro du bénéficiaire",
+        help_text="Numéro mobile money ayant reçu le paiement",
+    )
+    reference_transaction = models.CharField(
+        max_length=100, blank=True, verbose_name="Référence de la transaction",
+        help_text="Code de transaction (Wave/Orange/MTN/Moov) ou référence du virement — preuve du paiement",
+    )
     saisi_par = models.ForeignKey(
         'personnel.Utilisateur', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='versements_credit_saisis', verbose_name="Saisi par",

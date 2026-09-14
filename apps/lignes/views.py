@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from django.contrib import messages
@@ -9,13 +9,6 @@ from core.mixins import SuperAdminRequiredMixin
 from .models import Ligne
 from .forms import LigneForm
 from apps.compagnie.models import Compagnie
-
-
-class AdminRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
-    """Mixin pour restreindre l'accès aux admins uniquement."""
-
-    def test_func(self):
-        return self.request.user.has_global_access
 
 
 class LigneListView(LoginRequiredMixin, ListView):
@@ -35,8 +28,8 @@ class LigneListView(LoginRequiredMixin, ListView):
         return context
 
 
-class LigneCreateView(AdminRequiredMixin, CreateView):
-    """Créer une nouvelle ligne."""
+class LigneCreateView(SuperAdminRequiredMixin, CreateView):
+    """Créer une nouvelle ligne — réservé au super admin."""
     model = Ligne
     form_class = LigneForm
     template_name = 'lignes/ligne_form.html'
@@ -58,8 +51,8 @@ class LigneCreateView(AdminRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class LigneUpdateView(AdminRequiredMixin, UpdateView):
-    """Modifier une ligne."""
+class LigneUpdateView(SuperAdminRequiredMixin, UpdateView):
+    """Modifier une ligne — réservé au super admin."""
     model = Ligne
     form_class = LigneForm
     template_name = 'lignes/ligne_form.html'

@@ -41,11 +41,23 @@
                         <i class="bi bi-speedometer2 me-1"></i> Tableau de bord
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link {% if request.resolver_match.url_name == 'voyage_list' and request.resolver_match.app_name == 'guichet' %}active{% endif %}"
-                       href="{% url 'guichet:voyage_list' %}">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'voyage_list' and request.resolver_match.app_name == 'guichet' or 'programmes' in request.path %}active{% endif %}"
+                       href="#" data-bs-toggle="dropdown">
                         <i class="bi bi-bus-front me-1"></i> Voyages
                     </a>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a class="dropdown-item" href="{% url 'guichet:voyage_list' %}">
+                                <i class="bi bi-bus-front me-2"></i> Liste des voyages
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'programmes:programme_list' %}">
+                                <i class="bi bi-calendar-week me-2"></i> Programmes
+                            </a>
+                        </li>
+                    </ul>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {% if request.resolver_match.url_name == 'reservations' %}active{% endif %}"

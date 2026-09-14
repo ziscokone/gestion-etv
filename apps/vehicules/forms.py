@@ -128,7 +128,7 @@ class VehiculeForm(forms.ModelForm):
             'date_mise_circulation': forms.DateInput(attrs={
                 'class': 'form-control',
                 'type': 'date'
-            }),
+            }, format='%Y-%m-%d'),
             'type_carburant': forms.Select(attrs={
                 'class': 'form-select',
             }),
@@ -161,19 +161,19 @@ class VehiculeForm(forms.ModelForm):
             'date_expiration_assurance': forms.DateInput(attrs={
                 'class': 'form-control',
                 'type': 'date'
-            }),
+            }, format='%Y-%m-%d'),
             'date_expiration_visite_technique': forms.DateInput(attrs={
                 'class': 'form-control',
                 'type': 'date'
-            }),
+            }, format='%Y-%m-%d'),
             'date_expiration_carte_grise': forms.DateInput(attrs={
                 'class': 'form-control',
                 'type': 'date'
-            }),
+            }, format='%Y-%m-%d'),
             'date_expiration_licence_transport': forms.DateInput(attrs={
                 'class': 'form-control',
                 'type': 'date'
-            }),
+            }, format='%Y-%m-%d'),
         }
         labels = {
             # Informations générales
@@ -222,7 +222,7 @@ class ReparationVehiculeForm(forms.ModelForm):
         fields = ['vehicule', 'date_reparation', 'garage_prestataire', 'statut', 'notes']
         widgets = {
             'vehicule': forms.Select(attrs={'class': 'form-select'}),
-            'date_reparation': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'date_reparation': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}, format='%Y-%m-%d'),
             'garage_prestataire': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'Ex: Garage Central Auto'
@@ -277,7 +277,7 @@ class LigneInterventionForm(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'Ex: 250000',
                 'min': '0',
-                'step': '0.01'
+                'step': '1'
             }),
             'kilometrage': forms.NumberInput(attrs={
                 'class': 'form-control ligne-km-field',
@@ -312,6 +312,8 @@ class LigneInterventionForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['type_reparation'].queryset = TypeReparation.objects.filter(actif=True)
+        if self.instance and self.instance.pk and self.instance.montant is not None:
+            self.initial['montant'] = int(self.instance.montant)
 
     def clean(self):
         cleaned_data = super().clean()
@@ -414,9 +416,9 @@ class CreditPieceGarageForm(forms.ModelForm):
                 'class': 'form-control', 'placeholder': 'Ex: jeu de plaquettes + 2 disques avant',
             }),
             'montant_total': forms.NumberInput(attrs={
-                'class': 'form-control', 'min': '1', 'step': '0.01', 'placeholder': 'Ex: 180000',
+                'class': 'form-control', 'min': '1', 'step': '1', 'placeholder': 'Ex: 180000',
             }),
-            'date_achat': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'date_achat': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}, format='%Y-%m-%d'),
             'notes': forms.Textarea(attrs={
                 'class': 'form-control', 'rows': 2, 'placeholder': 'Optionnel...',
             }),
@@ -428,6 +430,11 @@ class CreditPieceGarageForm(forms.ModelForm):
             'date_achat': 'Date de prise à crédit',
             'notes': 'Notes',
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk and self.instance.montant_total is not None:
+            self.initial['montant_total'] = int(self.instance.montant_total)
 
     def clean_date_achat(self):
         d = self.cleaned_data.get('date_achat')
@@ -451,29 +458,52 @@ class CreditPieceGarageForm(forms.ModelForm):
 class VersementCreditForm(forms.ModelForm):
     """Enregistrer un versement sur un crédit pièces."""
 
+    MOYENS_MOBILE_MONEY = ('wave', 'orange_money', 'mtn_money', 'moov_money')
+    MOYENS_AVEC_REFERENCE = MOYENS_MOBILE_MONEY + ('virement',)
+
     class Meta:
         model = VersementCredit
-        fields = ['date_versement', 'montant', 'moyen_paiement', 'note']
+        fields = [
+            'date_versement', 'montant', 'moyen_paiement',
+            'numero_beneficiaire', 'reference_transaction', 'note',
+        ]
         widgets = {
-            'date_versement': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'date_versement': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}, format='%Y-%m-%d'),
             'montant': forms.NumberInput(attrs={
-                'class': 'form-control', 'min': '1', 'step': '0.01',
+                'class': 'form-control', 'min': '1', 'step': '1',
             }),
-            'moyen_paiement': forms.Select(attrs={'class': 'form-select'}),
+            'moyen_paiement': forms.Select(attrs={'class': 'form-select', 'id': 'id_moyen_paiement'}),
+            'numero_beneficiaire': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': 'Ex: 07 00 00 00 00',
+            }),
+            'reference_transaction': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': 'Ex: code reçu par SMS, référence bancaire',
+            }),
             'note': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Optionnel'}),
         }
         labels = {
             'date_versement': 'Date du versement',
             'montant': 'Montant versé (FCFA)',
             'moyen_paiement': 'Moyen de paiement',
+            'numero_beneficiaire': 'Numéro du bénéficiaire',
+            'reference_transaction': 'Référence de la transaction',
             'note': 'Note',
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        moyen = cleaned_data.get('moyen_paiement')
+        if moyen in self.MOYENS_MOBILE_MONEY and not cleaned_data.get('numero_beneficiaire'):
+            self.add_error('numero_beneficiaire', "Le numéro du bénéficiaire est requis pour un paiement mobile money.")
+        if moyen in self.MOYENS_AVEC_REFERENCE and not cleaned_data.get('reference_transaction'):
+            self.add_error('reference_transaction', "La référence de la transaction est requise pour ce moyen de paiement, comme preuve de paiement.")
+        return cleaned_data
 
     def __init__(self, *args, credit=None, **kwargs):
         self.credit = credit
         super().__init__(*args, **kwargs)
         if credit is not None and not self.initial.get('montant'):
-            self.fields['montant'].initial = credit.reste_a_payer
+            self.fields['montant'].initial = int(credit.reste_a_payer)
         if not self.initial.get('date_versement'):
             self.fields['date_versement'].initial = date.today()
 

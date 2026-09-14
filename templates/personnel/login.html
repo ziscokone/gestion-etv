@@ -40,20 +40,20 @@
         .login-container {
             position: relative;
             z-index: 2;
-            width: 80%;
-            max-width: 1200px;
+            width: 78%;
+            max-width: 1080px;
             background: rgba(255, 255, 255, 0.98);
-            border-radius: 20px;
+            border-radius: 18px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             overflow: hidden;
             display: flex;
-            min-height: 600px;
+            min-height: 480px;
         }
 
         /* Formulaire à gauche (50%) */
         .login-form-section {
             width: 50%;
-            padding: 3rem;
+            padding: 2.25rem;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -67,16 +67,16 @@
 
         .login-logo {
             text-align: center;
-            margin-bottom: 2rem;
+            margin-bottom: 1.25rem;
         }
 
         .login-logo img {
-            max-height: 70px;
-            margin-bottom: 1rem;
+            max-height: 56px;
+            margin-bottom: 0.6rem;
         }
 
         .login-logo h1 {
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             color: var(--color-accent);
             margin: 0;
             font-weight: 700;
@@ -134,7 +134,7 @@
         .login-info-section {
             width: 50%;
             background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%);
-            padding: 3rem;
+            padding: 2.25rem;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -142,44 +142,47 @@
         }
 
         .login-info-content {
-            max-width: 450px;
+            max-width: 460px;
             margin: 0 auto;
         }
 
         .login-info-content h2 {
-            font-size: 2rem;
+            font-size: 1.6rem;
             font-weight: 700;
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
             color: #FFFFFF;
         }
 
         .login-info-content p {
             font-family: 'Playfair Display', Georgia, serif;
             font-weight: 500;
-            font-size: 1rem;
+            font-size: 0.92rem;
             opacity: 0.95;
-            line-height: 1.6;
-            margin-bottom: 2rem;
+            line-height: 1.5;
+            margin-bottom: 1.25rem;
         }
 
         .login-info-features {
-            margin-top: 2rem;
+            margin-top: 1.25rem;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.9rem 1rem;
         }
 
         .feature-item {
             display: flex;
             align-items: center;
-            margin-bottom: 1.5rem;
-            font-size: 1rem;
+            font-size: 0.9rem;
         }
 
         .feature-item i {
-            font-size: 1.5rem;
-            margin-right: 1rem;
+            font-size: 1.2rem;
+            margin-right: 0.65rem;
             color: #E67E22;
             background: rgba(230, 126, 34, 0.2);
-            padding: 0.5rem;
+            padding: 0.4rem;
             border-radius: 8px;
+            flex-shrink: 0;
         }
 
         /* Responsive */
